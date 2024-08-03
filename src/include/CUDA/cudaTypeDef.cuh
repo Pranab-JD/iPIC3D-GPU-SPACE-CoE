@@ -19,6 +19,7 @@ using cudaTypeDouble = double;
 using cudaTypeHalf = __half;
 
 using cudaCommonType = cudaTypeDouble;
+using cudaParticleType = cudaTypeSingle;
 
 template <class T, int dim2, int dim3, int dim4>
 using cudaTypeArray4 = T (*)[dim2][dim3][dim4];
