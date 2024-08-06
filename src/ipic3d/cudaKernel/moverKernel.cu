@@ -24,13 +24,13 @@
 #include "particleArrayCUDA.cuh"
 #include "hashedSum.cuh"
 
-using commonType = cudaCommonType;
+using commonType = cudaParticleType;
 
 __device__ constexpr bool cap_velocity() { return false; }
 
 __host__ __device__ void get_field_components_for_cell(
-    const commonType *field_components[8],
-    cudaTypeArray1<commonType> fieldForPcls, grid3DCUDA *grid,
+    const cudaFieldType *field_components[8],
+    cudaTypeArray1<cudaFieldType> fieldForPcls, grid3DCUDA *grid,
     int cx, int cy, int cz);
 
 __device__ void prepareDepartureArray(SpeciesParticle* pcl, 
@@ -40,7 +40,7 @@ __device__ void prepareDepartureArray(SpeciesParticle* pcl,
                                     uint32_t pidx);
 
 __global__ void moverKernel(moverParameter *moverParam,
-                            cudaTypeArray1<commonType> fieldForPcls,
+                            cudaTypeArray1<cudaFieldType> fieldForPcls,
                             grid3DCUDA *grid)
 {
     uint pidx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -69,8 +69,8 @@ __global__ void moverKernel(moverParameter *moverParam,
     commonType wavg_old = worig;
 
     int innter = 0;
-    const commonType PC_err_2 = 1E-12;  // square of error tolerance
-    commonType currErr = PC_err_2 + 1.; // initialize to a larger value
+    const cudaTypeDouble PC_err_2 = 1E-12;  // square of error tolerance
+    cudaTypeDouble currErr = PC_err_2 + 1.; // initialize to a larger value
 
     // calculate the average velocity iteratively
     while (currErr > PC_err_2 && innter < moverParam->NiterMover)
@@ -181,8 +181,8 @@ __global__ void moverKernel(moverParameter *moverParam,
 }
 
 __host__ __device__ void get_field_components_for_cell(
-    const commonType *field_components[8],
-    const cudaTypeArray1<commonType> fieldForPcls, grid3DCUDA *grid,
+    const cudaFieldType *field_components[8],
+    const cudaTypeArray1<cudaFieldType> fieldForPcls, grid3DCUDA *grid,
     int cx, int cy, int cz)
 {
     // interface to the right of cell

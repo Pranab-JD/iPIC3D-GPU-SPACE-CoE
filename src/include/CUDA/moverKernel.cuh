@@ -24,17 +24,17 @@ public: //particle arrays
 
 public: // common parameter
 
-    cudaCommonType dt;
+    cudaParticleType dt;
 
-    cudaCommonType qom;
+    cudaParticleType qom;
 
-    cudaCommonType c;
+    cudaParticleType c;
 
     int NiterMover;
 
     int DFIELD_3or4;
 
-    cudaCommonType umax, umin, vmax, vmin, wmax, wmin;
+    cudaParticleType umax, umin, vmax, vmin, wmax, wmin;
 
     // moverOutflowParameter outflowParam;
 
