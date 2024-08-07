@@ -82,6 +82,18 @@ class CUDA_ALIGN(64) SpeciesParticle
   __host__ __device__ void set_q(cudaParticleType in) { q = in; }
   __host__ __device__ void set_x(int i, cudaParticleType in) { x[i] = in; }
   __host__ __device__ void set_t(cudaParticleType in){ t=in; }
+
+  __host__ __device__ void set_x_u(cudaParticleType x, cudaParticleType y, cudaParticleType z, 
+                                    cudaParticleType u, cudaParticleType v, cudaParticleType w){
+    this->u[0] = u;
+    this->u[1] = v;
+    this->u[2] = w;
+
+    this->x[0] = x;
+    this->x[1] = y;
+    this->x[2] = z;
+
+  }
 // double for compatibility
   __host__ __device__ void set_u(double* in, int n=3) { for(int i=0;i<n;i++) u[i] = in[i]; }
   __host__ __device__ void set_u(int i, double in) { u[i] = in; }

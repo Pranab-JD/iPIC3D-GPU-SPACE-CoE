@@ -167,12 +167,12 @@ __global__ void moverKernel(moverParameter *moverParam,
         }
     }
     //
-    pcl->set_x(xorig + uavg * moverParam->dt);
-    pcl->set_y(yorig + vavg * moverParam->dt);
-    pcl->set_z(zorig + wavg * moverParam->dt);
-    pcl->set_u(2.0 * uavg - uorig);
-    pcl->set_v(2.0 * vavg - vorig);
-    pcl->set_w(2.0 * wavg - worig);
+
+
+    pcl->set_x_u(   xorig + uavg * moverParam->dt,  yorig + vavg * moverParam->dt,  zorig + wavg * moverParam->dt,
+                    2.0f * uavg - uorig,            2.0f * vavg - vorig,            2.0f * wavg - worig);
+
+
 
     // prepare the departure array
 
@@ -189,22 +189,6 @@ __host__ __device__ void get_field_components_for_cell(
     const int ix = cx + 1;
     const int iy = cy + 1;
     const int iz = cz + 1;
-/*
-    auto field0 = fieldForPcls[ix];
-    auto field1 = fieldForPcls[cx];
-    auto field00 = field0[iy];
-    auto field01 = field0[cy];
-    auto field10 = field1[iy];
-    auto field11 = field1[cy];
-    field_components[0] = field00[iz]; // field000
-    field_components[1] = field00[cz]; // field001
-    field_components[2] = field01[iz]; // field010
-    field_components[3] = field01[cz]; // field011
-    field_components[4] = field10[iz]; // field100
-    field_components[5] = field10[cz]; // field101
-    field_components[6] = field11[iz]; // field110
-    field_components[7] = field11[cz]; // field111
-*/
     
     field_components[0] = fieldForPcls + toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, ix, iy, iz, 0); // field000
     field_components[1] = fieldForPcls + toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, ix, iy, cz, 0); // field001
