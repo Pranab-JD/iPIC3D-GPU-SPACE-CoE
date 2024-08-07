@@ -44,7 +44,7 @@ class Larray;
 // intended to occupy 64 bytes
 //
 // particle for a specific species
-class CUDA_ALIGN(64) SpeciesParticle
+class SpeciesParticle
 {
   cudaParticleType u[3];
   cudaParticleType q;

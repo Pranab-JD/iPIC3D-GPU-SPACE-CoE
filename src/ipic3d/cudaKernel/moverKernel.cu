@@ -28,10 +28,10 @@ using commonType = cudaParticleType;
 
 __device__ constexpr bool cap_velocity() { return false; }
 
-__host__ __device__ void get_field_components_for_cell(
-    const cudaFieldType *field_components[8],
-    cudaTypeArray1<cudaFieldType> fieldForPcls, grid3DCUDA *grid,
-    int cx, int cy, int cz);
+// __host__ __device__ void get_field_components_for_cell(
+//     const cudaFieldType *field_components[8],
+//     cudaTypeArray1<cudaFieldType> fieldForPcls, grid3DCUDA *grid,
+//     int cx, int cy, int cz);
 
 __device__ void prepareDepartureArray(SpeciesParticle* pcl, 
                                     departureArrayType* departureArray, 
@@ -180,25 +180,46 @@ __global__ void moverKernel(moverParameter *moverParam,
     
 }
 
-__host__ __device__ void get_field_components_for_cell(
-    const cudaFieldType *field_components[8],
-    const cudaTypeArray1<cudaFieldType> fieldForPcls, grid3DCUDA *grid,
-    int cx, int cy, int cz)
-{
-    // interface to the right of cell
-    const int ix = cx + 1;
-    const int iy = cy + 1;
-    const int iz = cz + 1;
+// __host__ __device__ void get_field_components_for_cell(
+//     const cudaFieldType *field_components[8],
+//     const cudaTypeArray1<cudaFieldType> fieldForPcls, grid3DCUDA *grid,
+//     int cx, int cy, int cz)
+// {
+//     // interface to the right of cell
+//     const int ix = cx + 1;
+//     const int iy = cy + 1;
+//     const int iz = cz + 1;
     
-    field_components[0] = fieldForPcls + toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, ix, iy, iz, 0); // field000
-    field_components[1] = fieldForPcls + toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, ix, iy, cz, 0); // field001
-    field_components[2] = fieldForPcls + toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, ix, cy, iz, 0); // field010
-    field_components[3] = fieldForPcls + toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, ix, cy, cz, 0); // field011
-    field_components[4] = fieldForPcls + toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, cx, iy, iz, 0); // field100
-    field_components[5] = fieldForPcls + toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, cx, iy, cz, 0); // field101
-    field_components[6] = fieldForPcls + toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, cx, cy, iz, 0); // field110
-    field_components[7] = fieldForPcls + toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, cx, cy, cz, 0); // field111
-}
+//     constexpr int ratio = sizeof(cudaCommonType) / sizeof(cudaFieldType);
+
+//     field_components[0] = fieldForPcls + ratio * toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, ix, iy, iz, 0); // field000
+//     field_components[1] = fieldForPcls + ratio * toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, ix, iy, cz, 0); // field001
+//     field_components[2] = fieldForPcls + ratio * toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, ix, cy, iz, 0); // field010
+//     field_components[3] = fieldForPcls + ratio * toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, ix, cy, cz, 0); // field011
+//     field_components[4] = fieldForPcls + ratio * toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, cx, iy, iz, 0); // field100
+//     field_components[5] = fieldForPcls + ratio * toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, cx, iy, cz, 0); // field101
+//     field_components[6] = fieldForPcls + ratio * toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, cx, cy, iz, 0); // field110
+//     field_components[7] = fieldForPcls + ratio * toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, cx, cy, cz, 0); // field111
+// }
+
+// __global__ void castingField(grid3DCUDA *grid, cudaTypeArray1<cudaCommonType> fieldForPcls){
+//     uint pidx = blockIdx.x * blockDim.x + threadIdx.x;
+//     if(pidx >= (grid->nxn * grid->nyn * grid->nzn))return;
+
+//     //cudaFieldType temp[8];
+
+//     auto pointDoublePtr = fieldForPcls + pidx * 8;
+//     cudaFieldType* pointSinglePtr = (cudaFieldType*)pointDoublePtr;
+
+//     for(int i=0; i < 8; i++){
+//         pointSinglePtr[i] = (cudaFieldType)pointDoublePtr[i];
+//     }
+
+//     // for(int i=0; i < 8; i++){
+//     //     pointSinglePtr[i] = temp[i];
+//     // }
+    
+// }
 
 
 

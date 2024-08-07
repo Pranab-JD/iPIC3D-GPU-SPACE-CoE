@@ -67,7 +67,9 @@ public:
 };
 
 __global__ void moverKernel(moverParameter *moverParam,
-                            cudaTypeArray1<cudaCommonType> fieldForPcls,
+                            cudaTypeArray1<cudaFieldType> fieldForPcls,
                             grid3DCUDA *grid);
+
+// __global__ void castingField(grid3DCUDA *grid, cudaTypeArray1<cudaCommonType> fieldForPcls);
 
 #endif
