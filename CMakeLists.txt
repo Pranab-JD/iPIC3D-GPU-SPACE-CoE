@@ -41,7 +41,7 @@ include("${CMAKE_SOURCE_DIR}/cmake/sites/${SITE}.cmake")
 option(BUILD_SHARED_LIBS "Use shared libraries if ON, static if OFF" ON)
 option(USE_CATALYST "Use Catalyst adaptor" OFF)
 option(USE_BATSRUS "Use BATSRUS flag" OFF)
-option(USE_HDF5 "Use HDF5 library" OFF)
+option(USE_HDF5 "Use HDF5 library" ON)
 option(CUDA_ON "Enable CUDA" ON) # if this is OFF, following two are ignored, set to false
 option(MOMENT_CUDA_ON "Run Moment on CUDA" ON)
 option(MOVER_CUDA_ON "Run Mover on CUDA" ON)
@@ -68,8 +68,7 @@ if(USE_CATALYST)
       install(TARGETS iPICAdaptor)
     endif()
 
-    # target_link_libraries(iPICAdaptor PRIVATE ParaView::PythonCatalyst VTK::CommonDataModel Python3::Python)
-    target_link_libraries(iPICAdaptor PRIVATE stdc++fs ParaView::PythonCatalyst VTK::CommonDataModel Python3::Python)
+    target_link_libraries(iPICAdaptor PRIVATE ParaView::PythonCatalyst VTK::CommonDataModel Python3::Python)
     target_include_directories(iPICAdaptor INTERFACE ${CMAKE_SOURCE_DIR}/catalyst)
     target_compile_definitions(iPICAdaptor INTERFACE USE_CATALYST)
 
@@ -149,7 +148,7 @@ if(CUDA_ON)
   set_property(TARGET iPIC3Dlib PROPERTY CUDA_ARCHITECTURES 75) # required for double atomicadd
   set_property(TARGET iPIC3Dlib PROPERTY CUDA_STANDARD 17)
   set_property(TARGET iPIC3Dlib PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
-#   set_property(TARGET iPIC3Dlib PROPERTY LINK_OPTIONS -fno-lto)
+  set_property(TARGET iPIC3Dlib PROPERTY LINK_OPTIONS -fno-lto)
 
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -lineinfo")
 endif()
@@ -168,9 +167,7 @@ target_include_directories(
 #
 # Link external libraries
 #
-if (USE_HDF5)
-    set(linkLibraries MPI::MPI_CXX ${HDF5_C_HL_TARGET})
-endif()
+set(linkLibraries MPI::MPI_CXX ${HDF5_C_HL_TARGET})
 
 if(USE_OPENMP)
     list(APPEND linkLibraries OpenMP::OpenMP_CXX)
@@ -188,7 +185,6 @@ endif()
 target_link_libraries(
     iPIC3Dlib
     PUBLIC ${linkLibraries}
-    PRIVATE stdc++fs
 )
 
 
@@ -243,7 +239,6 @@ add_executable(
 target_link_libraries(
   iPIC3D
   iPIC3Dlib
-  stdc++fs
   )
 
 if(NOT CMAKE_BUILD_TYPE)
