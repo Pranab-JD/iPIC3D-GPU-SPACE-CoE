@@ -147,8 +147,9 @@ int c_Solver::Init(int argc, char **argv) {
 
   // Print the initial settings to stdout and a file
   if (myrank == 0) {
-    //check and create the output directory
-    checkOutputFolder(SaveDirName);
+    //check and create the output directory, only if it is not a restart run
+    if(restart_status == 0){checkOutputFolder(SaveDirName); if(RestartDirName != SaveDirName)checkOutputFolder(RestartDirName); }
+    
     MPIdata::instance().Print();
     vct->Print();
     col->Print();
@@ -331,31 +332,34 @@ int c_Solver::initCUDA(){
 
     for(int i=0; i<ns; i++){
       // the constructor will copy particles from host to device
-      pclsArrayHostPtr[i] = new particleArrayCUDA(part+i, streams[i]);
+      pclsArrayHostPtr[i] = newHostPinnedObject<particleArrayCUDA>(part+i, streams[i]);
       pclsArrayCUDAPtr[i] = pclsArrayHostPtr[i]->copyToDevice();
       // clear the host pclArray
       part[i].get_pcl_array().clear(); // 0
 
-      departureArrayHostPtr[i] = new departureArrayType(pclsArrayHostPtr[i]->getSize()); // same length
+      departureArrayHostPtr[i] = newHostPinnedObject<departureArrayType>(pclsArrayHostPtr[i]->getSize()); // same length
       departureArrayCUDAPtr[i] = departureArrayHostPtr[i]->copyToDevice();
       cudaErrChk(cudaMemsetAsync(departureArrayHostPtr[i]->getArray(), 0, departureArrayHostPtr[i]->getSize() * sizeof(departureArrayElementType), streams[i]));
 
-      hashedSumArrayHostPtr[i] = new hashedSum[8]{ // 
-        hashedSum(5), hashedSum(5), hashedSum(5), hashedSum(5), 
-        hashedSum(5), hashedSum(5), hashedSum(10), hashedSum(10)
-      };
+      // hashedSumArrayHostPtr[i] = new hashedSum[8]{ // 
+      //   hashedSum(5), hashedSum(5), hashedSum(5), hashedSum(5), 
+      //   hashedSum(5), hashedSum(5), hashedSum(10), hashedSum(10)
+      // };
+
+      hashedSumArrayHostPtr[i] = newHostPinnedObjectArray<hashedSum>(8, 10);
+
       hashedSumArrayCUDAPtr[i] = copyArrayToDevice(hashedSumArrayHostPtr[i], 8);
       
-      exitingArrayHostPtr[i] = new exitingArray(0.1 * pclsArrayHostPtr[i]->getNOP());
+      exitingArrayHostPtr[i] = newHostPinnedObject<exitingArray>(0.1 * pclsArrayHostPtr[i]->getNOP());
       exitingArrayCUDAPtr[i] = exitingArrayHostPtr[i]->copyToDevice();
-      fillerBufferArrayHostPtr[i] = new fillerBuffer(0.1 * pclsArrayHostPtr[i]->getNOP());
+      fillerBufferArrayHostPtr[i] = newHostPinnedObject<fillerBuffer>(0.1 * pclsArrayHostPtr[i]->getNOP());
       fillerBufferArrayCUDAPtr[i] = fillerBufferArrayHostPtr[i]->copyToDevice();
 
     }
   }
 
   // one grid for all species
-  grid3DCUDAHostPtr = new grid3DCUDA(grid);
+  grid3DCUDAHostPtr = newHostPinnedObject<grid3DCUDA>(grid);
   grid3DCUDACUDAPtr = copyToDevice(grid3DCUDAHostPtr, 0);
 
 
@@ -363,14 +367,14 @@ int c_Solver::initCUDA(){
   moverParamHostPtr = new moverParameter*[ns];
   moverParamCUDAPtr = new moverParameter*[ns];
   for(int i=0; i<ns; i++){
-    moverParamHostPtr[i] = new moverParameter(part+i, pclsArrayCUDAPtr[i], departureArrayCUDAPtr[i], hashedSumArrayCUDAPtr[i]);
+    moverParamHostPtr[i] = newHostPinnedObject<moverParameter>(part+i, pclsArrayCUDAPtr[i], departureArrayCUDAPtr[i], hashedSumArrayCUDAPtr[i]);
     moverParamCUDAPtr[i] = copyToDevice(moverParamHostPtr[i], streams[i]);
   }
 
   momentParamHostPtr = new momentParameter*[ns];
   momentParamCUDAPtr = new momentParameter*[ns];
   for(int i=0; i<ns; i++){
-    momentParamHostPtr[i] = new momentParameter(pclsArrayCUDAPtr[i], departureArrayCUDAPtr[i]);
+    momentParamHostPtr[i] = newHostPinnedObject<momentParameter>(pclsArrayCUDAPtr[i], departureArrayCUDAPtr[i]);
     momentParamCUDAPtr[i] = copyToDevice(momentParamHostPtr[i], streams[i]);
   }
 
@@ -387,6 +391,71 @@ int c_Solver::initCUDA(){
 
   return 0;
 
+}
+
+
+int c_Solver::deInitCUDA(){
+
+  deleteHostPinnedObject(grid3DCUDAHostPtr);
+  cudaFree(grid3DCUDACUDAPtr);
+
+  cudaFree(fieldForPclCUDAPtr);
+
+  // release device objects
+  for(int i=0; i<ns; i++){
+
+    // ==================  delete host object, deconstruct ==================
+
+    deleteHostPinnedObject(pclsArrayHostPtr[i]);
+    deleteHostPinnedObject(departureArrayHostPtr[i]);
+    deleteHostPinnedObjectArray(hashedSumArrayHostPtr[i], 8);
+    deleteHostPinnedObject(exitingArrayHostPtr[i]);
+    deleteHostPinnedObject(fillerBufferArrayHostPtr[i]);
+
+    deleteHostPinnedObject(moverParamHostPtr[i]);
+    deleteHostPinnedObject(momentParamHostPtr[i]);
+
+
+    // ==================  cudaFree device object mem ==================
+
+    cudaFree(pclsArrayCUDAPtr[i]);
+    cudaFree(departureArrayCUDAPtr[i]);
+    cudaFree(hashedSumArrayCUDAPtr[i]);
+    cudaFree(exitingArrayCUDAPtr[i]);
+    cudaFree(fillerBufferArrayCUDAPtr[i]);
+
+    cudaFree(moverParamCUDAPtr[i]);
+    cudaFree(momentParamCUDAPtr[i]);
+
+    cudaFree(momentsCUDAPtr[i]);
+    
+  }
+
+
+  // delete ptr arrays
+  delete[] pclsArrayHostPtr;
+  delete[] pclsArrayCUDAPtr;
+  delete[] departureArrayHostPtr;
+  delete[] departureArrayCUDAPtr;
+  delete[] hashedSumArrayHostPtr;
+  delete[] hashedSumArrayCUDAPtr;
+  delete[] exitingArrayHostPtr;
+  delete[] exitingArrayCUDAPtr;
+  delete[] fillerBufferArrayHostPtr;
+  delete[] fillerBufferArrayCUDAPtr;
+  delete[] moverParamHostPtr;
+  delete[] moverParamCUDAPtr;
+  delete[] momentParamHostPtr;
+  delete[] momentParamCUDAPtr;
+  delete[] momentsCUDAPtr;
+
+
+  // delete streams
+  for(int i=0; i<ns*2; i++)cudaStreamDestroy(streams[i]);
+  delete[] streams;
+  delete[] stayedParticle;
+
+  return 0;
 }
 
 
@@ -872,6 +941,16 @@ void c_Solver::WriteRestart(int cycle)
 {
 #ifndef NO_HDF5
   if (restart_cycle>0 && cycle%restart_cycle==0){
+    
+    { // copy the particles back to host, if restart output
+      for(int i=0; i<ns; i++){
+        cudaErrChk(cudaMemcpyAsync(part[i].get_pcl_array().getList(), pclsArrayHostPtr[i]->getpcls(), 
+                                  pclsArrayHostPtr[i]->getNOP()*sizeof(SpeciesParticle), cudaMemcpyDefault, streams[i]));
+        part[i].get_pcl_array().setSize(pclsArrayHostPtr[i]->getNOP());
+      }
+      cudaErrChk(cudaDeviceSynchronize());
+    }
+
 	  convertParticlesToSynched();
 	  fetch_outputWrapperFPP().append_restart(cycle);
   }
@@ -1041,6 +1120,8 @@ void c_Solver::Finalize() {
     fetch_outputWrapperFPP().append_restart((col->getNcycles() + first_cycle) - 1);
     #endif
   }
+
+  deInitCUDA();
 
   // stop profiling
   my_clock->stopTiming();
