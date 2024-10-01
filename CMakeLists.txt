@@ -47,7 +47,7 @@ option(MOMENT_CUDA_ON "Run Moment on CUDA" ON)
 option(MOVER_CUDA_ON "Run Mover on CUDA" ON)
 
 
-option(BENCH_MARK "Print tasks time" OFF)
+option(BENCH_MARK "Print tasks time" ON)
 option(USE_OPENMP "Use OpenMP in supported loops" OFF) # must delete all cmake cache if you change this option
 
 include(GNUInstallDirs)
@@ -167,7 +167,9 @@ target_include_directories(
 #
 # Link external libraries
 #
-set(linkLibraries MPI::MPI_CXX ${HDF5_C_HL_TARGET})
+if (USE_HDF5)
+    set(linkLibraries MPI::MPI_CXX ${HDF5_C_HL_TARGET})
+endif()
 
 if(USE_OPENMP)
     list(APPEND linkLibraries OpenMP::OpenMP_CXX)
