@@ -42,7 +42,7 @@ y_center =   20.0        # Ly = simulation box length - y direction in m
 z_center =    0.5        # Lz = simulation box length - z direction in m  
 L_square =    0.1
 
-nxc = 256              # nxc = number of cells - x direction        
+nxc = 512              # nxc = number of cells - x direction        
 nyc = 256              # nyc = number of cells - y direction
 nzc =  1               # nzc = number of cells - z direction        
 
@@ -62,8 +62,8 @@ rhoINIT         = 0.5  0.5    # Initial density (make sure you are neutral)
 rhoINJECT       = 0.0  0.0    # Injection density (make sure you are neutral)
 TrackParticleID = 0    0      # TrackParticleID[species] = 1=true, 0=false 
 
-npcelx          = 115   115   # Particles per cell in X
-npcely          = 115   115   # Particles per cell in Y
+npcelx          = 80   80   # Particles per cell in X
+npcely          = 80   80   # Particles per cell in Y
 npcelz          = 1    1      # Particles per cell in Z
 NpMaxNpRatio    = 5.0         # Maximum number of particles allocated
 
