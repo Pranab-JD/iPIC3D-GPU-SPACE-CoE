@@ -3,16 +3,16 @@
 
 #  %%%%%%%%%%%%%%%%%%% Input/Output flags %%%%%%%%%%%%%%%%%%
 SaveDirName    = data            # Output directory
-RestartDirName = data/restart     # Restart directory (for WriteMethod=default)
+RestartDirName = data            # Restart directory (for WriteMethod=default)
 
 #  %%%%%%%%%%%%%%%%%%% Input/Output flags %%%%%%%%%%%%%%%%%%
 Case              = default                                 # Case [ GEM | Dipole | ... ]
-WriteMethod       = pvtk                                    # Output method [ default | Parallel ]
+WriteMethod       = shdf5                                    # Output method [ default | Parallel ]
 PoissonCorrection = no                                      # Poisson correction [ yes | no ]
 SimulationName    = scaling                                 # Simulation name for the output
 
 #  %%%%%%%%%%%%%%%%%%% Magnetic Reconnection %%%%%%%%%%%%%%%%%%
-B0x = 0.00
+B0x = 0.1
 B0y = 0.00
 B0z = 0.00
 
@@ -25,7 +25,7 @@ delta = 0.5
 
 #  %%%%%%%%%%%%%%%%%%% TIME %%%%%%%%%%%%%%%%%%
 dt = 0.01              # dt = time step  
-ncycles = 5            # cycles
+ncycles = 11            # cycles
 th = 0.5               # th = decentering parameter
 c = 1.0                # c = light speed 
 
@@ -43,13 +43,13 @@ z_center =    0.5        # Lz = simulation box length - z direction in m
 L_square =    0.1
 
 nxc = 256              # nxc = number of cells - x direction        
-nyc = 256              # nyc = number of cells - y direction
+nyc = 128              # nyc = number of cells - y direction
 nzc =  1               # nzc = number of cells - z direction        
 
 # %%%%%%%%%%%%%%%%%% MPI TOPOLOGY %%%%%%%%%%%%%%%
-XLEN = 8               # Number of subdomains in the X direction
-YLEN = 4              # Number of subdomains in the Y direction
-ZLEN = 1               # Number of subdomains in the Z direction
+XLEN =  8               # Number of subdomains in the X direction
+YLEN =  4               # Number of subdomains in the Y direction
+ZLEN =  1               # Number of subdomains in the Z direction
 
 # %%%%%%%%%%%%%% PARTICLES %%%%%%%%%%%%%%%%%
 #    0 = electrons
@@ -62,15 +62,15 @@ rhoINIT         = 0.5  0.5    # Initial density (make sure you are neutral)
 rhoINJECT       = 0.0  0.0    # Injection density (make sure you are neutral)
 TrackParticleID = 0    0      # TrackParticleID[species] = 1=true, 0=false 
 
-npcelx          = 118   118     # Particles per cell in X
-npcely          = 118   118     # Particles per cell in Y
+npcelx          = 145   145   # Particles per cell in X
+npcely          = 145   145   # Particles per cell in Y
 npcelz          = 1    1      # Particles per cell in Z
 NpMaxNpRatio    = 5.0         # Maximum number of particles allocated
 
 qom             = -100.0     1.0         # Charge/mass ratio
-uth             =  0.01      0.001       # Thermal velocity in X
+uth             =  0.02      0.002       # Thermal velocity in X
 vth             =  0.01      0.001       # Thermal velocity in Y
-wth             =  0.01      0.001       # Thermal velocity in Z
+wth             =  0.00      0.000       # Thermal velocity in Z
 u0              =  0.0       0.0         # Drift velocity in X
 v0              =  0.0       0.0         # Drift velocity in Y
 w0              =  0.0       0.0         # Drift velocity in Z
