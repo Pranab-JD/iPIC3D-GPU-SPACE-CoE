@@ -187,6 +187,7 @@ endif()
 target_link_libraries(
     iPIC3Dlib
     PUBLIC ${linkLibraries}
+    PUBLIC MPI::MPI_CXX
 )
 
 
