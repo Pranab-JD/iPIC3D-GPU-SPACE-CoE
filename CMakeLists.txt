@@ -41,7 +41,7 @@ include("${CMAKE_SOURCE_DIR}/cmake/sites/${SITE}.cmake")
 option(BUILD_SHARED_LIBS "Use shared libraries if ON, static if OFF" ON)
 option(USE_CATALYST "Use Catalyst adaptor" OFF)
 option(USE_BATSRUS "Use BATSRUS flag" OFF)
-option(USE_HDF5 "Use HDF5 library" ON)
+option(USE_HDF5 "Use HDF5 library" OFF)
 option(CUDA_ON "Enable CUDA" ON) # if this is OFF, following two are ignored, set to false
 option(MOMENT_CUDA_ON "Run Moment on CUDA" ON)
 option(MOVER_CUDA_ON "Run Mover on CUDA" ON)
