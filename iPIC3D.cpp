@@ -78,7 +78,7 @@ int main(int argc, char **argv)
             time_MF.stop();
 
             time_MG.start();
-            KCode.CalculateMoments(false);       //* Charge density, current density, and pressure tensor
+            KCode.CalculateMoments(true);   //* Charge density, current density, and pressure tensor
             time_MG.stop();
 
             //calculated from particles position and celocity, then mapped to node(grid) for further solving
@@ -95,7 +95,7 @@ int main(int argc, char **argv)
 
             if(MPIdata::get_rank() == 0)
             {
-                std::cout << std::endl << "LeXInt timer: " << std::endl;
+                std::cout << std::endl << "LeXInt timer (cummulative) " << std::endl;
                 std::cout << "Electric field     : " << time_EF.total() << std::endl;
                 std::cout << "Particle mover     : " << time_PM.total() << std::endl;
                 std::cout << "Magnetic field     : " << time_MF.total() << std::endl;
