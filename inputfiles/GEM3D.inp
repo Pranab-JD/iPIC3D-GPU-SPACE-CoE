@@ -15,8 +15,8 @@
  # See the License for the specific language governing permissions and
  # limitations under the License.
 
-SaveDirName = data
-RestartDirName = data
+SaveDirName = GEM3D
+RestartDirName = GEM3D
 
 # New flags:
 Case              = GEM          # Select the case
@@ -42,14 +42,14 @@ Lx = 20   # Lx = simulation box length - x direction
 Ly = 20   # Ly = simulation box length - y direction   
 Lz = 10   # Lz = simulation box length - z direction
 
-nxc = 32  # nxc = number of cells - x direction        
-nyc = 32  # nyc = number of cells - y direction 
-nzc = 16  # nzc = number of cells - z direction 
+nxc = 64  #20  # nxc = number of cells - x direction        
+nyc = 48  #20  # nyc = number of cells - y direction 
+nzc = 40  # nzc = number of cells - z direction 
 
 # %%%%%%%%%%%%%% MPI TOPOLOGY %%%%%%%%%%%%%%
 # number of MPI subdomains in each direction
-XLEN = 4
-YLEN = 4
+XLEN = 2 # 8
+YLEN = 2 # 8
 ZLEN = 2
 # topology of subdomains in each dimension (1=true, 0=false)
 PERIODICX = 1
@@ -74,11 +74,11 @@ rhoINJECT = 0.0   0.0    0.0  0.0
 TrackParticleID=  0  0  0  0
  
 # npcelx = number of particles per cell - Direction X 
-npcelx =   	  25  25  25  25 
+npcelx =   	  10  10  10  10 
 # npcely = number of particles per cell - Direction Y */
-npcely =   	  25  25  25  25 
+npcely =   	  10  10  10  10 
 # npcelz = number of particles per cell - Direction Z */
-npcelz =   	  25  25  25  25  
+npcelz =   	  10  10  10  10  
 
 
 # uth = thermal velocity for different species - Direction X  */
