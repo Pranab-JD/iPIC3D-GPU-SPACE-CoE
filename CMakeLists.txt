@@ -1,6 +1,6 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.21)
 
-project(iPic3D LANGUAGES C CXX CUDA)
+project(iPic3D LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -42,15 +42,21 @@ option(BUILD_SHARED_LIBS "Use shared libraries if ON, static if OFF" ON)
 option(USE_CATALYST "Use Catalyst adaptor" OFF)
 option(USE_BATSRUS "Use BATSRUS flag" OFF)
 option(USE_HDF5 "Use HDF5 library" ON)
-option(CUDA_ON "Enable CUDA" ON) # if this is OFF, following two are ignored, set to false
+option(CUDA_ON "Enable CUDA" ON) # It should always be ON, even for HIP AMD
 option(MOMENT_CUDA_ON "Run Moment on CUDA" ON)
 option(MOVER_CUDA_ON "Run Mover on CUDA" ON)
+option(HIP_ON "Use HIP" OFF) # Set it to OFF if you want to use CUDA
 
 
 option(BENCH_MARK "Print tasks time" OFF)
-option(USE_OPENMP "Use OpenMP in supported loops" OFF) # must delete all cmake cache if you change this option
+option(USE_OPENMP "Use OpenMP in supported loops" ON) # must delete all cmake cache if you change this option
 
 include(GNUInstallDirs)
+
+# set directories
+set(SOURCE_CODE_DIR src/ipic3d)
+set(INCLUDE_CODE_DIR src/include)
+
 
 # Find ParaView
 if(USE_CATALYST)
@@ -63,13 +69,13 @@ if(USE_CATALYST)
       "different build of ParaView) with PARAVIEW_ENABLE_CATALYST and "
       "PARAVIEW_ENABLE_PYTHON set to TRUE")
   else()
-    add_library(iPICAdaptor ${CMAKE_SOURCE_DIR}/catalyst/Adaptor.cxx)
+    add_library(iPICAdaptor ${CMAKE_SOURCE_DIR}/${SOURCE_CODE_DIR}/catalyst/Adaptor.cxx)
     if (BUILD_SHARED_LIBS)
       install(TARGETS iPICAdaptor)
     endif()
 
     target_link_libraries(iPICAdaptor PRIVATE ParaView::PythonCatalyst VTK::CommonDataModel Python3::Python)
-    target_include_directories(iPICAdaptor INTERFACE ${CMAKE_SOURCE_DIR}/catalyst)
+    target_include_directories(iPICAdaptor INTERFACE ${CMAKE_SOURCE_DIR}/${SOURCE_CODE_DIR}/catalyst)
     target_compile_definitions(iPICAdaptor INTERFACE USE_CATALYST)
 
   endif()
@@ -119,32 +125,51 @@ endif()
 file(
   GLOB
   src_files
-  ConfigFile/src/*.cpp
-  PSKOutput3D/*.cpp
-  bc/*.cpp
-  communication/*.cpp
-  fields/*.cpp
-  grids/*.cpp
-  inputoutput/*.cpp
-  mathlib/*.cpp
+  ${SOURCE_CODE_DIR}/ConfigFile/src/*.cpp
+  ${SOURCE_CODE_DIR}/PSKOutput3D/*.cpp
+  ${SOURCE_CODE_DIR}/bc/*.cpp
+  ${SOURCE_CODE_DIR}/communication/*.cpp
+  ${SOURCE_CODE_DIR}/fields/*.cpp
+  ${SOURCE_CODE_DIR}/grids/*.cpp
+  ${SOURCE_CODE_DIR}/inputoutput/*.cpp
+  ${SOURCE_CODE_DIR}/mathlib/*.cpp
+  ${SOURCE_CODE_DIR}/particles/*.cpp
+  ${SOURCE_CODE_DIR}/performances/*.cpp
+  ${SOURCE_CODE_DIR}/solvers/*.cpp
+  ${SOURCE_CODE_DIR}/utility/*.cpp
+  ${SOURCE_CODE_DIR}/main/*.cpp
   mpidata/*.cpp
-  particles/*.cpp
-  performances/*.cpp
   processtopology/*.cpp
-  solvers/*.cpp
-  utility/*.cpp
-  main/*.cpp
   )
 # CUDA source files
 if(CUDA_ON)
-  file(GLOB cuda_src_files cudaKernel/*.cu main/*.cu)
+  file(GLOB cuda_src_files ${SOURCE_CODE_DIR}/cudaKernel/*.cu ${SOURCE_CODE_DIR}/main/*.cu)
+  if(HIP_ON)
+    set_source_files_properties(${cuda_src_files} PROPERTIES LANGUAGE HIP)
+  endif()
   list(APPEND src_files ${cuda_src_files})
 endif()
 
 add_library( iPIC3Dlib ${src_files} )
-if(CUDA_ON)
+
+
+if(CUDA_ON AND HIP_ON)
+  find_package(HIP REQUIRED)
+  enable_language(HIP)
+  message(STATUS "Using HIP environment.")
+  set(DEVICE_LANGUAGE HIP)
+  set(DEVICE_COMPILER hipcc)
+  target_link_libraries(iPIC3Dlib PRIVATE hip::device)
+  target_link_libraries(iPIC3Dlib PRIVATE hip::host)
+
+  target_compile_options(iPIC3Dlib PUBLIC -fgpu-rdc)
+  target_link_options(iPIC3Dlib PUBLIC  -fgpu-rdc --hip-link)
+
+  set_property(TARGET iPIC3Dlib PROPERTY HIP_ARCHITECTURES gfx90a)
+elseif(CUDA_ON)
+  enable_language(CUDA)
+
   set_target_properties(iPIC3Dlib PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-  
   set_property(TARGET iPIC3Dlib PROPERTY CUDA_ARCHITECTURES 75) # required for double atomicadd
   set_property(TARGET iPIC3Dlib PROPERTY CUDA_STANDARD 17)
   set_property(TARGET iPIC3Dlib PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
@@ -153,11 +178,15 @@ if(CUDA_ON)
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -lineinfo")
 endif()
 
-set(include_path include)
+set(include_path ${INCLUDE_CODE_DIR})
 # CUDA header files
 if(CUDA_ON)
-  list(APPEND include_path include/CUDA)
-  list(APPEND include_path ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+  list(APPEND include_path ${INCLUDE_CODE_DIR}/CUDA)
+  if(NOT HIP_ON)
+    list(APPEND include_path ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+  else()
+    list(APPEND include_path ${INCLUDE_CODE_DIR}/hip)
+  endif()
 endif()
 target_include_directories(
   iPIC3Dlib
@@ -171,11 +200,6 @@ set(linkLibraries MPI::MPI_CXX ${HDF5_C_HL_TARGET})
 
 if(USE_OPENMP)
     list(APPEND linkLibraries OpenMP::OpenMP_CXX)
-endif()
-
-if(USE_CUDA)
-    list(APPEND linkLibraries cuda)
-    list(APPEND linkLibraries cudart)
 endif()
 
 if (USE_CATALYST)
@@ -220,6 +244,10 @@ if (CUDA_ON)
   else()
     target_compile_definitions(iPIC3Dlib PUBLIC MOVER_CUDA_ON=false)
   endif()
+
+  if(HIP_ON)
+  target_compile_definitions(iPIC3Dlib PUBLIC HIPIFLY)
+  endif()
 else()
   target_compile_definitions(iPIC3Dlib PUBLIC CUDA_ON=false)
   target_compile_definitions(iPIC3Dlib PUBLIC MOMENT_CUDA_ON=false)
@@ -233,7 +261,7 @@ endif()
 # Particle solver
 add_executable(
   iPIC3D
-  iPIC3D.cpp
+  ${SOURCE_CODE_DIR}/iPIC3D.cpp
   )
 
 target_link_libraries(
@@ -286,7 +314,7 @@ add_install_libdir_to_rpath(iPIC3D)
 
 install(TARGETS iPIC3D)
 
-add_subdirectory(inputfiles)
+add_subdirectory(share/inputfiles)
 
 message("Which system am I compiling for:")
 message("MYHOSTNAME is ${myhostname}")
