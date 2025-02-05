@@ -1,0 +1,1856 @@
+Loading modules
+[LOG] local rank : bind to 
+
+Thu Oct 31 12:02:50 CET 2024
+The Software was compiled with CUDA
+
+Number of processes = 4
+-------------------------
+Number of threads = 1
+-------------------------
+
+Virtual Cartesian Processors Topology
+-------------------------------------
+Processors grid: 2x2x1
+Periodicity X: 1
+Periodicity Y: 1
+Periodicity Z: 1
+
+
+Simulation Parameters
+---------------------
+Number of species    = 4
+qom[0] = -100
+qom[1] = 1
+qom[2] = -100
+qom[3] = 1
+x-Length                 = 20.48
+y-Length                 = 20.48
+z-Length                 = 1
+Number of cells (x)      = 512
+Number of cells (y)      = 512
+Number of cells (z)      = 1
+Time step                = 0.028
+Number of cycles         = 1000
+Results saved in  : data
+Case type         : default
+Simulation name   : data
+Poisson correction: no
+---------------------
+Check Simulation Constraints
+---------------------
+Accuracy Constraint:  
+u_th < dx/dt species 0.....OK
+v_th < dy/dt species 0......OK
+u_th < dx/dt species 1.....OK
+v_th < dy/dt species 1......OK
+u_th < dx/dt species 2.....OK
+v_th < dy/dt species 2......OK
+u_th < dx/dt species 3.....OK
+v_th < dy/dt species 3......OK
+
+Finite Grid Stability Constraint:  
+WARNING. u_th*dt/dx (species 0) = 0.07 < .1
+WARNING. v_th*dt/dy (species 0) = 0.07 < .1
+WARNING. u_th*dt/dx (species 1) = 0.007 < .1
+WARNING. v_th*dt/dy (species 1) = 0.007 < .1
+WARNING. u_th*dt/dx (species 2) = 0.07 < .1
+WARNING. v_th*dt/dy (species 2) = 0.07 < .1
+WARNING. u_th*dt/dx (species 3) = 0.007 < .1
+WARNING. v_th*dt/dy (species 3) = 0.007 < .1
+ =========================================================== 
+ WARNING: The case 'default' was not recognized. 
+          Runing simulation with the default initialization. 
+ =========================================================== 
+CUDA Init finished
+
+================ Cycle 0 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 0 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.139  0.139  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.230  0.192  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 0.12967
+Particle mover     : 0.00624478
+Magnetic field     : 0.0095985
+Moment gatherer    : 0.0849722
+Cycle time         : 0.233896
+
+
+================ Cycle 1 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 1 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.137  0.137  0.000 fields
+avg_| 0.022  0.022  0.000 particles
+avg_| 0.086  0.046  0.040 moments
+avg_| 0.245  0.205  0.040 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 0.257455
+Particle mover     : 0.0281261
+Magnetic field     : 0.0191762
+Moment gatherer    : 0.17135
+Cycle time         : 0.47972
+
+
+================ Cycle 2 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 2 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.009  0.009  0.000 particles
+avg_| 0.086  0.046  0.040 moments
+avg_| 0.230  0.190  0.040 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 0.383094
+Particle mover     : 0.0372924
+Magnetic field     : 0.0288062
+Moment gatherer    : 0.257432
+Cycle time         : 0.710456
+
+
+================ Cycle 3 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 3 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.136  0.136  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.087  0.046  0.041 moments
+avg_| 0.229  0.188  0.041 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 0.509421
+Particle mover     : 0.0438635
+Magnetic field     : 0.0383801
+Moment gatherer    : 0.344017
+Cycle time         : 0.939755
+
+
+================ Cycle 4 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 4 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.026  0.026  0.000 particles
+avg_| 0.086  0.046  0.040 moments
+avg_| 0.247  0.207  0.040 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 0.634821
+Particle mover     : 0.0697558
+Magnetic field     : 0.0478538
+Moment gatherer    : 0.430092
+Cycle time         : 1.18684
+
+
+================ Cycle 5 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 5 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.134  0.134  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.086  0.046  0.040 moments
+avg_| 0.227  0.187  0.040 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 0.75945
+Particle mover     : 0.0761848
+Magnetic field     : 0.057487
+Moment gatherer    : 0.516376
+Cycle time         : 1.41703
+
+
+================ Cycle 6 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 6 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.227  0.188  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 0.885
+Particle mover     : 0.082391
+Magnetic field     : 0.067175
+Moment gatherer    : 0.601645
+Cycle time         : 1.64402
+
+
+================ Cycle 7 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 7 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.226  0.187  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 1.01011
+Particle mover     : 0.0882158
+Magnetic field     : 0.0767182
+Moment gatherer    : 0.687057
+Cycle time         : 1.87015
+
+
+================ Cycle 8 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 8 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.134  0.134  0.000 fields
+avg_| 0.012  0.012  0.000 particles
+avg_| 0.086  0.046  0.040 moments
+avg_| 0.233  0.193  0.040 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 1.135
+Particle mover     : 0.100771
+Magnetic field     : 0.0861402
+Moment gatherer    : 0.773383
+Cycle time         : 2.10359
+
+
+================ Cycle 9 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 9 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.054  0.054  0.000 particles
+avg_| 0.086  0.046  0.040 moments
+avg_| 0.275  0.235  0.040 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 1.2607
+Particle mover     : 0.154755
+Magnetic field     : 0.0957983
+Moment gatherer    : 0.859093
+Cycle time         : 2.37885
+
+
+================ Cycle 10 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 10 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.014  0.014  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.234  0.196  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 1.38641
+Particle mover     : 0.168744
+Magnetic field     : 0.105368
+Moment gatherer    : 0.94434
+Cycle time         : 2.61656
+
+
+================ Cycle 11 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 11 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.086  0.047  0.040 moments
+avg_| 0.227  0.188  0.040 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 1.51133
+Particle mover     : 0.175411
+Magnetic field     : 0.115017
+Moment gatherer    : 1.03078
+Cycle time         : 2.84446
+
+
+================ Cycle 12 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 12 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.007  0.007  0.000 particles
+avg_| 0.087  0.046  0.041 moments
+avg_| 0.228  0.187  0.041 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 1.63614
+Particle mover     : 0.182247
+Magnetic field     : 0.124721
+Moment gatherer    : 1.11748
+Cycle time         : 3.07274
+
+
+================ Cycle 13 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 13 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.007  0.007  0.000 particles
+avg_| 0.086  0.046  0.040 moments
+avg_| 0.228  0.188  0.040 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 1.7615
+Particle mover     : 0.188933
+Magnetic field     : 0.134206
+Moment gatherer    : 1.20395
+Cycle time         : 3.30099
+
+
+================ Cycle 14 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 14 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.052  0.052  0.000 particles
+avg_| 0.086  0.046  0.040 moments
+avg_| 0.273  0.233  0.040 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 1.88687
+Particle mover     : 0.240965
+Magnetic field     : 0.143781
+Moment gatherer    : 1.29026
+Cycle time         : 3.57449
+
+
+================ Cycle 15 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 15 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.009  0.009  0.000 particles
+avg_| 0.087  0.046  0.041 moments
+avg_| 0.231  0.190  0.041 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 2.01213
+Particle mover     : 0.250433
+Magnetic field     : 0.153426
+Moment gatherer    : 1.37696
+Cycle time         : 3.80882
+
+
+================ Cycle 16 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 16 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.086  0.046  0.040 moments
+avg_| 0.227  0.187  0.040 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 2.13723
+Particle mover     : 0.256735
+Magnetic field     : 0.162903
+Moment gatherer    : 1.46324
+Cycle time         : 4.03622
+
+
+================ Cycle 17 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 17 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.136  0.136  0.000 fields
+avg_| 0.022  0.022  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.243  0.204  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 2.26383
+Particle mover     : 0.27892
+Magnetic field     : 0.172405
+Moment gatherer    : 1.54832
+Cycle time         : 4.27982
+
+
+================ Cycle 18 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 18 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.138  0.138  0.000 fields
+avg_| 0.018  0.018  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.242  0.203  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 2.39252
+Particle mover     : 0.297553
+Magnetic field     : 0.182021
+Moment gatherer    : 1.63329
+Cycle time         : 4.52197
+
+
+================ Cycle 19 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 19 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.136  0.136  0.000 fields
+avg_| 0.005  0.005  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.227  0.188  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 2.5193
+Particle mover     : 0.303147
+Magnetic field     : 0.191643
+Moment gatherer    : 1.71842
+Cycle time         : 4.74931
+
+
+================ Cycle 20 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 20 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.136  0.136  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.087  0.046  0.041 moments
+avg_| 0.228  0.188  0.041 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 2.64518
+Particle mover     : 0.30934
+Magnetic field     : 0.201381
+Moment gatherer    : 1.80523
+Cycle time         : 4.98117
+
+
+================ Cycle 21 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 21 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.017  0.017  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.238  0.199  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 2.7711
+Particle mover     : 0.326737
+Magnetic field     : 0.210798
+Moment gatherer    : 1.89027
+Cycle time         : 5.21906
+
+
+================ Cycle 22 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 22 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.013  0.013  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.234  0.195  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 2.89679
+Particle mover     : 0.340262
+Magnetic field     : 0.220323
+Moment gatherer    : 1.97538
+Cycle time         : 5.45303
+
+
+================ Cycle 23 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 23 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.227  0.188  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 3.02261
+Particle mover     : 0.3466
+Magnetic field     : 0.229844
+Moment gatherer    : 2.06051
+Cycle time         : 5.68006
+
+
+================ Cycle 24 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 24 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.010  0.010  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.230  0.191  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 3.14798
+Particle mover     : 0.356287
+Magnetic field     : 0.239373
+Moment gatherer    : 2.14586
+Cycle time         : 5.91021
+
+
+================ Cycle 25 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 25 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.087  0.046  0.041 moments
+avg_| 0.228  0.187  0.041 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 3.27348
+Particle mover     : 0.362368
+Magnetic field     : 0.248835
+Moment gatherer    : 2.23281
+Cycle time         : 6.14138
+
+
+================ Cycle 26 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 26 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.022  0.022  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.242  0.203  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 3.3986
+Particle mover     : 0.384458
+Magnetic field     : 0.258452
+Moment gatherer    : 2.31788
+Cycle time         : 6.38351
+
+
+================ Cycle 27 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 27 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.005  0.005  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.226  0.187  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 3.52409
+Particle mover     : 0.390023
+Magnetic field     : 0.267964
+Moment gatherer    : 2.40317
+Cycle time         : 6.60956
+
+
+================ Cycle 28 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 28 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.226  0.187  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 3.64951
+Particle mover     : 0.395778
+Magnetic field     : 0.277513
+Moment gatherer    : 2.48858
+Cycle time         : 6.83592
+
+
+================ Cycle 29 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 29 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.005  0.005  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.226  0.187  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 3.77522
+Particle mover     : 0.401402
+Magnetic field     : 0.287043
+Moment gatherer    : 2.5739
+Cycle time         : 7.06235
+
+
+================ Cycle 30 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 30 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.009  0.009  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.229  0.190  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 3.90075
+Particle mover     : 0.410475
+Magnetic field     : 0.296777
+Moment gatherer    : 2.65882
+Cycle time         : 7.29503
+
+
+================ Cycle 31 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 31 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.014  0.014  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.235  0.196  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 4.02651
+Particle mover     : 0.42485
+Magnetic field     : 0.306344
+Moment gatherer    : 2.74387
+Cycle time         : 7.53
+
+
+================ Cycle 32 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 32 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.022  0.022  0.000 particles
+avg_| 0.086  0.046  0.040 moments
+avg_| 0.243  0.203  0.040 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 4.15175
+Particle mover     : 0.447248
+Magnetic field     : 0.315955
+Moment gatherer    : 2.82979
+Cycle time         : 7.7734
+
+
+================ Cycle 33 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 33 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.136  0.136  0.000 fields
+avg_| 0.010  0.010  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.231  0.192  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 4.27813
+Particle mover     : 0.457054
+Magnetic field     : 0.325396
+Moment gatherer    : 2.91505
+Cycle time         : 8.00453
+
+
+================ Cycle 34 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 34 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.226  0.188  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 4.40378
+Particle mover     : 0.463278
+Magnetic field     : 0.334915
+Moment gatherer    : 3.00011
+Cycle time         : 8.23121
+
+
+================ Cycle 35 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 35 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.086  0.046  0.039 moments
+avg_| 0.227  0.187  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 4.52925
+Particle mover     : 0.469322
+Magnetic field     : 0.344623
+Moment gatherer    : 3.08565
+Cycle time         : 8.46137
+
+
+================ Cycle 36 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 36 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.227  0.187  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 4.65452
+Particle mover     : 0.475837
+Magnetic field     : 0.354273
+Moment gatherer    : 3.17093
+Cycle time         : 8.68831
+
+
+================ Cycle 37 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 37 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.021  0.021  0.000 particles
+avg_| 0.086  0.046  0.040 moments
+avg_| 0.242  0.202  0.040 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 4.78031
+Particle mover     : 0.496553
+Magnetic field     : 0.36393
+Moment gatherer    : 3.25724
+Cycle time         : 8.931
+
+
+================ Cycle 38 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 38 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.226  0.187  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 4.90553
+Particle mover     : 0.502878
+Magnetic field     : 0.373549
+Moment gatherer    : 3.34229
+Cycle time         : 9.15744
+
+
+================ Cycle 39 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 39 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.038  0.038  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.258  0.219  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 5.03113
+Particle mover     : 0.541145
+Magnetic field     : 0.383025
+Moment gatherer    : 3.42746
+Cycle time         : 9.41607
+
+
+================ Cycle 40 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 40 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.087  0.046  0.040 moments
+avg_| 0.228  0.187  0.040 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 5.15696
+Particle mover     : 0.547004
+Magnetic field     : 0.39248
+Moment gatherer    : 3.51406
+Cycle time         : 9.64715
+
+
+================ Cycle 41 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 41 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.023  0.023  0.000 particles
+avg_| 0.087  0.046  0.041 moments
+avg_| 0.244  0.204  0.041 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 5.28237
+Particle mover     : 0.56976
+Magnetic field     : 0.402012
+Moment gatherer    : 3.60059
+Cycle time         : 9.89159
+
+
+================ Cycle 42 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 42 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.007  0.007  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.227  0.188  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 5.40812
+Particle mover     : 0.576449
+Magnetic field     : 0.411624
+Moment gatherer    : 3.68571
+Cycle time         : 10.119
+
+
+================ Cycle 43 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 43 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.136  0.136  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.086  0.046  0.040 moments
+avg_| 0.229  0.188  0.040 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 5.5346
+Particle mover     : 0.582701
+Magnetic field     : 0.421091
+Moment gatherer    : 3.77218
+Cycle time         : 10.3479
+
+
+================ Cycle 44 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 44 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.022  0.022  0.000 particles
+avg_| 0.087  0.046  0.041 moments
+avg_| 0.244  0.203  0.041 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 5.6601
+Particle mover     : 0.604937
+Magnetic field     : 0.430746
+Moment gatherer    : 3.85887
+Cycle time         : 10.5922
+
+
+================ Cycle 45 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 45 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.014  0.014  0.000 particles
+avg_| 0.086  0.046  0.040 moments
+avg_| 0.236  0.196  0.040 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 5.78585
+Particle mover     : 0.619402
+Magnetic field     : 0.440308
+Moment gatherer    : 3.94513
+Cycle time         : 10.8314
+
+
+================ Cycle 46 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 46 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.040  0.040  0.000 particles
+avg_| 0.087  0.046  0.041 moments
+avg_| 0.262  0.221  0.041 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 5.9115
+Particle mover     : 0.659635
+Magnetic field     : 0.449962
+Moment gatherer    : 4.03186
+Cycle time         : 11.0939
+
+
+================ Cycle 47 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 47 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.136  0.136  0.000 fields
+avg_| 0.014  0.014  0.000 particles
+avg_| 0.086  0.046  0.040 moments
+avg_| 0.236  0.196  0.040 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 6.03738
+Particle mover     : 0.674007
+Magnetic field     : 0.459648
+Moment gatherer    : 4.11777
+Cycle time         : 11.33
+
+
+================ Cycle 48 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 48 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.022  0.022  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.243  0.204  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 6.16269
+Particle mover     : 0.696682
+Magnetic field     : 0.469267
+Moment gatherer    : 4.20321
+Cycle time         : 11.5733
+
+
+================ Cycle 49 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 49 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.086  0.047  0.039 moments
+avg_| 0.227  0.188  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 6.2883
+Particle mover     : 0.702481
+Magnetic field     : 0.479017
+Moment gatherer    : 4.28893
+Cycle time         : 11.8004
+
+
+================ Cycle 50 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 50 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.227  0.188  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 6.41391
+Particle mover     : 0.708936
+Magnetic field     : 0.488699
+Moment gatherer    : 4.37432
+Cycle time         : 12.0308
+
+
+================ Cycle 51 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 51 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.136  0.136  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.227  0.188  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 6.54016
+Particle mover     : 0.714711
+Magnetic field     : 0.498388
+Moment gatherer    : 4.45963
+Cycle time         : 12.258
+
+
+================ Cycle 52 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 52 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.030  0.030  0.000 particles
+avg_| 0.086  0.046  0.040 moments
+avg_| 0.251  0.212  0.040 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 6.66577
+Particle mover     : 0.745306
+Magnetic field     : 0.507858
+Moment gatherer    : 4.54533
+Cycle time         : 12.5095
+
+
+================ Cycle 53 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 53 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.226  0.187  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 6.79119
+Particle mover     : 0.751576
+Magnetic field     : 0.51736
+Moment gatherer    : 4.6305
+Cycle time         : 12.7361
+
+
+================ Cycle 54 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 54 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.226  0.187  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 6.91672
+Particle mover     : 0.757422
+Magnetic field     : 0.527017
+Moment gatherer    : 4.71577
+Cycle time         : 12.9626
+
+
+================ Cycle 55 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 55 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.009  0.009  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.229  0.190  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 7.042
+Particle mover     : 0.766381
+Magnetic field     : 0.536553
+Moment gatherer    : 4.80071
+Cycle time         : 13.1947
+
+
+================ Cycle 56 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 56 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.086  0.046  0.040 moments
+avg_| 0.228  0.188  0.040 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 7.16744
+Particle mover     : 0.772941
+Magnetic field     : 0.546129
+Moment gatherer    : 4.88708
+Cycle time         : 13.4229
+
+
+================ Cycle 57 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 57 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.032  0.032  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.252  0.213  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 7.29302
+Particle mover     : 0.804923
+Magnetic field     : 0.555558
+Moment gatherer    : 4.97225
+Cycle time         : 13.6752
+
+
+================ Cycle 58 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 58 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.028  0.028  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.249  0.210  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 7.41884
+Particle mover     : 0.833314
+Magnetic field     : 0.565197
+Moment gatherer    : 5.05759
+Cycle time         : 13.9246
+
+
+================ Cycle 59 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 59 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.227  0.187  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 7.54458
+Particle mover     : 0.839115
+Magnetic field     : 0.574842
+Moment gatherer    : 5.14306
+Cycle time         : 14.1514
+
+
+================ Cycle 60 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 60 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.136  0.136  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.227  0.188  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 7.67062
+Particle mover     : 0.845707
+Magnetic field     : 0.584547
+Moment gatherer    : 5.22817
+Cycle time         : 14.3822
+
+
+================ Cycle 61 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 61 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.022  0.022  0.000 particles
+avg_| 0.086  0.046  0.039 moments
+avg_| 0.242  0.203  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 7.79561
+Particle mover     : 0.867645
+Magnetic field     : 0.594142
+Moment gatherer    : 5.31381
+Cycle time         : 14.6246
+
+
+================ Cycle 62 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 62 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.134  0.134  0.000 fields
+avg_| 0.022  0.022  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.242  0.203  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 7.92024
+Particle mover     : 0.890184
+Magnetic field     : 0.603787
+Moment gatherer    : 5.39908
+Cycle time         : 14.8669
+
+
+================ Cycle 63 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 63 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.225  0.186  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 8.04515
+Particle mover     : 0.89596
+Magnetic field     : 0.613444
+Moment gatherer    : 5.48424
+Cycle time         : 15.0926
+
+
+================ Cycle 64 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 64 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.134  0.134  0.000 fields
+avg_| 0.023  0.023  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.242  0.204  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 8.16993
+Particle mover     : 0.919027
+Magnetic field     : 0.62298
+Moment gatherer    : 5.56937
+Cycle time         : 15.3353
+
+
+================ Cycle 65 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 65 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.136  0.136  0.000 fields
+avg_| 0.014  0.014  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.235  0.196  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 8.29655
+Particle mover     : 0.933097
+Magnetic field     : 0.632602
+Moment gatherer    : 5.65456
+Cycle time         : 15.5741
+
+
+================ Cycle 66 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 66 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.135  0.135  0.000 fields
+avg_| 0.022  0.022  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.243  0.204  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 8.42234
+Particle mover     : 0.955241
+Magnetic field     : 0.642166
+Moment gatherer    : 5.7398
+Cycle time         : 15.8171
+
+
+================ Cycle 67 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 67 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.136  0.136  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.227  0.188  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 8.54879
+Particle mover     : 0.960927
+Magnetic field     : 0.651808
+Moment gatherer    : 5.82496
+Cycle time         : 16.0443
+
+
+================ Cycle 68 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 68 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.136  0.136  0.000 fields
+avg_| 0.013  0.013  0.000 particles
+avg_| 0.087  0.046  0.041 moments
+avg_| 0.237  0.196  0.041 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 8.67501
+Particle mover     : 0.974587
+Magnetic field     : 0.661436
+Moment gatherer    : 5.9123
+Cycle time         : 16.2813
+
+
+================ Cycle 69 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 69 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.136  0.136  0.000 fields
+avg_| 0.010  0.010  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.231  0.192  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 8.80128
+Particle mover     : 0.984392
+Magnetic field     : 0.671097
+Moment gatherer    : 5.99744
+Cycle time         : 16.5124
+
+
+================ Cycle 70 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 70 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.137  0.137  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.087  0.046  0.041 moments
+avg_| 0.230  0.190  0.041 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 8.92892
+Particle mover     : 0.990614
+Magnetic field     : 0.680835
+Moment gatherer    : 6.08436
+Cycle time         : 16.7461
+
+
+================ Cycle 71 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 71 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.136  0.136  0.000 fields
+avg_| 0.010  0.010  0.000 particles
+avg_| 0.087  0.046  0.041 moments
+avg_| 0.233  0.193  0.041 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 9.0555
+Particle mover     : 1.0011
+Magnetic field     : 0.690439
+Moment gatherer    : 6.17107
+Cycle time         : 16.9797
+
+
+================ Cycle 72 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 72 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.136  0.136  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.086  0.046  0.040 moments
+avg_| 0.228  0.188  0.040 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 9.18226
+Particle mover     : 1.00677
+Magnetic field     : 0.700117
+Moment gatherer    : 6.25711
+Cycle time         : 17.2081
+
+
+================ Cycle 73 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 73 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.136  0.136  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.086  0.046  0.040 moments
+avg_| 0.228  0.188  0.040 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 9.3088
+Particle mover     : 1.01292
+Magnetic field     : 0.709784
+Moment gatherer    : 6.3433
+Cycle time         : 17.4369
+
+
+================ Cycle 74 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 74 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.136  0.136  0.000 fields
+avg_| 0.009  0.009  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.230  0.191  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 9.43512
+Particle mover     : 1.02225
+Magnetic field     : 0.719416
+Moment gatherer    : 6.42857
+Cycle time         : 17.6676
+
+
+================ Cycle 75 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 75 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.136  0.136  0.000 fields
+avg_| 0.009  0.009  0.000 particles
+avg_| 0.086  0.046  0.040 moments
+avg_| 0.231  0.191  0.040 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 9.56153
+Particle mover     : 1.03157
+Magnetic field     : 0.728852
+Moment gatherer    : 6.51433
+Cycle time         : 17.9018
+
+
+================ Cycle 76 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 76 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.136  0.136  0.000 fields
+avg_| 0.013  0.013  0.000 particles
+avg_| 0.087  0.046  0.041 moments
+avg_| 0.236  0.195  0.041 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 9.68789
+Particle mover     : 1.04463
+Magnetic field     : 0.738509
+Moment gatherer    : 6.60124
+Cycle time         : 18.1381
+
+
+================ Cycle 77 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 77 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.136  0.136  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.086  0.046  0.040 moments
+avg_| 0.228  0.188  0.040 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 9.81439
+Particle mover     : 1.0503
+Magnetic field     : 0.74809
+Moment gatherer    : 6.68745
+Cycle time         : 18.3662
+
+
+================ Cycle 78 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 78 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.136  0.136  0.000 fields
+avg_| 0.022  0.022  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.243  0.204  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 9.94111
+Particle mover     : 1.07216
+Magnetic field     : 0.757661
+Moment gatherer    : 6.77256
+Cycle time         : 18.6097
+
+
+================ Cycle 79 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 79 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.137  0.137  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.087  0.046  0.041 moments
+avg_| 0.229  0.189  0.041 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 10.0679
+Particle mover     : 1.07828
+Magnetic field     : 0.767392
+Moment gatherer    : 6.85929
+Cycle time         : 18.8394
+
+
+================ Cycle 80 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 80 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.136  0.136  0.000 fields
+avg_| 0.013  0.013  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.235  0.196  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 10.1945
+Particle mover     : 1.09172
+Magnetic field     : 0.777014
+Moment gatherer    : 6.94465
+Cycle time         : 19.0777
+
+
+================ Cycle 81 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 81 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.136  0.136  0.000 fields
+avg_| 0.006  0.006  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.227  0.188  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 10.3207
+Particle mover     : 1.09826
+Magnetic field     : 0.786514
+Moment gatherer    : 7.02985
+Cycle time         : 19.3053
+
+
+================ Cycle 82 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 82 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.136  0.136  0.000 fields
+avg_| 0.007  0.007  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.228  0.189  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 10.4471
+Particle mover     : 1.10492
+Magnetic field     : 0.796198
+Moment gatherer    : 7.11505
+Cycle time         : 19.5335
+
+
+================ Cycle 83 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 83 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.136  0.136  0.000 fields
+avg_| 0.007  0.007  0.000 particles
+avg_| 0.085  0.046  0.039 moments
+avg_| 0.228  0.189  0.039 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 10.574
+Particle mover     : 1.11179
+Magnetic field     : 0.805788
+Moment gatherer    : 7.20013
+Cycle time         : 19.7621
+
+
+================ Cycle 84 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+Initial residual: 0 norm b vector (source) = 1
+GMRES converged without iterations: initial error < tolerance
+*** B CALCULATION ***
+=== times for cycle 84 (averaged over all processes) ===
+avg_|total  comput commun task
+avg_| 0.136  0.136  0.000 fields
+avg_| 0.012  0.012  0.000 particles
+avg_| 0.086  0.046  0.040 moments
+avg_| 0.234  0.194  0.040 [total times]
+
+LeXInt timer (cummulative) 
+Electric field     : 10.7008
+Particle mover     : 1.12388
+Magnetic field     : 0.815399
+Moment gatherer    : 7.28579
+Cycle time         : 19.9964
+
+
+================ Cycle 85 ================ 
+*** E CALCULATION ***
+*** MAXWELL SOLVER ***
+srun: Job step aborted: Waiting up to 92 seconds for job step to finish.
+slurmstepd: error: *** JOB 8842190 ON lrdn2830 CANCELLED AT 2024-10-31T12:03:18 ***

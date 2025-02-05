@@ -1,0 +1,1 @@
+-I"/leonardo_work/SPACE_bench/iPic3D_apps/iPIC3D-GPU-SPACE-CoE/include" -I"/leonardo_work/SPACE_bench/iPic3D_apps/iPIC3D-GPU-SPACE-CoE/include/CUDA" -I"/leonardo/prod/opt/compilers/cuda/12.3/none/targets/x86_64-linux/include" -isystem "/leonardo/prod/opt/libraries/openmpi/4.1.6/gcc--12.2.0/include/openmpi"

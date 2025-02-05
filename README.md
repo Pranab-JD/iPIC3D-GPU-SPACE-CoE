@@ -1,6 +1,6 @@
-# iPIC3D-CUDA
+# iPIC3D-GPU
 
-> iPIC3D with CUDA acceleration, supporting multi-node multi-GPU.
+> iPIC3D with GPU acceleration, supporting multi-node multi-GPU.
 ```                                                                       
           ,-.----.                           .--,-``-.                   
           \    /  \      ,---,   ,----..    /   /     '.       ,---,     
@@ -25,8 +25,8 @@ Markidis, Stefano, and Giovanni Lapenta. "Multi-scale simulations of plasma with
 ## Usage
 
 ### Requirement
-To install and run iPIC3D-CUDA, you need: 
-- CUDA compatible hardware, CUDA capabiliy 7.5 or higher 
+To install and run iPIC3D-GPU, you need: 
+- CUDA/HIP compatible hardware, CUDA capabiliy 7.5 or higher 
 - cmake, MPI(MPICH and OpenMPI are tested) and HDF5 (optional), C/C++ compiler supporting C++ 17 standard
 
 **To meet the requirements of compatability between CUDA and compiler, it's recommended to use a relatively new compiler version e.g. GCC 12**
@@ -52,7 +52,14 @@ mkdir build && cd build
 - Use `CMake` to generate the make files
 ``` shell
 # use .. here because CMakeList.txt would be under project root 
-cmake ..
+cmake .. # using CUDA by default
+cmake -DHIP_ON=ON .. # use HIP
+```
+
+If you's like to use HIP, notice the GPU architecture in [CMakeLists.txt](./CMakeLists.txt), change it according to your hardware to get bet performance:
+
+``` cmake 
+set_property(TARGET iPIC3Dlib PROPERTY HIP_ARCHITECTURES gfx90a) 
 ```
 
 
@@ -68,12 +75,15 @@ make -j # build with max threads, fast, recommended
 iPIC3D uses inputfiles to control the simulation, we pass this text file as the only command line argument:
 
 ``` shell
-mpirun -np 16 ./iPIC3D ../inputfiles/testGEM2Dreal.inp
+export OMP_NUM_THREADS=2
+mpirun -np 8 ./iPIC3D ../share/inputfiles/magneticReconnection/testGEM3Dsmall.inp
 ```
 
-With this command, you are using 16 MPI processes with the setup `../inputfiles/testGEM2Dreal.inp`.
+With this command, you are using 8 MPI ranks, 2 OpenMP threads per rank.
 
 **Important:** make sure `number of MPI process = XLEN x YLEN x ZLEN` as specified in the input file.
+
+**Critical:** OpenMP is enabled by default, make sure the number of thread every process is reasonable. Refer to [OpenMP](#openmp) for more details.
 
 If you are on a super-computer, especially a multi-node system, it's likely that you should use `srun` to launch the program. 
 
@@ -81,20 +91,20 @@ If you are on a super-computer, especially a multi-node system, it's likely that
 
 Assigning MPI processes to nodes and GPUs are vital in performance, for it decides the pipeline and subdomains in the program.
 
-It's recommended to use more than 1 MPI process per GPU. The following example uses 4 nodes, each equipped with 4 GPU:
+It's fine to use more than 1 MPI process per GPU. The following example uses 4 nodes, each equipped with 4 GPU:
 
 ``` shell
 # 1 MPI process per GPU
-srun --nodes=4 --ntasks=16 --ntasks-per-node=4 ./iPIC3D ../benchmark/GEM3Dsmall_4x2x2_100/testGEM3Dsmall.inp 
+srun --nodes=4 --ntasks=16 --ntasks-per-node=4 ./iPIC3D ../share/benchmark/GEM3Dsmall_4x2x2_100/testGEM3Dsmall.inp 
 
 # 2 MPI processes per GPU
-srun --nodes=4 --ntasks=32 --ntasks-per-node=8 ./iPIC3D ../benchmark/GEM3Dsmall_4x4x2_100/testGEM3Dsmall.inp  
+srun --nodes=4 --ntasks=32 --ntasks-per-node=8 ./iPIC3D ../share/benchmark/GEM3Dsmall_4x4x2_100/testGEM3Dsmall.inp  
 ```
 
 
 ### Result
 
-This iPIC3D-CUDA will create folder (usually named `data`) for the output results if it doesn't exist. However, **it will delete everything in the folder if it already exits**.
+This iPIC3D-GPU will create folder (usually named `data`) for the output results if it doesn't exist. However, **it will delete everything in the folder if it already exits**.
 
 
 ## Build Options
@@ -113,34 +123,35 @@ cmake -DCMAKE_BUILD_TYPE=Default ..
 
 ### OpenMP
 
-In this iPIC3D-CUDA, the Solver stays on the CPU side, which means the number of MPI process will not only affect the GPU but also the Solver's performance. 
+In this iPIC3D-GPU, the Solver stays on the CPU side, which means the number of MPI process will not only affect the GPU but also the Solver's performance. 
 
-To speedup the CPU part, you can enable OpenMP with:
+To speedup the CPU part, the OpenMP is enabled by default:
 ``` shell
-cmake -DUSE_OPENMP=ON ..
+cmake .. # default
+
+cmake -DUSE_OPENMP=OFF .. # if you'd like to disable OpenMP
+
 # set OpenMP threads for each MPI process
 export OMP_NUM_THREADS=4
 ```
-However, current program won't be benefited from OpenMP.
+The solver on CPU will be benefited from OpenMP now, and this option is ON by default. It's important to control the number of threads per MPI process, make sure it's in a reasonable range.
 
 ## Tool
 
 ### Benchmark
-In [benchmark](./benchmark/) folder, we prepared some scripts for profiling, please read the [benchmark/readme](./benchmark/readme.md) for more infomation.
+In [benchmark](./share/benchmark/) folder, we prepared some scripts for profiling, please read the [benchmark/readme](./share/benchmark/readme.md) for more infomation.
 
-What's more, there're two performance baseline files for your reference:
+There's a performance baseline file for your reference, 2 threads per process is used:
 
-![GH200](./image/GH200_release_baseline.png)
+![GH200](./Documentation/image/GH200_release_baseline.png)
 
-![dual-A100](./image/dual_A100_release_baseline.png)
+<!-- ![dual-A100](./Documentation/image/dual_A100_release_baseline.png) -->
 
-You can find the corresponding data at [./benchmark/GH200_release_baseline.csv](./benchmark/GH200_release_baseline.csv) and [./benchmark/Dual-A100_release_baseline.csv](./benchmark/Dual-A100_release_baseline.csv). 
+You can find the corresponding data at [./share/benchmark/GH200_release_baseline.csv](./share/benchmark/GH200_release_baseline.csv).
+ <!-- and [./benchmark/Dual-A100_release_baseline.csv](./benchmark/Dual-A100_release_baseline.csv).  -->
 
-Please note that the `Particle` and `Moments` parts are not exactly the time consumption of these two parts, as the kernels are interwaved in this version. The sum of the two parts are precise, though.
+<!-- Please note that the `Particle` and `Moments` parts are not exactly the time consumption of these two parts, as the kernels are interwaved in this version. The sum of the two parts are precise, though. -->
 
-### CUDA-Compatible Docker Image
-
-Please refer to [Dockerfile](./Dockerfile).
 
 ## Contact
 

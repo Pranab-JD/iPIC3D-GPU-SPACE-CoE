@@ -1,0 +1,41 @@
+---------------------------
+-  Simulation Parameters  -
+---------------------------
+Number of species    = 4
+qom[%d] = -64
+qom[%d] = 1
+qom[%d] = -64
+qom[%d] = 1
+---------------------------
+x-Length                 = 10
+y-Length                 = 10
+z-Length                 = 10
+Number of cells (x)      = 64
+Number of cells (y)      = 64
+Number of cells (z)      = 64
+---------------------------
+Time step                = 0.15
+Number of cycles         = 100
+---------------------------
+rho init species   0 = 1
+rho inject species 0 = 0
+rho init species   1 = 1
+rho inject species 1 = 0
+rho init species   2 = 0.1
+rho inject species 2 = 0
+rho init species   3 = 0.1
+rho inject species 3 = 0
+current sheet thickness  = 0.5
+B0x                      = 0.0195
+BOy                      = 0
+B0z                      = 0
+---------------------------
+Smooth                   = 0.2
+SmoothNiter              = 6
+GMRES error tolerance    = 0.001
+CG error tolerance       = 0.001
+Mover error tolerance    = 3
+---------------------------
+Results saved in: data
+Restart saved in: data
+---------------------

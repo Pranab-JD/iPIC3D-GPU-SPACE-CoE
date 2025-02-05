@@ -1,0 +1,162 @@
+Loading modules
+--------------------------------------------------
+nodes: lrdn1224                            
+total nodes: 1                        
+tasks per node: 32             
+cpus per task: 1               
+gpus per node:                
+procid: 0                             
+--------------------------------------------------
+[LOG] local rank : bind to 
+
+========================================================================
+ 
+Wed Oct 23 14:44:40 CEST 2024
+ 
+The Software was compiled with CUDA
+
+Number of processes = 4
+-------------------------
+Number of threads = 1
+-------------------------
+
+Virtual Cartesian Processors Topology
+-------------------------------------
+Processors grid: 2x2x1
+Periodicity X: 1
+Periodicity Y: 1
+Periodicity Z: 1
+
+
+Simulation Parameters
+---------------------
+Number of species    = 4
+qom[0] = -100
+qom[1] = 1
+qom[2] = -100
+qom[3] = 1
+x-Length                 = 20.48
+y-Length                 = 20.48
+z-Length                 = 1
+Number of cells (x)      = 512
+Number of cells (y)      = 512
+Number of cells (z)      = 1
+Time step                = 0.028
+Number of cycles         = 1000
+Results saved in  : data
+Case type         : default
+Simulation name   : data
+Poisson correction: no
+---------------------
+Check Simulation Constraints
+---------------------
+Accuracy Constraint:  
+u_th < dx/dt species 0.....OK
+v_th < dy/dt species 0......OK
+u_th < dx/dt species 1.....OK
+v_th < dy/dt species 1......OK
+u_th < dx/dt species 2.....OK
+v_th < dy/dt species 2......OK
+u_th < dx/dt species 3.....OK
+v_th < dy/dt species 3......OK
+
+Finite Grid Stability Constraint:  
+WARNING. u_th*dt/dx (species 0) = 0.07 < .1
+WARNING. v_th*dt/dy (species 0) = 0.07 < .1
+WARNING. u_th*dt/dx (species 1) = 0.007 < .1
+WARNING. v_th*dt/dy (species 1) = 0.007 < .1
+WARNING. u_th*dt/dx (species 2) = 0.07 < .1
+WARNING. v_th*dt/dy (species 2) = 0.07 < .1
+WARNING. u_th*dt/dx (species 3) = 0.007 < .1
+WARNING. v_th*dt/dy (species 3) = 0.007 < .1
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  CUDA Check: no CUDA-capable device is detected File: /leonardo_work/SPACE_bench/iPic3D_apps/iPIC3D-GPU-SPACE-CoE/include/CUDA/cudaTypeDef.cuh Line: 100
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  CUDA Check: no CUDA-capable device is detected File: /leonardo_work/SPACE_bench/iPic3D_apps/iPIC3D-GPU-SPACE-CoE/include/CUDA/cudaTypeDef.cuh Line: 100
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  CUDA Check: no CUDA-capable device is detected File: /leonardo_work/SPACE_bench/iPic3D_apps/iPIC3D-GPU-SPACE-CoE/include/CUDA/cudaTypeDef.cuh Line: 100
+  what():  CUDA Check: no CUDA-capable device is detected File: /leonardo_work/SPACE_bench/iPic3D_apps/iPIC3D-GPU-SPACE-CoE/include/CUDA/cudaTypeDef.cuh Line: 100
+[lrdn1224:4124350] *** Process received signal ***
+[lrdn1224:4124352] *** Process received signal ***
+[lrdn1224:4124352] Signal: Aborted (6)
+[lrdn1224:4124352] Signal code:  (-6)
+[lrdn1224:4124351] *** Process received signal ***
+[lrdn1224:4124351] Signal: Aborted (6)
+[lrdn1224:4124351] Signal code:  (-6)
+[lrdn1224:4124353] *** Process received signal ***
+[lrdn1224:4124353] Signal: Aborted (6)
+[lrdn1224:4124353] Signal code:  (-6)
+[lrdn1224:4124350] Signal: Aborted (6)
+[lrdn1224:4124350] Signal code:  (-6)
+[lrdn1224:4124351] [ 0] /lib64/libpthread.so.0(+0x12cf0)[0x149c665f9cf0]
+[lrdn1224:4124351] [ 1] [lrdn1224:4124350] [ 0] /lib64/libpthread.so.0(+0x12cf0)[0x148ee9d94cf0]
+[lrdn1224:4124350] [ 1] [lrdn1224:4124353] [ 0] /lib64/libpthread.so.0(+0x12cf0)[0x154c4313dcf0]
+[lrdn1224:4124353] [ 1] [lrdn1224:4124352] [ 0] /lib64/libpthread.so.0(+0x12cf0)[0x153694e0acf0]
+[lrdn1224:4124352] [ 1] /lib64/libc.so.6(gsignal+0x10f)[0x149c65bc7aff]
+[lrdn1224:4124351] [ 2] /lib64/libc.so.6(gsignal+0x10f)[0x154c4270baff]
+[lrdn1224:4124353] [ 2] /lib64/libc.so.6(gsignal+0x10f)[0x148ee9362aff]
+[lrdn1224:4124350] [ 2] /lib64/libc.so.6(gsignal+0x10f)[0x1536943d8aff]
+[lrdn1224:4124352] [ 2] /lib64/libc.so.6(abort+0x127)[0x149c65b9aea5]
+[lrdn1224:4124351] [ 3] /lib64/libc.so.6(abort+0x127)[0x154c426deea5]
+[lrdn1224:4124353] [ 3] /lib64/libc.so.6(abort+0x127)[0x148ee9335ea5]
+[lrdn1224:4124350] [ 3] /lib64/libc.so.6(abort+0x127)[0x1536943abea5]
+[lrdn1224:4124352] [ 3] /lib64/libstdc++.so.6(+0x9009b)[0x149c67a9c09b]
+[lrdn1224:4124351] [ 4] /lib64/libstdc++.so.6(+0x9009b)[0x154c445e009b]
+[lrdn1224:4124353] [ 4] /lib64/libstdc++.so.6(+0x9009b)[0x148eeb23709b]
+[lrdn1224:4124350] [ 4] /lib64/libstdc++.so.6(+0x9009b)[0x1536962ad09b]
+[lrdn1224:4124352] [ 4] /lib64/libstdc++.so.6(+0x9653c)[0x149c67aa253c]
+[lrdn1224:4124351] [ 5] /lib64/libstdc++.so.6(+0x9653c)[0x154c445e653c]
+[lrdn1224:4124353] [ 5] /lib64/libstdc++.so.6(+0x9653c)[0x148eeb23d53c]
+[lrdn1224:4124350] [ 5] /lib64/libstdc++.so.6(+0x9653c)[0x1536962b353c]
+[lrdn1224:4124352] [ 5] /lib64/libstdc++.so.6(+0x96597)[0x149c67aa2597]
+[lrdn1224:4124351] [ 6] /lib64/libstdc++.so.6(+0x96597)[0x154c445e6597]
+[lrdn1224:4124353] [ 6] /lib64/libstdc++.so.6(+0x96597)[0x148eeb23d597]
+[lrdn1224:4124350] [ 6] /lib64/libstdc++.so.6(+0x96597)[0x1536962b3597]
+[lrdn1224:4124352] [ 6] /lib64/libstdc++.so.6(+0x967f8)[0x154c445e67f8]
+[lrdn1224:4124353] [ 7] /leonardo_work/SPACE_bench/iPic3D_apps/iPIC3D-GPU-SPACE-CoE/build_nvhpc/libiPIC3Dlib.so(_Z9cudaCheck9cudaErrorPKci+0x142)[0x154c4505cf42]
+[lrdn1224:4124353] [ 8] /lib64/libstdc++.so.6(+0x967f8)[0x149c67aa27f8]
+[lrdn1224:4124351] [ 7] /leonardo_work/SPACE_bench/iPic3D_apps/iPIC3D-GPU-SPACE-CoE/build_nvhpc/libiPIC3Dlib.so(_Z9cudaCheck9cudaErrorPKci+0x142)[0x149c68518f42]
+[lrdn1224:4124351] [ 8] /lib64/libstdc++.so.6(+0x967f8)[0x148eeb23d7f8]
+[lrdn1224:4124350] [ 7] /leonardo_work/SPACE_bench/iPic3D_apps/iPIC3D-GPU-SPACE-CoE/build_nvhpc/libiPIC3Dlib.so(_Z9cudaCheck9cudaErrorPKci+0x142)[0x148eebcb3f42]
+[lrdn1224:4124350] [ 8] /lib64/libstdc++.so.6(+0x967f8)[0x1536962b37f8]
+[lrdn1224:4124352] [ 7] /leonardo_work/SPACE_bench/iPic3D_apps/iPIC3D-GPU-SPACE-CoE/build_nvhpc/libiPIC3Dlib.so(_Z9cudaCheck9cudaErrorPKci+0x142)[0x153696d29f42]
+[lrdn1224:4124352] [ 8] /leonardo_work/SPACE_bench/iPic3D_apps/iPIC3D-GPU-SPACE-CoE/build_nvhpc/libiPIC3Dlib.so(_ZN6iPic3D10array_ref3IdEC2Emmm+0x5b)[0x154c4509db1b]
+[lrdn1224:4124353] [ 9] /leonardo_work/SPACE_bench/iPic3D_apps/iPIC3D-GPU-SPACE-CoE/build_nvhpc/libiPIC3Dlib.so(_ZN6iPic3D10array_ref3IdEC2Emmm+0x5b)[0x149c68559b1b]
+[lrdn1224:4124351] [ 9] /leonardo_work/SPACE_bench/iPic3D_apps/iPIC3D-GPU-SPACE-CoE/build_nvhpc/libiPIC3Dlib.so(_ZN6iPic3D10array_ref3IdEC2Emmm+0x5b)[0x148eebcf4b1b]
+[lrdn1224:4124350] [ 9] /leonardo_work/SPACE_bench/iPic3D_apps/iPIC3D-GPU-SPACE-CoE/build_nvhpc/libiPIC3Dlib.so(_ZN10EMfields3DC1EP10CollectiveP8Grid3DCUP12VCtopology3D+0x146)[0x148eebcb5646]
+[lrdn1224:4124350] [10] /leonardo_work/SPACE_bench/iPic3D_apps/iPIC3D-GPU-SPACE-CoE/build_nvhpc/libiPIC3Dlib.so(_ZN6iPic3D8c_Solver4InitEiPPc+0x68e)[0x148eebd5334e]
+[lrdn1224:4124350] [11] ./iPIC3D[0x401c03]
+[lrdn1224:4124350] [12] /leonardo_work/SPACE_bench/iPic3D_apps/iPIC3D-GPU-SPACE-CoE/build_nvhpc/libiPIC3Dlib.so(_ZN10EMfields3DC1EP10CollectiveP8Grid3DCUP12VCtopology3D+0x146)[0x154c4505e646]
+[lrdn1224:4124353] [10] /leonardo_work/SPACE_bench/iPic3D_apps/iPIC3D-GPU-SPACE-CoE/build_nvhpc/libiPIC3Dlib.so(_ZN6iPic3D8c_Solver4InitEiPPc+0x68e)[0x154c450fc34e]
+[lrdn1224:4124353] [11] ./iPIC3D[0x401c03]
+[lrdn1224:4124353] [12] /leonardo_work/SPACE_bench/iPic3D_apps/iPIC3D-GPU-SPACE-CoE/build_nvhpc/libiPIC3Dlib.so(_ZN6iPic3D10array_ref3IdEC2Emmm+0x5b)[0x153696d6ab1b]
+[lrdn1224:4124352] [ 9] /leonardo_work/SPACE_bench/iPic3D_apps/iPIC3D-GPU-SPACE-CoE/build_nvhpc/libiPIC3Dlib.so(_ZN10EMfields3DC1EP10CollectiveP8Grid3DCUP12VCtopology3D+0x146)[0x153696d2b646]
+[lrdn1224:4124352] [10] /leonardo_work/SPACE_bench/iPic3D_apps/iPIC3D-GPU-SPACE-CoE/build_nvhpc/libiPIC3Dlib.so(_ZN6iPic3D8c_Solver4InitEiPPc+0x68e)[0x153696dc934e]
+[lrdn1224:4124352] [11] ./iPIC3D[0x401c03]
+[lrdn1224:4124352] [12] /leonardo_work/SPACE_bench/iPic3D_apps/iPIC3D-GPU-SPACE-CoE/build_nvhpc/libiPIC3Dlib.so(_ZN10EMfields3DC1EP10CollectiveP8Grid3DCUP12VCtopology3D+0x146)[0x149c6851a646]
+[lrdn1224:4124351] [10] /leonardo_work/SPACE_bench/iPic3D_apps/iPIC3D-GPU-SPACE-CoE/build_nvhpc/libiPIC3Dlib.so(_ZN6iPic3D8c_Solver4InitEiPPc+0x68e)[0x149c685b834e]
+[lrdn1224:4124351] [11] ./iPIC3D[0x401c03]
+[lrdn1224:4124351] [12] /lib64/libc.so.6(__libc_start_main+0xe5)[0x154c426f7d85]
+[lrdn1224:4124353] [13] ./iPIC3D[0x40196e]
+[lrdn1224:4124353] *** End of error message ***
+/lib64/libc.so.6(__libc_start_main+0xe5)[0x149c65bb3d85]
+[lrdn1224:4124351] [13] ./iPIC3D[0x40196e]
+[lrdn1224:4124351] *** End of error message ***
+/lib64/libc.so.6(__libc_start_main+0xe5)[0x148ee934ed85]
+[lrdn1224:4124350] [13] ./iPIC3D[0x40196e]
+[lrdn1224:4124350] *** End of error message ***
+/lib64/libc.so.6(__libc_start_main+0xe5)[0x1536943c4d85]
+[lrdn1224:4124352] [13] ./iPIC3D[0x40196e]
+[lrdn1224:4124352] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 2 with PID 4124352 on node lrdn1224 exited on signal 6 (Aborted).
+--------------------------------------------------------------------------
+ 
+========================================================================
+ 
+Wed Oct 23 14:44:42 CEST 2024

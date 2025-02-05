@@ -1,0 +1,7 @@
+*/*
+!*/*.inp
+*.csv
+!*baseline.csv
+*.png
+venv/
+

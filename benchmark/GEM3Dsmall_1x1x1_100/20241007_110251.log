@@ -1,0 +1,83 @@
+The Software was compiled with CUDA
+
+Number of processes = 1
+-------------------------
+Number of threads = 1
+-------------------------
+
+Virtual Cartesian Processors Topology
+-------------------------------------
+Processors grid: 1x1x1
+Periodicity X: 1
+Periodicity Y: 0
+Periodicity Z: 1
+
+
+Simulation Parameters
+---------------------
+Number of species    = 4
+qom[0] = -64
+qom[1] = 1
+qom[2] = -64
+qom[3] = 1
+x-Length                 = 10
+y-Length                 = 10
+z-Length                 = 10
+Number of cells (x)      = 64
+Number of cells (y)      = 64
+Number of cells (z)      = 64
+Time step                = 0.15
+Number of cycles         = 100
+Results saved in  : data
+Case type         : GEM
+Simulation name   : testGEM3D
+Poisson correction: no
+---------------------
+Check Simulation Constraints
+---------------------
+Accuracy Constraint:  
+u_th < dx/dt species 0.....OK
+v_th < dy/dt species 0......OK
+u_th < dx/dt species 1.....OK
+v_th < dy/dt species 1......OK
+u_th < dx/dt species 2.....OK
+v_th < dy/dt species 2......OK
+u_th < dx/dt species 3.....OK
+v_th < dy/dt species 3......OK
+
+Finite Grid Stability Constraint:  
+WARNING. u_th*dt/dx (species 0) = 0.0432 < .1
+WARNING. v_th*dt/dy (species 0) = 0.0432 < .1
+WARNING. u_th*dt/dx (species 1) = 0.012096 < .1
+WARNING. v_th*dt/dy (species 1) = 0.012096 < .1
+WARNING. u_th*dt/dx (species 2) = 0.0432 < .1
+WARNING. v_th*dt/dy (species 2) = 0.0432 < .1
+WARNING. u_th*dt/dx (species 3) = 0.012096 < .1
+WARNING. v_th*dt/dy (species 3) = 0.012096 < .1
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  CUDA Check: CUDA driver version is insufficient for CUDA runtime version File: /leonardo_work/SPACE_bench/iPic3D_apps/iPIC3D-GPU-SPACE-CoE/include/CUDA/cudaTypeDef.cuh Line: 100
+[login02:2938349] *** Process received signal ***
+[login02:2938349] Signal: Aborted (6)
+[login02:2938349] Signal code:  (-6)
+[login02:2938349] [ 0] /lib64/libpthread.so.0(+0x12d20)[0x7ff56cfeed20]
+[login02:2938349] [ 1] /lib64/libc.so.6(gsignal+0x10f)[0x7ff56cc5452f]
+[login02:2938349] [ 2] /lib64/libc.so.6(abort+0x127)[0x7ff56cc27e65]
+[login02:2938349] [ 3] /leonardo/prod/spack/5.2/install/0.21/linux-rhel8-icelake/gcc-8.5.0/gcc-12.2.0-gmhym3kmbzqlpwkzhgab2xsoygsdwxcl/lib64/libstdc++.so.6(+0xa9a49)[0x7ff56d627a49]
+[login02:2938349] [ 4] /leonardo/prod/spack/5.2/install/0.21/linux-rhel8-icelake/gcc-8.5.0/gcc-12.2.0-gmhym3kmbzqlpwkzhgab2xsoygsdwxcl/lib64/libstdc++.so.6(+0xb507a)[0x7ff56d63307a]
+[login02:2938349] [ 5] /leonardo/prod/spack/5.2/install/0.21/linux-rhel8-icelake/gcc-8.5.0/gcc-12.2.0-gmhym3kmbzqlpwkzhgab2xsoygsdwxcl/lib64/libstdc++.so.6(+0xb50e5)[0x7ff56d6330e5]
+[login02:2938349] [ 6] /leonardo/prod/spack/5.2/install/0.21/linux-rhel8-icelake/gcc-8.5.0/gcc-12.2.0-gmhym3kmbzqlpwkzhgab2xsoygsdwxcl/lib64/libstdc++.so.6(+0xb5338)[0x7ff56d633338]
+[login02:2938349] [ 7] /leonardo_work/SPACE_bench/iPic3D_apps/iPIC3D-GPU-SPACE-CoE/benchmark/build/libiPIC3Dlib.so(_Z9cudaCheck9cudaErrorPKci+0x22a)[0x7ff56d98f4da]
+[login02:2938349] [ 8] /leonardo_work/SPACE_bench/iPic3D_apps/iPIC3D-GPU-SPACE-CoE/benchmark/build/libiPIC3Dlib.so(_ZN6iPic3D16const_array_ref3IdEC1Emmm+0x67)[0x7ff56d98f677]
+[login02:2938349] [ 9] /leonardo_work/SPACE_bench/iPic3D_apps/iPIC3D-GPU-SPACE-CoE/benchmark/build/libiPIC3Dlib.so(_ZN10EMfields3DC1EP10CollectiveP8Grid3DCUP12VCtopology3D+0x183)[0x7ff56d98a323]
+[login02:2938349] [10] /leonardo_work/SPACE_bench/iPic3D_apps/iPIC3D-GPU-SPACE-CoE/benchmark/build/libiPIC3Dlib.so(_ZN6iPic3D8c_Solver4InitEiPPc+0x7a6)[0x7ff56d9e6856]
+[login02:2938349] [11] ../build/iPIC3D[0x401334]
+[login02:2938349] [12] /lib64/libc.so.6(__libc_start_main+0xe5)[0x7ff56cc407e5]
+[login02:2938349] [13] ../build/iPIC3D[0x4014de]
+[login02:2938349] *** End of error message ***
+--------------------------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code. Per user-direction, the job has been aborted.
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun noticed that process rank 0 with PID 0 on node login02 exited on signal 6 (Aborted).
+--------------------------------------------------------------------------
