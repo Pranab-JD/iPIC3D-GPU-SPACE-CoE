@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.20)
 project(iPic3D LANGUAGES C CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 cmake_policy(SET CMP0042 NEW)
 set(CMAKE_BUILD_RPATH_USE_ORIGIN TRUE)
@@ -68,7 +69,7 @@ if(USE_CATALYST)
       install(TARGETS iPICAdaptor)
     endif()
 
-    target_link_libraries(iPICAdaptor PRIVATE ParaView::PythonCatalyst VTK::CommonDataModel Python3::Python)
+    target_link_libraries(iPICAdaptor PRIVATE stdc++fs ParaView::PythonCatalyst VTK::CommonDataModel Python3::Python)
     target_include_directories(iPICAdaptor INTERFACE ${CMAKE_SOURCE_DIR}/catalyst)
     target_compile_definitions(iPICAdaptor INTERFACE USE_CATALYST)
 
@@ -148,46 +149,44 @@ if(CUDA_ON)
   set_property(TARGET iPIC3Dlib PROPERTY CUDA_ARCHITECTURES 75) # required for double atomicadd
   set_property(TARGET iPIC3Dlib PROPERTY CUDA_STANDARD 17)
   set_property(TARGET iPIC3Dlib PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
-  set_property(TARGET iPIC3Dlib PROPERTY LINK_OPTIONS -fno-lto)
+  #set_property(TARGET iPIC3Dlib PROPERTY LINK_OPTIONS -fno-lto)
 
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -lineinfo")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -lineinfo")
 endif()
 
 set(include_path include)
 # CUDA header files
 if(CUDA_ON)
-  list(APPEND include_path include/CUDA)
-  list(APPEND include_path ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+list(APPEND include_path include/CUDA)
+list(APPEND include_path ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 endif()
 target_include_directories(
-  iPIC3Dlib
-  PUBLIC ${include_path}
-  )
+iPIC3Dlib
+PUBLIC ${include_path}
+)
 
 #
 # Link external libraries
 #
-if (USE_HDF5)
-    set(linkLibraries MPI::MPI_CXX ${HDF5_C_HL_TARGET})
-endif()
+set(linkLibraries MPI::MPI_CXX ${HDF5_C_HL_TARGET})
 
 if(USE_OPENMP)
-    list(APPEND linkLibraries OpenMP::OpenMP_CXX)
+list(APPEND linkLibraries OpenMP::OpenMP_CXX)
 endif()
 
 if(USE_CUDA)
-    list(APPEND linkLibraries cuda)
-    list(APPEND linkLibraries cudart)
+list(APPEND linkLibraries cuda)
+list(APPEND linkLibraries cudart)
 endif()
 
 if (USE_CATALYST)
-    list(APPEND linkLibraries iPICAdaptor)
+list(APPEND linkLibraries iPICAdaptor)
 endif()
 
 target_link_libraries(
-    iPIC3Dlib
-    PUBLIC ${linkLibraries}
-    PUBLIC MPI::MPI_CXX
+iPIC3Dlib
+PUBLIC ${linkLibraries}
+stdc++fs
 )
 
 
@@ -196,37 +195,37 @@ target_link_libraries(
 # Macro definitions
 #
 if(USE_BATSRUS)
-  target_compile_definitions(iPIC3Dlib PUBLIC BATSRUS)
-  message(" WARNING: BATSRUS flag is active.")
+target_compile_definitions(iPIC3Dlib PUBLIC BATSRUS)
+message(" WARNING: BATSRUS flag is active.")
 else()
-  message(" INFO: BATSRUS is not active.")
+message(" INFO: BATSRUS is not active.")
 endif()
 
 if(NOT USE_HDF5)
-  target_compile_definitions(iPIC3Dlib PUBLIC NO_HDF5)
+target_compile_definitions(iPIC3Dlib PUBLIC NO_HDF5)
 endif()
 
 if (BUILD_SHARED_LIBS)
-  install(TARGETS iPIC3Dlib)
+install(TARGETS iPIC3Dlib)
 endif()
 
 if (CUDA_ON)
-  target_compile_definitions(iPIC3Dlib PUBLIC CUDA_ON=true)
+target_compile_definitions(iPIC3Dlib PUBLIC CUDA_ON=true)
 
-  if(MOMENT_CUDA_ON)
-    target_compile_definitions(iPIC3Dlib PUBLIC MOMENT_CUDA_ON=true)
-  else()
-    target_compile_definitions(iPIC3Dlib PUBLIC MOMENT_CUDA_ON=false)
-  endif()
-  if(MOVER_CUDA_ON)
-    target_compile_definitions(iPIC3Dlib PUBLIC MOVER_CUDA_ON=true)
-  else()
-    target_compile_definitions(iPIC3Dlib PUBLIC MOVER_CUDA_ON=false)
-  endif()
+if(MOMENT_CUDA_ON)
+target_compile_definitions(iPIC3Dlib PUBLIC MOMENT_CUDA_ON=true)
 else()
-  target_compile_definitions(iPIC3Dlib PUBLIC CUDA_ON=false)
-  target_compile_definitions(iPIC3Dlib PUBLIC MOMENT_CUDA_ON=false)
-  target_compile_definitions(iPIC3Dlib PUBLIC MOVER_CUDA_ON=false)
+target_compile_definitions(iPIC3Dlib PUBLIC MOMENT_CUDA_ON=false)
+endif()
+if(MOVER_CUDA_ON)
+target_compile_definitions(iPIC3Dlib PUBLIC MOVER_CUDA_ON=true)
+else()
+target_compile_definitions(iPIC3Dlib PUBLIC MOVER_CUDA_ON=false)
+endif()
+else()
+target_compile_definitions(iPIC3Dlib PUBLIC CUDA_ON=false)
+target_compile_definitions(iPIC3Dlib PUBLIC MOMENT_CUDA_ON=false)
+target_compile_definitions(iPIC3Dlib PUBLIC MOVER_CUDA_ON=false)
 endif()
 
 #
@@ -235,21 +234,22 @@ endif()
 
 # Particle solver
 add_executable(
-  iPIC3D
-  iPIC3D.cpp
-  )
+iPIC3D
+iPIC3D.cpp
+)
 
 target_link_libraries(
-  iPIC3D
-  iPIC3Dlib
-  )
+iPIC3D
+iPIC3Dlib
+stdc++fs
+)
 
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_BUILD_TYPE Release)
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  add_compile_definitions(DEBUG_MODE)
+add_compile_definitions(DEBUG_MODE)
 endif()
 
 if(BENCH_MARK)
@@ -271,19 +271,19 @@ set_target_properties(iPIC3D PROPERTIES DEBUG_POSTFIX "_d")
 # Here we do the RPATH stuff so the exe is relocatable.
 # Make it a function to avoid variables leaking.
 function(add_install_libdir_to_rpath tgt)
-  if(BUILD_SHARED_LIBS)
-    get_target_property(install_rpaths ${tgt} INSTALL_RPATH)
-    if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-      list(APPEND install_rpaths "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}")
-    endif()
-    if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-      list(APPEND install_rpaths "@loader_path/../${CMAKE_INSTALL_LIBDIR}")
-    endif()
-    list(REMOVE_DUPLICATES install_rpaths)
-    set_target_properties(${tgt}
-      PROPERTIES INSTALL_RPATH "${install_rpaths}"
-      )
-  endif()
+if(BUILD_SHARED_LIBS)
+get_target_property(install_rpaths ${tgt} INSTALL_RPATH)
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  list(APPEND install_rpaths "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}")
+endif()
+if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  list(APPEND install_rpaths "@loader_path/../${CMAKE_INSTALL_LIBDIR}")
+endif()
+list(REMOVE_DUPLICATES install_rpaths)
+set_target_properties(${tgt}
+  PROPERTIES INSTALL_RPATH "${install_rpaths}"
+  )
+endif()
 endfunction()
 add_install_libdir_to_rpath(iPIC3D)
 
