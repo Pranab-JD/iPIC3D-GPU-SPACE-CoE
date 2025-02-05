@@ -1,1 +1,0 @@
-  -L"/leonardo/prod/opt/compilers/cuda/12.3/none/targets/x86_64-linux/lib/stubs"  -L"/leonardo/prod/opt/compilers/cuda/12.3/none/targets/x86_64-linux/lib"  -lstdc++fs  -lcudadevrt -lcudart_static -lrt -lpthread -ldl 
