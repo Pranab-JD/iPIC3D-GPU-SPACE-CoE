@@ -25,103 +25,13 @@
 #include "TimeTasks.h"
 #include <stdio.h>
 
-#include "LeXInt_Timer.hpp"
+#include "performances/LeXInt_Timer.hpp"
 
 using namespace iPic3D;
 
 int main(int argc, char **argv) 
 {
-    MPIdata::init(&argc, &argv);
-    {
-        #ifdef DEBUG_MODE
-            //DBG
-            int volatile j = 0;
-            while(j == 0)
-            {
 
-<<<<<<< HEAD:iPIC3D.cpp
-            }
-        #endif
-
-        #if CUDA_ON==true
-            if(MPIdata::get_rank() == 0)std::cout << "The Software was compiled with CUDA" << std::endl;
-        #endif
-
-        iPic3D::c_Solver KCode;
-        KCode.Init(argc, argv); //! load param from file, init the grid, fields
-
-        timeTasks.resetCycle(); //reset timer
-        KCode.CalculateMoments(true);
-
-        //? Use LeXInt timer
-        LeXInt::timer time_EF, time_PM, time_MF, time_MG, time_loop, time_total;
-        time_total.start();
-        
-        for (int i = KCode.FirstCycle(); i < KCode.LastCycle(); i++) 
-        {
-            time_loop.start();
-
-            if (KCode.get_myrank() == 0)
-                printf("\n================ Cycle %d ================ \n",i);
-
-            timeTasks.resetCycle();
-            
-            time_EF.start();
-            KCode.CalculateField(i);        //* E field
-            time_EF.stop();
-            
-            time_PM.start();
-            KCode.ParticlesMover();         //* Copute the new v and x for particles using the fields
-            time_PM.stop();
-
-            time_MF.start();
-            KCode.CalculateB();             //* B field
-            time_MF.stop();
-
-            time_MG.start();
-            KCode.CalculateMoments(true);   //* Charge density, current density, and pressure tensor
-            time_MG.stop();
-
-            //calculated from particles position and celocity, then mapped to node(grid) for further solving
-            // some are mapped to cell center
-
-            KCode.WriteOutput(i);
-
-            //? Print out total time for all tasks
-            #ifdef LOG_TASKS_TOTAL_TIME
-                timeTasks.print_cycle_times(i);
-            #endif
-
-            time_loop.stop();
-
-            if(MPIdata::get_rank() == 0)
-            {
-                std::cout << std::endl << "LeXInt timer (cummulative) " << std::endl;
-                std::cout << "Electric field     : " << time_EF.total() << std::endl;
-                std::cout << "Particle mover     : " << time_PM.total() << std::endl;
-                std::cout << "Magnetic field     : " << time_MF.total() << std::endl;
-                std::cout << "Moment gatherer    : " << time_MG.total() << std::endl;
-                std::cout << "Cycle time         : " << time_loop.total() << std::endl << std::endl;
-            }
-        }
-
-        time_total.stop();
-
-        #ifdef LOG_TASKS_TOTAL_TIME
-            timeTasks.print_tasks_total_times();
-        #endif
-
-        if(MPIdata::get_rank() == 0)
-            std::cout << std::endl << "Total time (LeXInt timer) : " << time_total.total() << std::endl << std::endl;
-
-        KCode.Finalize();
-    }
-
-    //? close MPI
-    MPIdata::instance().finalize_mpi();
-
-    return 0;
-=======
  MPIdata::init(&argc, &argv);
  {
 #if CUDA_ON==true
@@ -163,5 +73,4 @@ int main(int argc, char **argv)
  MPIdata::instance().finalize_mpi();
 
  return 0;
->>>>>>> temp:src/ipic3d/iPIC3D.cpp
 }

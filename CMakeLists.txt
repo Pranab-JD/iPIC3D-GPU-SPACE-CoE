@@ -43,23 +43,14 @@ option(BUILD_SHARED_LIBS "Use shared libraries if ON, static if OFF" ON)
 option(USE_CATALYST "Use Catalyst adaptor" OFF)
 option(USE_BATSRUS "Use BATSRUS flag" OFF)
 option(USE_HDF5 "Use HDF5 library" OFF)
-<<<<<<< HEAD
-option(CUDA_ON "Enable CUDA" ON) # if this is OFF, following two are ignored, set to false
-=======
 option(CUDA_ON "Enable CUDA" ON) # It should always be ON, even for HIP AMD
->>>>>>> temp
 option(MOMENT_CUDA_ON "Run Moment on CUDA" ON)
 option(MOVER_CUDA_ON "Run Mover on CUDA" ON)
 option(HIP_ON "Use HIP" OFF) # Set it to OFF if you want to use CUDA
 
 
-<<<<<<< HEAD
-option(BENCH_MARK "Print tasks time" ON)
-option(USE_OPENMP "Use OpenMP in supported loops" OFF) # must delete all cmake cache if you change this option
-=======
 option(BENCH_MARK "Print tasks time" OFF)
 option(USE_OPENMP "Use OpenMP in supported loops" ON) # must delete all cmake cache if you change this option
->>>>>>> temp
 
 include(GNUInstallDirs)
 
@@ -85,11 +76,7 @@ if(USE_CATALYST)
     endif()
 
     target_link_libraries(iPICAdaptor PRIVATE stdc++fs ParaView::PythonCatalyst VTK::CommonDataModel Python3::Python)
-<<<<<<< HEAD
-    target_include_directories(iPICAdaptor INTERFACE ${CMAKE_SOURCE_DIR}/catalyst)
-=======
     target_include_directories(iPICAdaptor INTERFACE ${CMAKE_SOURCE_DIR}/${SOURCE_CODE_DIR}/catalyst)
->>>>>>> temp
     target_compile_definitions(iPICAdaptor INTERFACE USE_CATALYST)
 
   endif()
@@ -187,11 +174,7 @@ elseif(CUDA_ON)
   set_property(TARGET iPIC3Dlib PROPERTY CUDA_ARCHITECTURES 75) # required for double atomicadd
   set_property(TARGET iPIC3Dlib PROPERTY CUDA_STANDARD 17)
   set_property(TARGET iPIC3Dlib PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
-<<<<<<< HEAD
-  #set_property(TARGET iPIC3Dlib PROPERTY LINK_OPTIONS -fno-lto)
-=======
   # set_property(TARGET iPIC3Dlib PROPERTY LINK_OPTIONS -fno-lto)               #! nvhpc does not recognise -fno-lto
->>>>>>> temp
 
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -lineinfo")
 endif()
@@ -199,17 +182,12 @@ endif()
 set(include_path ${INCLUDE_CODE_DIR})
 # CUDA header files
 if(CUDA_ON)
-<<<<<<< HEAD
-list(APPEND include_path include/CUDA)
-list(APPEND include_path ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
-=======
   list(APPEND include_path ${INCLUDE_CODE_DIR}/CUDA)
   if(NOT HIP_ON)
     list(APPEND include_path ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
   else()
     list(APPEND include_path ${INCLUDE_CODE_DIR}/hip)
   endif()
->>>>>>> temp
 endif()
 target_include_directories(
 iPIC3Dlib
@@ -227,29 +205,15 @@ if(USE_OPENMP)
 list(APPEND linkLibraries OpenMP::OpenMP_CXX)
 endif()
 
-<<<<<<< HEAD
-if(USE_CUDA)
-list(APPEND linkLibraries cuda)
-list(APPEND linkLibraries cudart)
-endif()
-
-=======
->>>>>>> temp
 if (USE_CATALYST)
 list(APPEND linkLibraries iPICAdaptor)
 endif()
 
 target_link_libraries(
-<<<<<<< HEAD
-iPIC3Dlib
-PUBLIC ${linkLibraries}
-stdc++fs
-=======
     iPIC3Dlib
     PUBLIC ${linkLibraries}
     PUBLIC MPI::MPI_CXX
     PRIVATE stdc++fs
->>>>>>> temp
 )
 
 
@@ -275,10 +239,6 @@ endif()
 if (CUDA_ON)
 target_compile_definitions(iPIC3Dlib PUBLIC CUDA_ON=true)
 
-<<<<<<< HEAD
-if(MOMENT_CUDA_ON)
-target_compile_definitions(iPIC3Dlib PUBLIC MOMENT_CUDA_ON=true)
-=======
   if(MOMENT_CUDA_ON)
     target_compile_definitions(iPIC3Dlib PUBLIC MOMENT_CUDA_ON=true)
   else()
@@ -293,15 +253,6 @@ target_compile_definitions(iPIC3Dlib PUBLIC MOMENT_CUDA_ON=true)
   if(HIP_ON)
   target_compile_definitions(iPIC3Dlib PUBLIC HIPIFLY)
   endif()
->>>>>>> temp
-else()
-target_compile_definitions(iPIC3Dlib PUBLIC MOMENT_CUDA_ON=false)
-endif()
-if(MOVER_CUDA_ON)
-target_compile_definitions(iPIC3Dlib PUBLIC MOVER_CUDA_ON=true)
-else()
-target_compile_definitions(iPIC3Dlib PUBLIC MOVER_CUDA_ON=false)
-endif()
 else()
 target_compile_definitions(iPIC3Dlib PUBLIC CUDA_ON=false)
 target_compile_definitions(iPIC3Dlib PUBLIC MOMENT_CUDA_ON=false)
@@ -314,17 +265,6 @@ endif()
 
 # Particle solver
 add_executable(
-<<<<<<< HEAD
-iPIC3D
-iPIC3D.cpp
-)
-
-target_link_libraries(
-iPIC3D
-iPIC3Dlib
-stdc++fs
-)
-=======
   iPIC3D
   ${SOURCE_CODE_DIR}/iPIC3D.cpp
   )
@@ -334,7 +274,6 @@ target_link_libraries(
   iPIC3Dlib
   stdc++fs
   )
->>>>>>> temp
 
 if(NOT CMAKE_BUILD_TYPE)
 set(CMAKE_BUILD_TYPE Release)
