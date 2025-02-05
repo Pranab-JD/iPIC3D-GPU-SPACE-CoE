@@ -32,45 +32,75 @@ using namespace iPic3D;
 int main(int argc, char **argv) 
 {
 
- MPIdata::init(&argc, &argv);
- {
-#if CUDA_ON==true
-  if(MPIdata::get_rank() == 0)std::cout << "The Software was built for GPU" << std::endl;
-#endif
+    MPIdata::init(&argc, &argv);
+    {
 
-  iPic3D::c_Solver KCode;
-  KCode.Init(argc, argv); //! load param from file, init the grid, fields
+        iPic3D::c_Solver KCode;
+        
+        KCode.Init(argc, argv); //! load param from file, init the grid, fields
 
-  timeTasks.resetCycle(); //reset timer
-  KCode.CalculateMoments(true);
-  for (int i = KCode.FirstCycle(); i < KCode.LastCycle(); i++) {
+        timeTasks.resetCycle(); //reset timer
 
-    if (KCode.get_myrank() == 0)
-      printf(" ======= Cycle %d ======= \n",i);
+        //? LeXInt timer
+        LeXInt::timer time_EF, time_PM, time_MF, time_MG, time_loop, time_total;
+        time_total.start();
+  
+        //? Initial Moment Gatherer
+        KCode.CalculateMoments(true);
 
-    timeTasks.resetCycle();
-    KCode.CalculateField(i); // E field
-    KCode.ParticlesMover(); //use the fields to calculate the new v and x for particles
-    KCode.CalculateB(); // B field
-    KCode.CalculateMoments(false); // the charge intense, current intense and pressure tensor, 
-    //calculated from particles position and celocity, then mapped to node(grid) for further solving
-    // some are mapped to cell center
-    
-    KCode.WriteOutput(i);
-    // print out total time for all tasks
-#ifdef LOG_TASKS_TOTAL_TIME
-    timeTasks.print_cycle_times(i);
-#endif
-  }
+        for (int i = KCode.FirstCycle(); i < KCode.LastCycle(); i++)
+        {
+            if (KCode.get_myrank() == 0)
+                std::cout << std::endl << "=================== Cycle " << i << " ===================" << std::endl ;
 
-#ifdef LOG_TASKS_TOTAL_TIME
-    timeTasks.print_tasks_total_times();
-#endif
+            timeTasks.resetCycle();
+            
+            //? Field Solver --> Compute E field 
+            time_EF.start();
+            KCode.CalculateField(i);
+            time_EF.stop();
+            
+            //? Particle Pusher --> Compute new velocities and positions of the particles
+            time_PM.start();
+            KCode.ParticlesMover();
+            time_PM.stop();
+            
+            //? Field Solver --> Compute B field
+            time_MF.start();
+            KCode.CalculateB();
+            time_MF.stop();
+            
+            //? Moment Gatherer --> Compute charge density, current density, and pressure tensor
+            time_MG.start();
+            KCode.CalculateMoments(false);
+            time_MG.stop();
 
-  KCode.Finalize();
- }
- // close MPI
- MPIdata::instance().finalize_mpi();
+            KCode.WriteOutput(i);
+            
+            //? Print out total time for all tasks
+            #ifdef LOG_TASKS_TOTAL_TIME
+                timeTasks.print_cycle_times(i);
+            #endif
 
- return 0;
+            if(MPIdata::get_rank() == 0)
+            {
+                std::cout << std::endl << "Runtime of iPIC3D modules " << std::endl;
+                std::cout << "Field solver (E)   : " << time_EF.total()   << " s" << std::endl;
+                std::cout << "Field solver (B)   : " << time_MF.total()   << " s" << std::endl;
+                std::cout << "Particle mover     : " << time_PM.total()   << " s" << std::endl;
+                std::cout << "Moment gatherer    : " << time_MG.total()   << " s" << std::endl;
+            }
+        }
+
+        #ifdef LOG_TASKS_TOTAL_TIME
+            timeTasks.print_tasks_total_times();
+        #endif
+
+        KCode.Finalize();
+    }
+
+    //? close MPI
+    MPIdata::instance().finalize_mpi();
+
+    return 0;
 }
