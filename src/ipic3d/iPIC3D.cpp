@@ -53,8 +53,10 @@ int main(int argc, char **argv) {
     DA.waitForAnalysis();
 
     KCode.ParticlesMoverMomentAsync(); // launch Mover and Moment kernels
-    KCode.CalculateB(); // B field
-    KCode.CalculateMomentsAwait(); // wait for Mover and Moment kernels
+    // some spare CPU cycles
+    KCode.MoverAwaitAndPclExchange();
+    KCode.CalculateB(); 
+    KCode.MomentsAwait(); 
     
     KCode.WriteOutput(i);
     

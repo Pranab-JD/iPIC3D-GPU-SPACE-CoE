@@ -87,11 +87,13 @@ namespace iPic3D {
     int deInitCUDA();
     
     void CalculateMoments();
-    void CalculateMomentsAwait();
     void CalculateField(int cycle);
     int cudaLauncherAsync(int species);
     bool ParticlesMoverMomentAsync();
+    bool MoverAwaitAndPclExchange();
     void CalculateB();
+    void MomentsAwait();
+
     //
     // output methods
     //
@@ -134,6 +136,7 @@ namespace iPic3D {
     int cudaDeviceOnNode; // the device this rank should use
     cudaStream_t*       streams;
 
+    std::future<int>* exitingResults;
     int* stayedParticle; // stayed particles for each species
 
 	//! Host pointers of objects, to be copied to device, for management later

@@ -313,7 +313,7 @@ int c_Solver::initCUDA(){
   }
   
 	// init the streams according to the species
-  streams = new cudaStream_t[ns*2]; stayedParticle = new int[ns];
+  streams = new cudaStream_t[ns*2]; stayedParticle = new int[ns]; exitingResults = new std::future<int>[ns];
   for(int i=0; i<ns; i++){ cudaErrChk(cudaStreamCreate(streams+i)); cudaErrChk(cudaStreamCreate(streams+i+ns)); stayedParticle[i] = 0; }
 
 	{// init arrays on device, pointers are device pointer, copied
@@ -491,6 +491,7 @@ int c_Solver::deInitCUDA(){
   for(int i=0; i<ns*2; i++)cudaStreamDestroy(streams[i]);
   delete[] streams;
   delete[] stayedParticle;
+  delete[] exitingResults;
 
   { // unregister the pinned mem
     for (int i = 0; i < ns; i++) {
@@ -539,38 +540,8 @@ void c_Solver::CalculateMoments() {
   }
 
   // synchronize
-  CalculateMomentsAwait();
-  
+  MomentsAwait();
 
-}
-
-void c_Solver::CalculateMomentsAwait() {
-
-  timeTasks_set_main_task(TimeTasks::MOMENTS);
-
-  // synchronize
-  cudaErrChk(cudaDeviceSynchronize());
-
-  for (int i = 0; i < ns; i++)
-  {
-    EMf->communicateGhostP2G(i);
-  }
-
-  EMf->setZeroDerivedMoments();
-  // sum all over the species
-  EMf->sumOverSpecies();
-  // Fill with constant charge the planet
-  if (col->getCase()=="Dipole") {
-    EMf->ConstantChargePlanet(col->getL_square(),col->getx_center(),col->gety_center(),col->getz_center());
-  }else if(col->getCase()=="Dipole2D") {
-	EMf->ConstantChargePlanet2DPlaneXZ(col->getL_square(),col->getx_center(),col->getz_center());
-  }
-  // Set a constant charge in the OpenBC boundaries
-  //EMf->ConstantChargeOpenBC();
-  // calculate densities on centers from nodes
-  EMf->interpDensitiesN2C();
-  // calculate the hat quantities for the implicit method
-  EMf->calculateHatFunctions();
 }
 
 
@@ -582,7 +553,9 @@ void c_Solver::CalculateField(int cycle) {
   EMf->calculateE(cycle);
 }
 
-
+/*  -------------- */
+/*!  Particle mover */
+/*  -------------- */
 int c_Solver::cudaLauncherAsync(const int species){
   cudaSetDevice(cudaDeviceOnNode); // a must on multi-device node
 
@@ -650,47 +623,41 @@ int c_Solver::cudaLauncherAsync(const int species){
   return x;
 }
 
-//! MAXWELL SOLVER for Bfield (assuming Efield has already been calculated)
-void c_Solver::CalculateB() {
-  timeTasks_set_main_task(TimeTasks::FIELDS);
-  // calculate the B field
-  EMf->calculateB();
-}
-
-/*  -------------- */
-/*!  Particle mover */
-/*  -------------- */
 bool c_Solver::ParticlesMoverMomentAsync()
 {
   // move all species of particles
+  
+  timeTasks_set_main_task(TimeTasks::PARTICLES);
+  // Should change this to add background field
+  //EMf->set_fieldForPcls();
+  EMf->set_fieldForPclsToCenter(fieldForPclHostPtr);
+
+  auto gridSize = grid->getNXN() * grid->getNYN() * grid->getNZN();
+  //! copy fieldForPcls to device, for every species 
+  cudaErrChk(cudaMemcpyAsync(fieldForPclCUDAPtr, fieldForPclHostPtr, (grid->getNZN() * (grid->getNYN() - 1) * (grid->getNXN() - 1)) * 24 * sizeof(cudaCommonType), cudaMemcpyDefault, streams[0]));
+  cudaErrChk(cudaEventRecord(event0, streams[0]));
+
+  for(int i=0; i<ns; i++){
+    exitingResults[i] = threadPoolPtr->enqueue(&c_Solver::cudaLauncherAsync, this, i);
+  }
+  
+
+  return (false);
+}
+
+bool c_Solver::MoverAwaitAndPclExchange()
+{
+
+  for (int i = 0; i < ns; i++){ 
+    auto x = exitingResults[i].get();
+    stayedParticle[i] = pclsArrayHostPtr[i]->getNOP() - x;
+  }
+  // exiting particles are copied back
+
+  for (int i = 0; i < ns; i++)  // communicate each species
   {
-    timeTasks_set_main_task(TimeTasks::PARTICLES);
-    // Should change this to add background field
-    //EMf->set_fieldForPcls();
-    EMf->set_fieldForPclsToCenter(fieldForPclHostPtr);
-
-    auto gridSize = grid->getNXN() * grid->getNYN() * grid->getNZN();
-    //! copy fieldForPcls to device, for every species 
-    //cudaErrChk(cudaMemcpyAsync(fieldForPclCUDAPtr, (void*)&(EMf->get_fieldForPcls().get(0,0,0,0)), gridSize*8*sizeof(cudaCommonType), cudaMemcpyDefault, streams[0]));
-    cudaErrChk(cudaMemcpyAsync(fieldForPclCUDAPtr, fieldForPclHostPtr, (grid->getNZN() * (grid->getNYN() - 1) * (grid->getNXN() - 1)) * 24 * sizeof(cudaCommonType), cudaMemcpyDefault, streams[0]));
-    cudaErrChk(cudaEventRecord(event0, streams[0]));
-    std::future<int> results[ns];
-    for(int i=0; i<ns; i++){
-      results[i] = threadPoolPtr->enqueue(&c_Solver::cudaLauncherAsync, this, i);
-    }
-
-    for (int i = 0; i < ns; i++){ //  it can be better
-      auto x = results[i].get();
-      stayedParticle[i] = pclsArrayHostPtr[i]->getNOP() - x;
-
-      // part[i].openbc_particles_outflow();
-      auto a = part[i].separate_and_send_particles();
-    }
-
-    for (int i = 0; i < ns; i++)  // communicate each species
-    {
-      part[i].recommunicate_particles_until_done(1);
-    }
+    auto a = part[i].separate_and_send_particles();
+    part[i].recommunicate_particles_until_done(1);
   }
 
   /* -------------------------------------- */
@@ -794,6 +761,42 @@ bool c_Solver::ParticlesMoverMomentAsync()
   }
 
   return (false);
+}
+
+//! MAXWELL SOLVER for Bfield (assuming Efield has already been calculated)
+void c_Solver::CalculateB() {
+  timeTasks_set_main_task(TimeTasks::FIELDS);
+  // calculate the B field
+  EMf->calculateB();
+}
+
+void c_Solver::MomentsAwait() {
+
+  timeTasks_set_main_task(TimeTasks::MOMENTS);
+
+  // synchronize
+  cudaErrChk(cudaDeviceSynchronize());
+
+  for (int i = 0; i < ns; i++)
+  {
+    EMf->communicateGhostP2G(i);
+  }
+
+  EMf->setZeroDerivedMoments();
+  // sum all over the species
+  EMf->sumOverSpecies();
+  // Fill with constant charge the planet
+  if (col->getCase()=="Dipole") {
+    EMf->ConstantChargePlanet(col->getL_square(),col->getx_center(),col->gety_center(),col->getz_center());
+  }else if(col->getCase()=="Dipole2D") {
+	EMf->ConstantChargePlanet2DPlaneXZ(col->getL_square(),col->getx_center(),col->getz_center());
+  }
+  // Set a constant charge in the OpenBC boundaries
+  //EMf->ConstantChargeOpenBC();
+  // calculate densities on centers from nodes
+  EMf->interpDensitiesN2C();
+  // calculate the hat quantities for the implicit method
+  EMf->calculateHatFunctions();
 }
 
 void c_Solver::WriteOutput(int cycle) {
