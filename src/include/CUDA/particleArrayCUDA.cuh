@@ -15,11 +15,11 @@ private:
 
 public:
     /**
-     * @brief create and copy the array from host, 1.5 time size
+     * @brief create and copy the array from host, bigger size
      * 
      * @param stream the stream used for memory operations
      */ 
-    __host__ particleArrayCUDA(Particles3D* p3D, cudaStream_t stream = 0): arrayCUDA(p3D->get_pclptr(0), p3D->getNOP(), 1.5), type(p3D->get_particleType()){
+    __host__ particleArrayCUDA(Particles3D* p3D, cudaTypeSingle expand = 1.2, cudaStream_t stream = 0): arrayCUDA(p3D->get_pclptr(0), p3D->getNOP(), expand), type(p3D->get_particleType()){
         assignStream(stream);
     }
 

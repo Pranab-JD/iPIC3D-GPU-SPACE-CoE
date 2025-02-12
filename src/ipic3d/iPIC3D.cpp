@@ -54,11 +54,14 @@ int main(int argc, char **argv) {
 
     KCode.ParticlesMoverMomentAsync(); // launch Mover and Moment kernels
     // some spare CPU cycles
+    KCode.WriteOutput(i);
+
     KCode.MoverAwaitAndPclExchange();
     KCode.CalculateB(); 
     KCode.MomentsAwait(); 
+
+    KCode.outputCopyAsync(i); // copy output data to host, for next output
     
-    KCode.WriteOutput(i);
     
 #ifdef LOG_TASKS_TOTAL_TIME
     timeTasks.print_cycle_times(i); // print out total time for all tasks

@@ -1347,7 +1347,7 @@ int Particles3Dcomm::separate_and_send_particles()
     // accumulated statistical branching behavior?
     //
     // optimizer should assume that most particles are not sent
-    if(__builtin_expect(was_sent,true))
+    if(__builtin_expect(was_sent,true)) // in GPU version, all particles in the buffer are exiting 
     {
       //dprintf("sent particle %d", np_current);
       delete_particle(np_current);

@@ -104,6 +104,7 @@ namespace iPic3D {
     void WriteFields(int cycle);
     void WriteParticles(int cycle);
     void WriteTestParticles(int cycle);
+    void outputCopyAsync(int cycle);
     void WriteOutput(int cycle);
     void Finalize();
 
@@ -115,7 +116,7 @@ namespace iPic3D {
     void pad_particle_capacities();
     void convertParticlesToSoA();
     void convertParticlesToAoS();
-    void convertParticlesToSynched();
+    void convertOutputParticlesToSynched();
     void sortParticles();
 
   private:
@@ -124,7 +125,8 @@ namespace iPic3D {
     VCtopology3D  *vct; // mpi topology 
     Grid3DCU      *grid; // 3d cartesion grid, local grid
     EMfields3D    *EMf; // 
-    Particles3D   *part;
+    Particles3D   *part; // only used for particle exchange during the simulation
+    Particles3D   *outputPart; // buffers for all particle copy back, registered to the output warpperFPP
     Particles3D   *testpart;
     double        *Ke; // kinetic energy of each species, the normal one, added up
     double        *BulkEnergy; // bulk kinetic energy of each species, consider the bulk motion
@@ -169,7 +171,7 @@ namespace iPic3D {
     
     ThreadPool *threadPoolPtr;
 
-    cudaEvent_t event0;
+    cudaEvent_t event0, eventOutputCopy;
 
 
 
