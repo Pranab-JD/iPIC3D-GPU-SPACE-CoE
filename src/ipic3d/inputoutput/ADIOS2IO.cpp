@@ -106,6 +106,9 @@ void ADIOS2Manager::appendParticleOutput(int cycle) {
 
     engineParticle.BeginStep();
 
+    auto cycleVar = _variableHelper<int>(ioParticle, "cycle");
+    engineParticle.Put<int>(cycleVar, cycle);
+
     for (auto option : particleOptions) {
         option(cycle);
     }

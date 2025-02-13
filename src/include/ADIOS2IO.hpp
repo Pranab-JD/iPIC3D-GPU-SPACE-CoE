@@ -90,6 +90,11 @@ public:
  */
 void initOutputFiles(string fieldTag, string particleTag, int sample, iPic3D::c_Solver& KCode);
 
+/**
+ * @brief Append the output data to the output files, the interface 
+ * 
+ * @param cycle simulation cycle
+ */
 void appendOutput(int cycle);
 
 void closeOutputFiles();
@@ -97,12 +102,38 @@ void closeOutputFiles();
 // void loadRestart(iPic3D::c_Solver& KCode);
 
 private:
+/**
+ * @brief these are the output routines for different categories of data
+ */
 
 void appendFieldOutput(int cycle); 
 
 void appendParticleOutput(int cycle);
 
 void appendRestartOutput(int cycle);
+
+/**
+ * @brief helper function to create or inquire a variable
+ */
+template < typename T >
+adios2::Variable<T> _variableHelper(adios2::IO &io, const std::string &name, const adios2::Dims &shape = adios2::Dims(), 
+                                    const adios2::Dims &start = adios2::Dims(), const adios2::Dims &count = adios2::Dims(),
+                                    const bool constantDims = false) {
+    
+    auto var = io.InquireVariable<T>(name);
+
+    if(var){
+        if (!shape.empty()) {
+            var.SetShape(shape);
+            var.SetSelection({start, count});
+        }
+    } 
+    else {
+        var = shape.empty() ? io.DefineVariable<T>(name) : io.DefineVariable<T>(name, shape, start, count, constantDims);
+    }
+
+    return var;            
+}
 
 // tag mapping
 /* Field
@@ -137,30 +168,9 @@ void _particlePosition(int cycle){
     for (int i = 0; i < ns; i++) {
         const unsigned long sizeNOP = static_cast<unsigned long>(part[i].getNOP());
 
-        auto x = ioParticle.InquireVariable<cudaCommonType>("part" + to_string(i) + "PositionX");
-        auto y = ioParticle.InquireVariable<cudaCommonType>("part" + to_string(i) + "PositionY");
-        auto z = ioParticle.InquireVariable<cudaCommonType>("part" + to_string(i) + "PositionZ");
-
-        if(x){ // exiting variable, update size
-            x.SetShape({sizeNOP});
-            x.SetSelection({{0}, {sizeNOP}});
-        } 
-        else  // define new variable
-        x = ioParticle.DefineVariable<cudaCommonType>("part" + to_string(i) + "PositionX", {sizeNOP}, {0}, {sizeNOP});
-        
-        if(y){
-            y.SetShape({sizeNOP});
-            y.SetSelection({{0}, {sizeNOP}});
-        } 
-        else
-        y = ioParticle.DefineVariable<cudaCommonType>("part" + to_string(i) + "PositionY", {sizeNOP}, {0}, {sizeNOP});
-
-        if(z){
-            z.SetShape({sizeNOP});
-            z.SetSelection({{0}, {sizeNOP}});
-        } 
-        else
-        z = ioParticle.DefineVariable<cudaCommonType>("part" + to_string(i) + "PositionZ", {sizeNOP}, {0}, {sizeNOP});
+        auto x = _variableHelper<cudaCommonType>(ioParticle, "part" + to_string(i) + "PositionX", {sizeNOP}, {0}, {sizeNOP});
+        auto y = _variableHelper<cudaCommonType>(ioParticle, "part" + to_string(i) + "PositionY", {sizeNOP}, {0}, {sizeNOP});
+        auto z = _variableHelper<cudaCommonType>(ioParticle, "part" + to_string(i) + "PositionZ", {sizeNOP}, {0}, {sizeNOP});
 
         engineParticle.Put<cudaCommonType>(x, part[i].getXall(), adios2::Mode::Deferred);
         engineParticle.Put<cudaCommonType>(y, part[i].getYall(), adios2::Mode::Deferred);
@@ -172,65 +182,31 @@ void _particleVelocity(int cycle){
     for (int i = 0; i < ns; i++) {
         const unsigned long sizeNOP = static_cast<unsigned long>(part[i].getNOP());
 
-        auto u = ioParticle.InquireVariable<cudaCommonType>("part" + to_string(i) + "VelocityU");
-        auto v = ioParticle.InquireVariable<cudaCommonType>("part" + to_string(i) + "VelocityV");
-        auto w = ioParticle.InquireVariable<cudaCommonType>("part" + to_string(i) + "VelocityW");
-
-        if(u){
-            u.SetShape({sizeNOP});
-            u.SetSelection({{0}, {sizeNOP}});
-        } 
-        else
-        u = ioParticle.DefineVariable<cudaCommonType>("part" + to_string(i) + "VelocityU", {sizeNOP}, {0}, {sizeNOP});
-
-        if(v){
-            v.SetShape({sizeNOP});
-            v.SetSelection({{0}, {sizeNOP}});
-        } 
-        else
-        v = ioParticle.DefineVariable<cudaCommonType>("part" + to_string(i) + "VelocityV", {sizeNOP}, {0}, {sizeNOP});
-
-        if(w){
-            w.SetShape({sizeNOP});
-            w.SetSelection({{0}, {sizeNOP}});
-        } 
-        else
-        w = ioParticle.DefineVariable<cudaCommonType>("part" + to_string(i) + "VelocityW", {sizeNOP}, {0}, {sizeNOP});
-
+        auto u = _variableHelper<cudaCommonType>(ioParticle, "part" + to_string(i) + "VelocityU", {sizeNOP}, {0}, {sizeNOP});
+        auto v = _variableHelper<cudaCommonType>(ioParticle, "part" + to_string(i) + "VelocityV", {sizeNOP}, {0}, {sizeNOP});
+        auto w = _variableHelper<cudaCommonType>(ioParticle, "part" + to_string(i) + "VelocityW", {sizeNOP}, {0}, {sizeNOP});
 
         engineParticle.Put<cudaCommonType>(u, part[i].getUall(), adios2::Mode::Deferred);
         engineParticle.Put<cudaCommonType>(v, part[i].getVall(), adios2::Mode::Deferred);
         engineParticle.Put<cudaCommonType>(w, part[i].getWall(), adios2::Mode::Deferred);
     }
 }
+
 void _particleCharge(int cycle){
     for (int i = 0; i < ns; i++) {
         const unsigned long sizeNOP = static_cast<unsigned long>(part[i].getNOP());
-        
-        auto var = ioParticle.InquireVariable<cudaCommonType>("part" + to_string(i) + "charge");
 
-        if(var){
-            var.SetShape({sizeNOP});
-            var.SetSelection({{0}, {sizeNOP}});
-        } 
-        else
-        var = ioParticle.DefineVariable<cudaCommonType>("part" + to_string(i) + "charge", {sizeNOP}, {0}, {sizeNOP});
+        auto var = _variableHelper<cudaCommonType>(ioParticle, "part" + to_string(i) + "charge", {sizeNOP}, {0}, {sizeNOP});
 
         engineParticle.Put<cudaCommonType>(var, part[i].getQall(), adios2::Mode::Deferred);
     }
 }
+
 void _particleID(int cycle){
     for (int i = 0; i < ns; i++) {
         const unsigned long sizeNOP = static_cast<unsigned long>(part[i].getNOP());
 
-        auto var = ioParticle.InquireVariable<cudaCommonType>("part" + to_string(i) + "ID");
-
-        if(var){
-            var.SetShape({sizeNOP});
-            var.SetSelection({{0}, {sizeNOP}});
-        } 
-        else
-        var = ioParticle.DefineVariable<cudaCommonType>("part" + to_string(i) + "ID", {sizeNOP}, {0}, {sizeNOP});
+        auto var = _variableHelper<cudaCommonType>(ioParticle, "part" + to_string(i) + "ID", {sizeNOP}, {0}, {sizeNOP});
 
         engineParticle.Put<cudaCommonType>(var, part[i].getParticleIDall(), adios2::Mode::Deferred);
     }
