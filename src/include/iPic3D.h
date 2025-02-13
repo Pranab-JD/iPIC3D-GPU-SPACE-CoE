@@ -49,6 +49,7 @@ class OutputWrapperFPP;
 #include "threadPool.hpp"
 
 
+
 namespace iPic3D {
   class c_Solver;
 }
@@ -57,11 +58,22 @@ namespace dataAnalysis {
   class dataAnalysisPipelineImpl;
 }
 
+#ifdef USE_ADIOS2
+#include "ADIOS2IO.hpp"
+namespace ADIOS2IO {
+  class ADIOS2Manager;
+}
+#endif
+
 namespace iPic3D {
 
   class c_Solver {
 
   friend dataAnalysis::dataAnalysisPipelineImpl;
+
+#ifdef USE_ADIOS2
+  friend ADIOS2IO::ADIOS2Manager;
+#endif
 
   public:
     ~c_Solver();
@@ -173,7 +185,9 @@ namespace iPic3D {
 
     cudaEvent_t event0, eventOutputCopy;
 
-
+#ifdef USE_ADIOS2
+    ADIOS2IO::ADIOS2Manager* adiosManager;
+#endif
 
 #ifndef NO_HDF5
     OutputWrapperFPP& fetch_outputWrapperFPP(){

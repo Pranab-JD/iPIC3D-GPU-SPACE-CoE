@@ -178,6 +178,7 @@ public:
   double get_ystart(){return ystart;}
   double get_zstart(){return zstart;}
   ParticleType::Type get_particleType()const { return particleType; }
+  void set_particleType(ParticleType::Type newType) { particleType = newType; }
   const SpeciesParticle& get_pcl(int pidx)const{ return _pcls[pidx]; }
   const vector_SpeciesParticle& get_pcl_list()const{ return _pcls; }
   vector_SpeciesParticle& get_pcl_array(){ return _pcls; }

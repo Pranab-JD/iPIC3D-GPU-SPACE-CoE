@@ -76,6 +76,11 @@ c_Solver::~c_Solver()
 #ifndef NO_HDF5
   delete outputWrapperFPP;
 #endif
+
+#ifdef USE_ADIOS2
+  delete adiosManager;
+#endif
+
   // delete particles
   //
   if(part) // exchange particles
@@ -212,6 +217,11 @@ int c_Solver::Init(int argc, char **argv) {
   {
     new(&outputPart[i]) Particles3D(i,col,vct,grid);
   }
+
+#ifdef USE_ADIOS2
+  adiosManager = new ADIOS2IO::ADIOS2Manager();
+  adiosManager->initOutputFiles("", "position+velocity", 0, *this);
+#endif
 
   // Initial Condition for PARTICLES if you are not starting from RESTART
   if (restart_status == 0) {
@@ -836,6 +846,7 @@ void c_Solver::WriteOutput(int cycle) {
 
   if(!Parameters::get_doWriteOutput())  return;
 
+  // TODO later add adios2 as a method
 
   if (col->getWriteMethod() == "nbcvtk"){//Non-blocking collective MPI-IO
 
@@ -899,7 +910,7 @@ void c_Solver::WriteOutput(int cycle) {
 	  }
 
 	  //Particle information is still in hdf5
-	  	WriteParticles(cycle);
+      WriteParticles(cycle);
 	  //Test Particle information is still in hdf5
 	    WriteTestParticles(cycle);
 
@@ -949,7 +960,9 @@ void c_Solver::WriteOutput(int cycle) {
 }
 
 void c_Solver::outputCopyAsync(int cycle){ // -1 to enable
-  if (restart_cycle>0 && (cycle+1)%restart_cycle==0){ // for next cycle
+  const auto ifNextCycleRestart = restart_cycle>0 && (cycle+1)%restart_cycle==0;
+  const auto ifNextCycleParticle = !col->particle_output_is_off() && (cycle+1)%(col->getParticlesOutputCycle())==0;
+  if (ifNextCycleRestart || ifNextCycleParticle){ // for next cycle
     for(int i=0; i<ns; i++){
       if(outputPart[i].get_pcl_array().capacity() < pclsArrayHostPtr[i]->getNOP()){
         // unregister the list
@@ -1112,11 +1125,20 @@ void c_Solver::WriteParticles(int cycle)
 #ifndef NO_HDF5
   if(col->particle_output_is_off() || cycle%(col->getParticlesOutputCycle())!=0) return;
 
-  // this is a hack
-  for (int i = 0; i < ns; i++)
-    outputPart[i].convertParticlesToSynched();
+  cudaErrChk(cudaEventSynchronize(eventOutputCopy));
 
+  // this is a hack
+  for (int i = 0; i < ns; i++){
+    outputPart[i].set_particleType(ParticleType::Type::AoS); // this is a even more hack
+    outputPart[i].convertParticlesToSynched();
+  }
+
+#ifdef USE_ADIOS2
+  adiosManager->appendOutput(cycle);
+#else
   fetch_outputWrapperFPP().append_output((col->getPclOutputTag()).c_str(), cycle, 0);//"position + velocity + q "
+#endif
+
 #endif
 }
 
@@ -1126,8 +1148,10 @@ void c_Solver::WriteTestParticles(int cycle)
   if(nstestpart == 0 || col->testparticle_output_is_off() || cycle%(col->getTestParticlesOutputCycle())!=0) return;
 
   // this is a hack
-  for (int i = 0; i < nstestpart; i++)
+  for (int i = 0; i < nstestpart; i++){
+    testpart[i].set_particleType(ParticleType::Type::AoS); // this is a even more hack
     testpart[i].convertParticlesToSynched();
+  }
 
   fetch_outputWrapperFPP().append_output("testpartpos + testpartvel+ testparttag", cycle, 0); // + testpartcharge
 #endif
@@ -1142,11 +1166,15 @@ void c_Solver::Finalize() {
     #ifndef NO_HDF5
     outputCopyAsync(-1);
     cudaErrChk(cudaEventSynchronize(eventOutputCopy));
-    
+
     convertOutputParticlesToSynched();
     fetch_outputWrapperFPP().append_restart((col->getNcycles() + first_cycle) - 1);
     #endif
   }
+
+#ifdef USE_ADIOS2
+  adiosManager->closeOutputFiles();
+#endif
 
   deInitCUDA();
 
@@ -1188,11 +1216,15 @@ void c_Solver::convertParticlesToAoS()
 // convert particle to array of structs (used in computing)
 void c_Solver::convertOutputParticlesToSynched()
 {
-  for (int i = 0; i < ns; i++)
+  for (int i = 0; i < ns; i++){
+    outputPart[i].set_particleType(ParticleType::Type::AoS); // otherwise the output is not synched
     outputPart[i].convertParticlesToSynched();
+  }
 
-  for (int i = 0; i < nstestpart; i++)
+  for (int i = 0; i < nstestpart; i++){
+    testpart[i].set_particleType(ParticleType::Type::AoS); // otherwise the output is not synched
     testpart[i].convertParticlesToSynched();
+  }
 }
 
 
