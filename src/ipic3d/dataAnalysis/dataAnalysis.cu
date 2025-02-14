@@ -3,6 +3,7 @@
 #include <future>
 #include <string>
 #include <memory>
+#include <random>
 
 #include "iPic3D.h"
 #include "VCtopology3D.h"
@@ -43,7 +44,7 @@ private:
 
     // GMM
     string GMMSubDomainOutputPath;
-    cudaGMMWeight::GMM<cudaCommonType, 2, weightType>* gmmArray = nullptr;
+    cudaGMMWeight::GMM<cudaCommonType, DATA_DIM, weightType>* gmmArray = nullptr;
 
 public:
 
@@ -63,7 +64,7 @@ public:
 
             if constexpr (GMM_ENABLE) { // GMM
                 GMMSubDomainOutputPath = GMM_OUTPUT_DIR + "subDomain" + std::to_string(KCode.myrank) + "/";
-                gmmArray = new cudaGMMWeight::GMM<cudaCommonType, 2, weightType>[3];
+                gmmArray = new cudaGMMWeight::GMM<cudaCommonType, DATA_DIM, weightType>[3];
             }
         }
     }
@@ -86,7 +87,7 @@ private:
 
     int analysisEntre(int cycle);
 
-    int GMMAnalysisSpecies(int cycle, std::string outputPath);
+    int GMMAnalysisSpecies(const int cycle, const int species, const std::string outputPath);
     
 };
 
@@ -97,38 +98,82 @@ private:
  * @details It launches 3 threads for uv uw vw analysis in parallel
  * 
  */
-int dataAnalysisPipelineImpl::GMMAnalysisSpecies(int cycle, std::string outputPath){
+int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int species, const std::string outputPath){
 
     using weightType = cudaTypeSingle;
 
     std::future<int> future[3];
 
     auto GMMLambda = [=](int i) mutable {
+
         using namespace cudaGMMWeight;
+
+        // GMM config
+        // set the random number generator
+        std::random_device rd;  // True random seed
+        std::mt19937 gen(rd()); // Mersenne Twister PRN
+        const cudaCommonType maxVelocity = species == 0 || species == 2 ? MAX_VELOCITY_HIST_E : MAX_VELOCITY_HIST_I;
+
+        // it is assumed that DATA_DIM == 2 and thta the velocity range is homogenues in all dimensions
+        const cudaCommonType maxVelocityArray[DATA_DIM] = {maxVelocity,maxVelocity};
+
+        std::uniform_real_distribution<cudaCommonType> distR(1e-8, maxVelocity);
+        std::uniform_real_distribution<cudaCommonType> distTheta(0, 2*M_PI);
+        
 
         cudaErrChk(cudaSetDevice(deviceOnNode));
 
-        // GMM config
-        constexpr auto numComponent = 2;
+        cudaCommonType weightVector[NUM_COMPONENT_GMM];
+        cudaCommonType meanVector[NUM_COMPONENT_GMM * DATA_DIM];
+        cudaCommonType coVarianceMatrix[NUM_COMPONENT_GMM * DATA_DIM * DATA_DIM ];
 
-        cudaCommonType weightVector[numComponent];
-        cudaCommonType meanVector[numComponent * 2];
-        cudaCommonType coVarianceMatrix[numComponent * 4];
-
-        for(int j = 0; j < numComponent; j++){
-            weightVector[j] = j == 0 ? 0.75 : 0.25;
-            meanVector[j * 2] = 0.0;
-            meanVector[j * 2 + 1] = 0.0;
-            coVarianceMatrix[j * 4] = 0.0001;
+        const cudaCommonType uth = species == 0 || species == 2 ? 0.045 : 0.0126;
+        const cudaCommonType vth = species == 0 || species == 2 ? 0.045 : 0.0126;
+        const cudaCommonType wth = species == 0 || species == 2 ? 0.045 : 0.0126;
+        
+        cudaCommonType var1 = 0.01;
+        cudaCommonType var2 = 0.01; 
+        
+        if (i==0)
+        {
+            var1 = uth;
+            var2 = vth;
+        }
+        else if(i==1)
+        {
+            var1 = uth;
+            var2 = wth;
+        }
+        else if(i==2)
+        {
+            var1 = vth;
+            var2 = wth;
+        }
+        
+        
+        cudaCommonType normalization = 1.0;
+        // normalize initial parameters if NORMALIZE_DATA_FOR_GMM==true
+        if constexpr(NORMALIZE_DATA_FOR_GMM)
+        {
+            normalization = maxVelocity;
+        }
+        for(int j = 0; j < NUM_COMPONENT_GMM; j++){
+            weightVector[j] = 1.0/NUM_COMPONENT_GMM;
+            cudaCommonType radius = distR(gen);
+            cudaCommonType theta = distTheta(gen);
+            meanVector[j * 2] =  radius*cos(theta)/normalization;
+            meanVector[j * 2 + 1] = radius*sin(theta)/normalization;
+            coVarianceMatrix[j * 4] = var1/(normalization*normalization);
             coVarianceMatrix[j * 4 + 1] = 0.0;
             coVarianceMatrix[j * 4 + 2] = 0.0;
-            coVarianceMatrix[j * 4 + 3] = 0.0001;
+            coVarianceMatrix[j * 4 + 3] = var2/(normalization*normalization);
         }
 
         GMMParam_t<cudaCommonType> GMMParam = {
-            .numComponents = numComponent,
-            .maxIteration = 50,
-            .threshold = 1e-6,
+            .numComponents = NUM_COMPONENT_GMM,
+            .maxIteration = MAX_ITERATION_GMM,
+            .threshold = THRESHOLD_CONVERGENCE_GMM,
+            .maxVelocityArray = {maxVelocityArray[0],maxVelocityArray[1]},
 
             .weightInit = weightVector,
             .meanInit = meanVector,
@@ -136,7 +181,7 @@ int dataAnalysisPipelineImpl::GMMAnalysisSpecies(int cycle, std::string outputPa
         };
 
         // data
-        GMMDataMultiDim<cudaCommonType, 2, weightType> GMMData
+        GMMDataMultiDim<cudaCommonType, DATA_DIM, weightType> GMMData
             (10000, velocityHistogram->getHistogramScaleMark(i), velocityHistogram->getVelocityHistogramCUDAArray(i));
 
         cudaErrChk(cudaHostRegister(&GMMData, sizeof(GMMData), cudaHostRegisterDefault));
@@ -192,7 +237,7 @@ int dataAnalysisPipelineImpl::analysisEntre(int cycle){
 
             if constexpr (GMM_ENABLE) { // GMM
                 auto GMMSpeciesOutputPath = GMMSubDomainOutputPath + "species" + std::to_string(i) + "/";
-                GMMAnalysisSpecies(cycle, GMMSpeciesOutputPath);
+                GMMAnalysisSpecies(cycle, i, GMMSpeciesOutputPath);
             }
         }
     }
