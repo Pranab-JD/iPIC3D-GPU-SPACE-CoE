@@ -105,16 +105,14 @@ __host__ int velocityHistogram::getRange(velocitySoA* pclArray, const int specie
                 (reductionTempArrayCUDA + (i+3) * reductionTempArraySize, reductionMaxResultCUDA + i, blockNum);
         }
     }else{
-        histogramTypeIn min = species == 0 || species == 2 ? -0.2 : -0.09;
+        histogramTypeIn min = species == 0 || species == 2 ? MIN_VELOCITY_HIST_E : MIN_VELOCITY_HIST_I;
         histogramTypeIn minArray[3] = {min, min, min};
-        histogramTypeIn max = species == 0 || species == 2 ? 0.2 : 0.09;
+        histogramTypeIn max = species == 0 || species == 2 ? MAX_VELOCITY_HIST_E : MAX_VELOCITY_HIST_I;
         histogramTypeIn maxArray[3] = {max, max, max};
 
         cudaErrChk(cudaMemcpyAsync(reductionMinResultCUDA, minArray, 3 * sizeof(histogramTypeIn), cudaMemcpyDefault, stream));
         cudaErrChk(cudaMemcpyAsync(reductionMaxResultCUDA, maxArray, 3 * sizeof(histogramTypeIn), cudaMemcpyDefault, stream));
     }
-
-
 
     return 0;
 

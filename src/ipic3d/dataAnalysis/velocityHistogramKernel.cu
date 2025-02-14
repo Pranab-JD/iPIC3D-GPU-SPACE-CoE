@@ -9,7 +9,6 @@ namespace velocityHistogram
 using namespace particleArraySoA;
 
 /**
-/**
  * @brief Kernel function to compute velocity histograms.
  * @details launched for each particle
  *

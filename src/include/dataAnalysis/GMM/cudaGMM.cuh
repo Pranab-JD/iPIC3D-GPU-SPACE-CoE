@@ -62,10 +62,10 @@ public:
 
 template <typename T>
 struct GMMParam_s{
-    int numComponents;
-    int maxIteration;
-    T threshold; // the threshold for the log likelihood
-    
+    const int numComponents;
+    const int maxIteration;
+    const T threshold; // the threshold for the log likelihood
+    const T maxVelocityArray[DATA_DIM];
     // these 3 are optional, if not set, they will be initialized with the internal init functions
     T* weightInit;
     T* meanInit;
@@ -236,6 +236,13 @@ public:
 
         // do the GMR
         int step = 0;
+        if constexpr(NORMALIZE_DATA_FOR_GMM)
+        {
+            if(paramHostPtr->maxIteration>0)
+            {
+                normalizePoints();
+            }
+        }
         while(step < paramHostPtr->maxIteration){
             
             // E
@@ -244,7 +251,7 @@ public:
             logLikelihood = sumLogLikelihood();
 
             // compare the log likelihood increament with the threshold, if the increament is smaller than the threshold, or the log likelihood is smaller than the previous one, output the GMM
-            if(fabs(logLikelihood - logLikelihoodOld) < paramHostPtr->threshold || logLikelihood < logLikelihoodOld){
+            if( std::isnan(logLikelihood) || fabs(logLikelihood - logLikelihoodOld) < paramHostPtr->threshold || logLikelihood < logLikelihoodOld){
                 // std::cout << "Converged at step " << step << std::endl;
                 break;
             }
@@ -260,6 +267,13 @@ public:
             step++;
         }
 
+        if constexpr(NORMALIZE_DATA_FOR_GMM)
+        {
+            if(step>0)
+            {
+                normalizeDataBack();
+            }
+        }
         return step;
 
     }
@@ -286,6 +300,10 @@ public:
                 std::cerr << "[!]Could not open file " << outputPath << std::endl;
                 return -1;
             }
+
+            if (std::isnan(logLikelihood))
+                std::cerr << "[!]LogLikelihood " <<outputPath<< " is NaN!" << " GMM step: "<< convergeStep << std::endl;
+
 
             file << "{\n";
             file << "\"convergeStep\": " << convergeStep << ",\n";
@@ -387,6 +405,24 @@ private:
     }
 
 
+    void normalizePoints(){
+        
+        // normalize data such that velocities are in range -1;1
+        // launch kernel
+        cudaGMMWeightKernel::normalizePointsKernel<T,dataDim,U,false><<<getGridSize(dataHostPtr->getNumData(), 256), 256, 0, GMMStream>>>
+                                (dataDevicePtr, paramHostPtr->maxVelocityArray);
+    }
+
+    void normalizeDataBack(){
+        
+        // normalize data back to the original data range
+        // launch kernel
+        cudaGMMWeightKernel::normalizePointsKernel<T,dataDim,U,true><<<getGridSize(dataHostPtr->getNumData(), 256), 256, 0, GMMStream>>>
+                                (dataDevicePtr, paramHostPtr->maxVelocityArray );
+
+        cudaGMMWeightKernel::normalizeMeanAndCovBack<T, dataDim><<<1, paramHostPtr->numComponents, 0, GMMStream>>>
+                            (meanCUDA, coVarianceCUDA, paramHostPtr->numComponents,paramHostPtr->maxVelocityArray);
+    }
     
     void calcPxAtMeanAndCoVariance(){
 
@@ -395,8 +431,6 @@ private:
                                 (dataDevicePtr, meanCUDA, coVarianceDecomposedCUDA, posteriorCUDA, paramHostPtr->numComponents);
         
         // posterior_nk holds log p(x_i|mean,coVariance) for each data point i and each component k, temporary storage
-
-
     }
 
 
@@ -515,7 +549,13 @@ private:
             }
         }
 
-        // decompose the coVariance
+        // check cov-matrix and adjust main diagonal to ensure determinate>0 and cholesky decomposition
+        if constexpr(CHECK_COVMATRIX_GMM)
+        {
+            cudaGMMWeightKernel::checkAdjustCoVarianceKernel<T, dataDim><<<1, paramHostPtr->numComponents, 0, GMMStream>>>(coVarianceCUDA, paramHostPtr->numComponents);
+        }
+
+        // decompose the coVariance with cholesky decomposition -> A = LL^T
         cudaGMMWeightKernel::decomposeCoVarianceKernel<T, dataDim>
             <<<1, paramHostPtr->numComponents, 0, GMMStream>>>
             (coVarianceCUDA, coVarianceDecomposedCUDA, normalizerCUDA, paramHostPtr->numComponents);
