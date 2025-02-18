@@ -412,6 +412,10 @@ public:
 
     }
 
+    __host__ histogramTypeOut* getVelocityHistogramHostPtr(const int i){
+        return histogramHostPtr[i].getHistogram();
+    }
+
     __host__ histogramTypeOut* getVelocityHistogramCUDAArray(const int i){
         return histogramHostPtr[i].getHistogramCUDA();
     }
