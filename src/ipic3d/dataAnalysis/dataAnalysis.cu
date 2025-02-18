@@ -60,7 +60,7 @@ public:
             velocitySoACUDA = new velocitySoA();
 
             HistogramSubDomainOutputPath = HISTOGRAM_OUTPUT_DIR + "subDomain" + std::to_string(KCode.myrank) + "/";
-            velocityHistogram = new velocityHistogram::velocityHistogram(12000);
+            velocityHistogram = new velocityHistogram::velocityHistogram(10000);
 
             if constexpr (GMM_ENABLE) { // GMM
                 GMMSubDomainOutputPath = GMM_OUTPUT_DIR + "subDomain" + std::to_string(KCode.myrank) + "/";
@@ -232,7 +232,7 @@ int dataAnalysisPipelineImpl::analysisEntre(int cycle){
             auto histogramSpeciesOutputPath = HistogramSubDomainOutputPath + "species" + std::to_string(i) + "/";
             velocityHistogram->init(velocitySoACUDA, cycle, i, streams[i]);
             if constexpr (HISTOGRAM_OUTPUT)
-            velocityHistogram->writeToFileFloat(histogramSpeciesOutputPath, streams[i]); // TODO
+            velocityHistogram->writeToFile(histogramSpeciesOutputPath, streams[i]); // TODO
             else cudaErrChk(cudaStreamSynchronize(streams[i]));
 
             if constexpr (GMM_ENABLE) { // GMM
