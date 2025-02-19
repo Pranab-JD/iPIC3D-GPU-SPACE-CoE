@@ -44,7 +44,7 @@ private:
 
     // GMM
     string GMMSubDomainOutputPath;
-    cudaGMMWeight::GMM<cudaCommonType, DATA_DIM, weightType>* gmmArray = nullptr;
+    cudaGMMWeight::GMM<cudaCommonType, GMM_DATA_DIM, weightType>* gmmArray = nullptr;
 
 public:
 
@@ -60,11 +60,11 @@ public:
             velocitySoACUDA = new velocitySoA();
 
             HistogramSubDomainOutputPath = HISTOGRAM_OUTPUT_DIR + "subDomain" + std::to_string(KCode.myrank) + "/";
-            velocityHistogram = new velocityHistogram::velocityHistogram(10000);
+            velocityHistogram = new velocityHistogram::velocityHistogram(VELOCITY_HISTOGRAM_RES * VELOCITY_HISTOGRAM_RES);
 
             if constexpr (GMM_ENABLE) { // GMM
                 GMMSubDomainOutputPath = GMM_OUTPUT_DIR + "subDomain" + std::to_string(KCode.myrank) + "/";
-                gmmArray = new cudaGMMWeight::GMM<cudaCommonType, DATA_DIM, weightType>[3];
+                gmmArray = new cudaGMMWeight::GMM<cudaCommonType, GMM_DATA_DIM, weightType>[3];
             }
         }
     }
@@ -114,8 +114,8 @@ int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int spec
         std::mt19937 gen(rd()); // Mersenne Twister PRN
         const cudaCommonType maxVelocity = species == 0 || species == 2 ? MAX_VELOCITY_HIST_E : MAX_VELOCITY_HIST_I;
 
-        // it is assumed that DATA_DIM == 2 and thta the velocity range is homogenues in all dimensions
-        const cudaCommonType maxVelocityArray[DATA_DIM] = {maxVelocity,maxVelocity};
+        // it is assumed that GMM_DATA_DIM == 2 and thta the velocity range is homogenues in all dimensions
+        const cudaCommonType maxVelocityArray[GMM_DATA_DIM] = {maxVelocity,maxVelocity};
 
         std::uniform_real_distribution<cudaCommonType> distR(1e-8, maxVelocity);
         std::uniform_real_distribution<cudaCommonType> distTheta(0, 2*M_PI);
@@ -124,8 +124,8 @@ int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int spec
         cudaErrChk(cudaSetDevice(deviceOnNode));
 
         cudaCommonType weightVector[NUM_COMPONENT_GMM];
-        cudaCommonType meanVector[NUM_COMPONENT_GMM * DATA_DIM];
-        cudaCommonType coVarianceMatrix[NUM_COMPONENT_GMM * DATA_DIM * DATA_DIM ];
+        cudaCommonType meanVector[NUM_COMPONENT_GMM * GMM_DATA_DIM];
+        cudaCommonType coVarianceMatrix[NUM_COMPONENT_GMM * GMM_DATA_DIM * GMM_DATA_DIM ];
 
         const cudaCommonType uth = species == 0 || species == 2 ? 0.045 : 0.0126;
         const cudaCommonType vth = species == 0 || species == 2 ? 0.045 : 0.0126;
@@ -173,7 +173,6 @@ int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int spec
             .numComponents = NUM_COMPONENT_GMM,
             .maxIteration = MAX_ITERATION_GMM,
             .threshold = THRESHOLD_CONVERGENCE_GMM,
-            .maxVelocityArray = {maxVelocityArray[0],maxVelocityArray[1]},
 
             .weightInit = weightVector,
             .meanInit = meanVector,
@@ -181,8 +180,11 @@ int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int spec
         };
 
         // data
-        GMMDataMultiDim<cudaCommonType, DATA_DIM, weightType> GMMData
-            (10000, velocityHistogram->getHistogramScaleMark(i), velocityHistogram->getVelocityHistogramCUDAArray(i));
+        GMMDataMultiDim<cudaCommonType, GMM_DATA_DIM, weightType> GMMData
+            (VELOCITY_HISTOGRAM_RES*VELOCITY_HISTOGRAM_RES, 
+                velocityHistogram->getHistogramScaleMark(i), 
+                velocityHistogram->getVelocityHistogramCUDAArray(i), 
+                {maxVelocityArray[0], maxVelocityArray[1]});
 
         cudaErrChk(cudaHostRegister(&GMMData, sizeof(GMMData), cudaHostRegisterDefault));
         

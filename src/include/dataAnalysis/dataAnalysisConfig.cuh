@@ -32,7 +32,7 @@ inline constexpr bool HISTOGRAM_OUTPUT_3D = false; // the vtk file format, if fa
 // GMM configuration
 inline constexpr bool GMM_OUTPUT = true;
 inline const std::string GMM_OUTPUT_DIR = DATA_ANALYSIS_OUTPUT_DIR + "velocityGMM/";
-inline constexpr int DATA_DIM = 2; // only works with DATA_DIM = 2 now
+inline constexpr int GMM_DATA_DIM = 2; // only works with GMM_DATA_DIM = 2 now
 inline constexpr int NUM_COMPONENT_GMM = 8;
 inline constexpr int MAX_ITERATION_GMM = 50;
 inline constexpr cudaCommonType  THRESHOLD_CONVERGENCE_GMM = 1;

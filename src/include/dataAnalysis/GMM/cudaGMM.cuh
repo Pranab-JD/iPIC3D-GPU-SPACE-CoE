@@ -24,20 +24,24 @@ private:
     U* weight;
 public:
 
+    T maxVelocityArray[dataDim]; // the range of the data points
+
     // all dim in one array
-    __host__ __device__ GMMDataMultiDim(int numData, T* data, U* weight){ 
+    __host__ GMMDataMultiDim(int numData, T* data, U* weight, std::initializer_list<T> maxVelocityArray){ 
         this->numData = numData;
         for(int i = 0; i < dataDim; i++){
             this->data[i] = data + i*numData;
+            this->maxVelocityArray[i] = *(maxVelocityArray.begin() + i);
         }
         this->weight = weight;
     }
 
     // all dim in separate arrays
-    __host__ __device__ GMMDataMultiDim(int numData, T** data, U* weight){
+    __host__ GMMDataMultiDim(int numData, T** data, U* weight, std::initializer_list<T> maxVelocityArray){
         this->numData = numData;
         for(int i = 0; i < dataDim; i++){
             this->data[i] = data[i];
+            this->maxVelocityArray[i] = *(maxVelocityArray.begin() + i);
         }
         this->weight = weight;
     }
@@ -65,7 +69,7 @@ struct GMMParam_s{
     const int numComponents;
     const int maxIteration;
     const T threshold; // the threshold for the log likelihood
-    const T maxVelocityArray[DATA_DIM];
+
     // these 3 are optional, if not set, they will be initialized with the internal init functions
     T* weightInit;
     T* meanInit;
@@ -410,7 +414,7 @@ private:
         // normalize data such that velocities are in range -1;1
         // launch kernel
         cudaGMMWeightKernel::normalizePointsKernel<T,dataDim,U,false><<<getGridSize(dataHostPtr->getNumData(), 256), 256, 0, GMMStream>>>
-                                (dataDevicePtr, paramHostPtr->maxVelocityArray);
+                                (dataDevicePtr, dataHostPtr->maxVelocityArray);
     }
 
     void normalizeDataBack(){
@@ -418,10 +422,10 @@ private:
         // normalize data back to the original data range
         // launch kernel
         cudaGMMWeightKernel::normalizePointsKernel<T,dataDim,U,true><<<getGridSize(dataHostPtr->getNumData(), 256), 256, 0, GMMStream>>>
-                                (dataDevicePtr, paramHostPtr->maxVelocityArray );
+                                (dataDevicePtr, dataHostPtr->maxVelocityArray );
 
         cudaGMMWeightKernel::normalizeMeanAndCovBack<T, dataDim><<<1, paramHostPtr->numComponents, 0, GMMStream>>>
-                            (meanCUDA, coVarianceCUDA, paramHostPtr->numComponents,paramHostPtr->maxVelocityArray);
+                            (meanCUDA, coVarianceCUDA, paramHostPtr->numComponents, dataHostPtr->maxVelocityArray);
     }
     
     void calcPxAtMeanAndCoVariance(){
