@@ -189,7 +189,7 @@ int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int spec
         cudaErrChk(cudaHostRegister(&GMMData, sizeof(GMMData), cudaHostRegisterDefault));
         
         // generate exact output file path
-        std::string uvw[3] = {"/uv_", "/uw_", "/vw_"};
+        std::string uvw[3] = {"/uv_", "/vw_", "/uw_"};
         auto fileOutputPath = outputPath + uvw[i] + std::to_string(cycle) + ".json";
 
         auto& gmm = gmmArray[i];
