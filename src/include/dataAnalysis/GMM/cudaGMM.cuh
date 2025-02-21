@@ -2,6 +2,7 @@
 #define _CUDA_GMM_H_
 
 #include "cudaTypeDef.cuh"
+#include "cudaGMMUtility.cuh"
 #include "cudaGMMkernel.cuh"
 #include "cudaReduction.cuh"
 
@@ -14,71 +15,6 @@
 namespace cudaGMMWeight
 {
 
-template <typename T, int dataDim, typename U = int>
-class GMMDataMultiDim{
-
-private:
-    int dim = dataDim;
-    int numData;
-    T* data[dataDim]; // pointers to the dimensions of the data points
-    U* weight;
-public:
-
-    T maxVelocityArray[dataDim]; // the range of the data points
-
-    // all dim in one array
-    __host__ GMMDataMultiDim(int numData, T* data, U* weight, std::initializer_list<T> maxVelocityArray){ 
-        this->numData = numData;
-        for(int i = 0; i < dataDim; i++){
-            this->data[i] = data + i*numData;
-            this->maxVelocityArray[i] = *(maxVelocityArray.begin() + i);
-        }
-        this->weight = weight;
-    }
-
-    // all dim in separate arrays
-    __host__ GMMDataMultiDim(int numData, T** data, U* weight, std::initializer_list<T> maxVelocityArray){
-        this->numData = numData;
-        for(int i = 0; i < dataDim; i++){
-            this->data[i] = data[i];
-            this->maxVelocityArray[i] = *(maxVelocityArray.begin() + i);
-        }
-        this->weight = weight;
-    }
-
-    __device__ __host__ T* getDim(int dim)const {
-        return data[dim];
-    }
-
-    __device__ __host__ int getNumData()const {
-        return numData;
-    }
-
-    __device__ __host__ int getDim()const {
-        return dim;
-    }
-
-    __device__ __host__ U* getWeight()const {
-        return weight;
-    }
-
-};
-
-template <typename T>
-struct GMMParam_s{
-    const int numComponents;
-    const int maxIteration;
-    const T threshold; // the threshold for the log likelihood
-
-    // these 3 are optional, if not set, they will be initialized with the internal init functions
-    T* weightInit;
-    T* meanInit;
-    T* coVarianceInit;
-    
-};
-
-template <typename T>
-using GMMParam_t = GMMParam_s<T>;
 
 
 template <typename T, int dataDim, typename U = int>
@@ -280,6 +216,30 @@ public:
         }
         return step;
 
+    }
+
+    __host__ GMMResult<T, dataDim> getGMMResult(int simuStep, int convergeStep){
+        GMMResult<T, dataDim> result(simuStep, paramHostPtr->numComponents);
+
+        result.convergeStep = convergeStep;
+
+        if (std::isnan(logLikelihood))
+        std::cerr << "[!]GMM: LogLikelihood is NaN!" << " GMM step: "<< convergeStep << std::endl;
+
+        result.logLikelihoodFinal = logLikelihood;
+
+        // copy from device array
+        cudaErrChk(cudaMemcpyAsync(result.weight.get(), weightCUDA, sizeof(T)*paramHostPtr->numComponents, cudaMemcpyDefault, GMMStream));
+        cudaErrChk(cudaMemcpyAsync(result.mean.get(), meanCUDA, sizeof(T)*paramHostPtr->numComponents*dataDim, cudaMemcpyDefault, GMMStream));
+        cudaErrChk(cudaMemcpyAsync(result.coVariance.get(), coVarianceCUDA, sizeof(T)*paramHostPtr->numComponents*dataDim*dataDim, cudaMemcpyDefault, GMMStream));
+        
+        cudaErrChk(cudaStreamSynchronize(GMMStream));
+
+        for(int i = 0; i < paramHostPtr->numComponents; i++){
+            result.weight[i] = exp(result.weight[i]);
+        }
+
+        return result;
     }
 
     __host__ int outputGMM(int convergeStep, std::string outputPath){

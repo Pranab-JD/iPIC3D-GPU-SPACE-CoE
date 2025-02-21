@@ -1,5 +1,6 @@
 
 #include <thread>
+#include <vector>
 #include <future>
 #include <string>
 #include <memory>
@@ -23,7 +24,8 @@ namespace dataAnalysis
 
 using namespace iPic3D;
 using velocitySoA = particleArraySoA::particleArraySoACUDA<cudaCommonType, 0, 3>;
-
+using namespace std;
+using namespace cudaGMMWeight;
 
 class dataAnalysisPipelineImpl {
 using weightType = cudaTypeSingle;
@@ -46,6 +48,8 @@ private:
     string GMMSubDomainOutputPath;
     cudaGMMWeight::GMM<cudaCommonType, GMM_DATA_DIM, weightType>* gmmArray = nullptr;
 
+    vector<array<vector<GMMResult<cudaCommonType, GMM_DATA_DIM>>, 3>> gmmResults;
+
 public:
 
     dataAnalysisPipelineImpl(c_Solver& KCode) {
@@ -65,6 +69,9 @@ public:
             if constexpr (GMM_ENABLE) { // GMM
                 GMMSubDomainOutputPath = GMM_OUTPUT_DIR + "subDomain" + std::to_string(KCode.myrank) + "/";
                 gmmArray = new cudaGMMWeight::GMM<cudaCommonType, GMM_DATA_DIM, weightType>[3];
+
+                if constexpr (GMM_OUTPUT) gmmResults.resize(ns);
+
             }
         }
     }
@@ -77,6 +84,22 @@ public:
 
 
     ~dataAnalysisPipelineImpl() {
+
+        if constexpr (GMM_OUTPUT) {
+            std::string uvw[3] = {"/uv", "/vw", "/uw"};
+
+            // output the GMM results
+            int i=0, j=0;
+            for (auto& speciesResArray : gmmResults) {
+                for (auto& plane : speciesResArray) {
+                    string planePath = GMMSubDomainOutputPath + "species" + std::to_string(i) + uvw[j] + ".json";
+                    GMMResult<cudaCommonType, GMM_DATA_DIM>::outputResultArray(plane, planePath, uvw[j]); 
+                    j++;  
+                }
+                i++;
+            }
+        }
+
         if (DAthreadPool != nullptr) delete DAthreadPool;
         if (velocitySoACUDA != nullptr) delete velocitySoACUDA;
         if (velocityHistogram != nullptr) delete velocityHistogram;
@@ -196,7 +219,12 @@ int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int spec
         gmm.config(&GMMParam, &GMMData);
         auto convergStep = gmm.initGMM(); // the exact output file name
         int ret = 0;
-        if constexpr (GMM_OUTPUT) ret = gmm.outputGMM(convergStep, fileOutputPath);
+        if constexpr (GMM_OUTPUT) {
+            ret = gmm.outputGMM(convergStep, fileOutputPath); // immediate output
+
+            // results vector
+            gmmResults[species][i].push_back(gmm.getGMMResult(cycle, convergStep));
+        }
 
         cudaErrChk(cudaHostUnregister(&GMMData));
         
