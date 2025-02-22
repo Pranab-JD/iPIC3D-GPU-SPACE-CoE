@@ -1,5 +1,6 @@
 
 #include <thread>
+#include <vector>
 #include <future>
 #include <string>
 #include <memory>
@@ -23,7 +24,8 @@ namespace dataAnalysis
 
 using namespace iPic3D;
 using velocitySoA = particleArraySoA::particleArraySoACUDA<cudaCommonType, 0, 3>;
-
+using namespace std;
+using namespace cudaGMMWeight;
 
 class dataAnalysisPipelineImpl {
 using weightType = cudaTypeSingle;
@@ -44,7 +46,9 @@ private:
 
     // GMM
     string GMMSubDomainOutputPath;
-    cudaGMMWeight::GMM<cudaCommonType, DATA_DIM, weightType>* gmmArray = nullptr;
+    cudaGMMWeight::GMM<cudaCommonType, GMM_DATA_DIM, weightType>* gmmArray = nullptr;
+
+    vector<array<vector<GMMResult<cudaCommonType, GMM_DATA_DIM>>, 3>> gmmResults;
 
 public:
 
@@ -60,11 +64,14 @@ public:
             velocitySoACUDA = new velocitySoA();
 
             HistogramSubDomainOutputPath = HISTOGRAM_OUTPUT_DIR + "subDomain" + std::to_string(KCode.myrank) + "/";
-            velocityHistogram = new velocityHistogram::velocityHistogram(12000);
+            velocityHistogram = new velocityHistogram::velocityHistogram(VELOCITY_HISTOGRAM_RES * VELOCITY_HISTOGRAM_RES);
 
             if constexpr (GMM_ENABLE) { // GMM
                 GMMSubDomainOutputPath = GMM_OUTPUT_DIR + "subDomain" + std::to_string(KCode.myrank) + "/";
-                gmmArray = new cudaGMMWeight::GMM<cudaCommonType, DATA_DIM, weightType>[3];
+                gmmArray = new cudaGMMWeight::GMM<cudaCommonType, GMM_DATA_DIM, weightType>[3];
+
+                if constexpr (GMM_OUTPUT) gmmResults.resize(ns);
+
             }
         }
     }
@@ -77,6 +84,22 @@ public:
 
 
     ~dataAnalysisPipelineImpl() {
+
+        if constexpr (GMM_OUTPUT) {
+            std::string uvw[3] = {"/uv", "/vw", "/uw"};
+
+            // output the GMM results
+            int i=0, j=0;
+            for (auto& speciesResArray : gmmResults) {
+                for (auto& plane : speciesResArray) {
+                    string planePath = GMMSubDomainOutputPath + "species" + std::to_string(i) + uvw[j] + ".json";
+                    GMMResult<cudaCommonType, GMM_DATA_DIM>::outputResultArray(plane, planePath, uvw[j]); 
+                    j++;  
+                }
+                i++;
+            }
+        }
+
         if (DAthreadPool != nullptr) delete DAthreadPool;
         if (velocitySoACUDA != nullptr) delete velocitySoACUDA;
         if (velocityHistogram != nullptr) delete velocityHistogram;
@@ -114,8 +137,8 @@ int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int spec
         std::mt19937 gen(rd()); // Mersenne Twister PRN
         const cudaCommonType maxVelocity = species == 0 || species == 2 ? MAX_VELOCITY_HIST_E : MAX_VELOCITY_HIST_I;
 
-        // it is assumed that DATA_DIM == 2 and thta the velocity range is homogenues in all dimensions
-        const cudaCommonType maxVelocityArray[DATA_DIM] = {maxVelocity,maxVelocity};
+        // it is assumed that GMM_DATA_DIM == 2 and thta the velocity range is homogenues in all dimensions
+        const cudaCommonType maxVelocityArray[GMM_DATA_DIM] = {maxVelocity,maxVelocity};
 
         std::uniform_real_distribution<cudaCommonType> distR(1e-8, maxVelocity);
         std::uniform_real_distribution<cudaCommonType> distTheta(0, 2*M_PI);
@@ -124,8 +147,8 @@ int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int spec
         cudaErrChk(cudaSetDevice(deviceOnNode));
 
         cudaCommonType weightVector[NUM_COMPONENT_GMM];
-        cudaCommonType meanVector[NUM_COMPONENT_GMM * DATA_DIM];
-        cudaCommonType coVarianceMatrix[NUM_COMPONENT_GMM * DATA_DIM * DATA_DIM ];
+        cudaCommonType meanVector[NUM_COMPONENT_GMM * GMM_DATA_DIM];
+        cudaCommonType coVarianceMatrix[NUM_COMPONENT_GMM * GMM_DATA_DIM * GMM_DATA_DIM ];
 
         const cudaCommonType uth = species == 0 || species == 2 ? 0.045 : 0.0126;
         const cudaCommonType vth = species == 0 || species == 2 ? 0.045 : 0.0126;
@@ -173,7 +196,6 @@ int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int spec
             .numComponents = NUM_COMPONENT_GMM,
             .maxIteration = MAX_ITERATION_GMM,
             .threshold = THRESHOLD_CONVERGENCE_GMM,
-            .maxVelocityArray = {maxVelocityArray[0],maxVelocityArray[1]},
 
             .weightInit = weightVector,
             .meanInit = meanVector,
@@ -181,20 +203,28 @@ int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int spec
         };
 
         // data
-        GMMDataMultiDim<cudaCommonType, DATA_DIM, weightType> GMMData
-            (10000, velocityHistogram->getHistogramScaleMark(i), velocityHistogram->getVelocityHistogramCUDAArray(i));
+        GMMDataMultiDim<cudaCommonType, GMM_DATA_DIM, weightType> GMMData
+            (VELOCITY_HISTOGRAM_RES*VELOCITY_HISTOGRAM_RES, 
+                velocityHistogram->getHistogramScaleMark(i), 
+                velocityHistogram->getVelocityHistogramCUDAArray(i), 
+                {maxVelocityArray[0], maxVelocityArray[1]});
 
         cudaErrChk(cudaHostRegister(&GMMData, sizeof(GMMData), cudaHostRegisterDefault));
         
         // generate exact output file path
-        std::string uvw[3] = {"/uv_", "/uw_", "/vw_"};
+        std::string uvw[3] = {"/uv_", "/vw_", "/uw_"};
         auto fileOutputPath = outputPath + uvw[i] + std::to_string(cycle) + ".json";
 
         auto& gmm = gmmArray[i];
         gmm.config(&GMMParam, &GMMData);
         auto convergStep = gmm.initGMM(); // the exact output file name
         int ret = 0;
-        if constexpr (GMM_OUTPUT) ret = gmm.outputGMM(convergStep, fileOutputPath);
+        if constexpr (GMM_OUTPUT) {
+            ret = gmm.outputGMM(convergStep, fileOutputPath); // immediate output
+
+            // results vector
+            gmmResults[species][i].push_back(gmm.getGMMResult(cycle, convergStep));
+        }
 
         cudaErrChk(cudaHostUnregister(&GMMData));
         
@@ -232,7 +262,7 @@ int dataAnalysisPipelineImpl::analysisEntre(int cycle){
             auto histogramSpeciesOutputPath = HistogramSubDomainOutputPath + "species" + std::to_string(i) + "/";
             velocityHistogram->init(velocitySoACUDA, cycle, i, streams[i]);
             if constexpr (HISTOGRAM_OUTPUT)
-            velocityHistogram->writeToFileFloat(histogramSpeciesOutputPath, streams[i]); // TODO
+            velocityHistogram->writeToFile(histogramSpeciesOutputPath, streams[i]); // TODO
             else cudaErrChk(cudaStreamSynchronize(streams[i]));
 
             if constexpr (GMM_ENABLE) { // GMM

@@ -42,13 +42,10 @@ __global__ void histogramUpdateKernel(histogramTypeIn* minUVW, histogramTypeIn* 
 }
 
 
-__global__ void velocityHistogramKernel(int nop, histogramTypeIn* u, histogramTypeIn* v, histogramTypeIn* w, histogramTypeIn* q,
-                                        velocityHistogramCUDA* histogramCUDAPtr);
-
 __global__ void resetBinScaleMarkKernel(velocityHistogramCUDA* histogramCUDAPtr);
 
-__global__ void velocityHistogramKernelOne(int nop, histogramTypeIn* d1, histogramTypeIn* d2, histogramTypeIn* q,
-                                        velocityHistogramCUDA* histogramCUDAPtr);
+__global__ void velocityHistogramKernel(const int nop, const histogramTypeIn* d1, const histogramTypeIn* d2, const histogramTypeIn* q,
+    velocityHistogramCUDA* histogramCUDAPtr);
 
 
 __host__ void velocityHistogram::init(velocitySoA* pclArray, int cycleNum, const int species, cudaStream_t stream){
@@ -59,24 +56,26 @@ __host__ void velocityHistogram::init(velocitySoA* pclArray, int cycleNum, const
                                                 binThisDim[0], binThisDim[1], 
                                                 histogramCUDAPtr);
 
+    const int binNum = binThisDim[0] * binThisDim[1];
     // reset the histogram buffer, set the scalMark
-    resetBinScaleMarkKernel<<<getGridSize(binThisDim[0] * binThisDim[1], 256), 256, 0, stream>>>(histogramCUDAPtr);
+    resetBinScaleMarkKernel<<<getGridSize(binNum, 256), 256, 0, stream>>>(histogramCUDAPtr);
 
-    // velocityHistogramKernel<<<getGridSize((int)pclArray->getNOP(), 256), 256, 0, stream>>>
-    //     (pclArray->getNOP(), pclArray->getElement(U), pclArray->getElement(V), pclArray->getElement(W), pclArray->getElement(Q),
-    //     histogramCUDAPtr);
 
-    int sharedMemSize = sizeof(histogramTypeOut) * binThisDim[0] * binThisDim[1];
+    // shared memory size
+    constexpr int tileSize = VELOCITY_HISTOGRAM_TILE * VELOCITY_HISTOGRAM_TILE;
+    constexpr int sharedMemSize = sizeof(histogramTypeOut) * tileSize;
+    if constexpr (sharedMemSize > 48 * 1024) throw std::runtime_error("Shared memory size exceeds the limit ...");
+    if(binNum % tileSize != 0) throw std::runtime_error("Adjust histogram resolution to multiply of tile ...");
 
-    velocityHistogramKernelOne<<<getGridSize((int)pclArray->getNOP() / 128, 512), 512, sharedMemSize, stream>>>
+    velocityHistogramKernel<<<getGridSize((int)pclArray->getNOP() / 128, 512), 512, sharedMemSize, stream>>>
         (pclArray->getNOP(), pclArray->getElement(U), pclArray->getElement(V), pclArray->getElement(Q),
         histogramCUDAPtr);
 
-    velocityHistogramKernelOne<<<getGridSize((int)pclArray->getNOP() / 128, 512), 512, sharedMemSize, stream>>>
+    velocityHistogramKernel<<<getGridSize((int)pclArray->getNOP() / 128, 512), 512, sharedMemSize, stream>>>
         (pclArray->getNOP(), pclArray->getElement(V), pclArray->getElement(W), pclArray->getElement(Q),
         histogramCUDAPtr + 1);
 
-    velocityHistogramKernelOne<<<getGridSize((int)pclArray->getNOP() / 128, 512), 512, sharedMemSize, stream>>>
+    velocityHistogramKernel<<<getGridSize((int)pclArray->getNOP() / 128, 512), 512, sharedMemSize, stream>>>
         (pclArray->getNOP(), pclArray->getElement(U), pclArray->getElement(W), pclArray->getElement(Q),
         histogramCUDAPtr + 2);
 
