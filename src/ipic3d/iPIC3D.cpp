@@ -67,6 +67,8 @@ int main(int argc, char **argv) {
     timeTasks.print_tasks_total_times();
 #endif
 
+  DA.writeGMMResults();
+
   KCode.Finalize();
  }
  // close MPI

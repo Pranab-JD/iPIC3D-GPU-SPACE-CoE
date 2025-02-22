@@ -82,23 +82,26 @@ public:
 
     int waitForAnalysis();
 
-
-    ~dataAnalysisPipelineImpl() {
+    void writeGMMResults() {
 
         if constexpr (GMM_OUTPUT) {
-            std::string uvw[3] = {"/uv", "/vw", "/uw"};
+            std::string uvw[3] = {"uv", "vw", "uw"};
 
-            // output the GMM results
-            int i=0, j=0;
+            int i = 0; // species index
             for (auto& speciesResArray : gmmResults) {
+                int j = 0; // uvw index
                 for (auto& plane : speciesResArray) {
-                    string planePath = GMMSubDomainOutputPath + "species" + std::to_string(i) + uvw[j] + ".json";
+                    string planePath = GMMSubDomainOutputPath + "species" + std::to_string(i) + "_" + uvw[j] + ".json";
                     GMMResult<cudaCommonType, GMM_DATA_DIM>::outputResultArray(plane, planePath, uvw[j]); 
                     j++;  
                 }
                 i++;
             }
         }
+    }
+
+
+    ~dataAnalysisPipelineImpl() {
 
         if (DAthreadPool != nullptr) delete DAthreadPool;
         if (velocitySoACUDA != nullptr) delete velocitySoACUDA;
@@ -367,6 +370,10 @@ void dataAnalysisPipeline::createOutputDirectory(int myrank, int ns, VirtualTopo
 
     if constexpr (VELOCITY_HISTOGRAM_ENABLE && HISTOGRAM_OUTPUT) {
         auto histogramSubDomainOutputPath = HISTOGRAM_OUTPUT_DIR + "subDomain" + std::to_string(myrank) + "/";
+        if(0 != checkOutputFolder(histogramSubDomainOutputPath)){
+            throw std::runtime_error("[!]Error: Can not create output folder for velocity histogram");
+        }
+
         for(int i = 0; i < ns; i++){
             auto histogramSpeciesOutputPath = histogramSubDomainOutputPath + "species" + std::to_string(i);
             if(0 != checkOutputFolder(histogramSpeciesOutputPath)){
@@ -378,6 +385,10 @@ void dataAnalysisPipeline::createOutputDirectory(int myrank, int ns, VirtualTopo
 
     if constexpr (GMM_ENABLE && GMM_OUTPUT) {
         auto GMMSubDomainOutputPath = GMM_OUTPUT_DIR + "subDomain" + std::to_string(myrank) + "/";
+        if(0 != checkOutputFolder(GMMSubDomainOutputPath)){
+            throw std::runtime_error("[!]Error: Can not create output folder for velocity GMM");
+        }
+        
         for(int i = 0; i < ns; i++){
             auto GMMSpeciesOutputPath = GMMSubDomainOutputPath + "species" + std::to_string(i) + "/";
             if(0 != checkOutputFolder(GMMSpeciesOutputPath)){
@@ -418,6 +429,13 @@ int dataAnalysisPipeline::waitForAnalysis() {
         return 0;
     }
     return impl->waitForAnalysis();
+}
+
+void dataAnalysisPipeline::writeGMMResults() {
+    if constexpr (DATA_ANALYSIS_ENABLED == false){
+        return;
+    }
+    impl->writeGMMResults();
 }
 
 dataAnalysisPipeline::~dataAnalysisPipeline() {
