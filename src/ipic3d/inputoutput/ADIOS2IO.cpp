@@ -1,3 +1,5 @@
+#ifdef USE_ADIOS2
+
 #include "ADIOS2IO.hpp"
 #include "iPic3D.h"
 #include "VCtopology3D.h"
@@ -161,3 +163,5 @@ void ADIOS2Manager::closeOutputFiles() {
 
 
 } // end namespace ADIOS2IO
+
+#endif

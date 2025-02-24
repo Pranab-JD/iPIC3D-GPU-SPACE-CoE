@@ -122,14 +122,22 @@ adios2::Variable<T> _variableHelper(adios2::IO &io, const std::string &name, con
     
     auto var = io.InquireVariable<T>(name);
 
-    if(var){
-        if (!shape.empty()) {
+    if(var){ // variable exists
+        if (!shape.empty()) { // is array
             var.SetShape(shape);
             var.SetSelection({start, count});
         }
     } 
-    else {
+    else { // first time define
         var = shape.empty() ? io.DefineVariable<T>(name) : io.DefineVariable<T>(name, shape, start, count, constantDims);
+        if (!var) throw std::runtime_error("Failed to define variable: " + name);
+        
+        // Operator
+        if (name.find("cycle") == string::npos) {
+            // auto ZFPOp = io.DefineOperator("CompressorZFP", adios2::ops::LossyZFP);
+            var.AddOperation(adios2::ops::LossyZFP, {{"rate", "32"}, {"backend", "omp"}});
+            
+        }
     }
 
     return var;            

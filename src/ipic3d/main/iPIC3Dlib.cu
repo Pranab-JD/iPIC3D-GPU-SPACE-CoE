@@ -220,7 +220,7 @@ int c_Solver::Init(int argc, char **argv) {
 
 #ifdef USE_ADIOS2
   adiosManager = new ADIOS2IO::ADIOS2Manager();
-  adiosManager->initOutputFiles("", "position+velocity", 0, *this);
+  if(col->getParticlesOutputCycle()) adiosManager->initOutputFiles("", col->getPclOutputTag(), 0, *this);
 #endif
 
   // Initial Condition for PARTICLES if you are not starting from RESTART
