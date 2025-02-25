@@ -13,6 +13,8 @@
 
 #include "MPIdata.h"
 
+#include <chrono>
+
 namespace ADIOS2IO {
 
 using namespace std;
@@ -111,9 +113,19 @@ void ADIOS2Manager::appendParticleOutput(int cycle) {
     auto cycleVar = _variableHelper<int>(ioParticle, "cycle");
     engineParticle.Put<int>(cycleVar, cycle);
 
+    auto timeVar = _variableHelper<int>(ioParticle, "IOTimeMS");
+    auto start = chrono::high_resolution_clock::now();
+
     for (auto option : particleOptions) {
         option(cycle);
     }
+
+    engineParticle.PerformPuts(); // do the heavy job here
+
+    auto stop = chrono::high_resolution_clock::now();
+    auto duration = chrono::duration_cast<chrono::milliseconds>(stop - start);
+
+    engineParticle.Put<int>(timeVar, duration.count());
 
     engineParticle.EndStep();
 

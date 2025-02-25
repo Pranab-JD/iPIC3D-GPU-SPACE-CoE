@@ -133,9 +133,13 @@ adios2::Variable<T> _variableHelper(adios2::IO &io, const std::string &name, con
         if (!var) throw std::runtime_error("Failed to define variable: " + name);
         
         // Operator
-        if (name.find("cycle") == string::npos) {
-            // auto ZFPOp = io.DefineOperator("CompressorZFP", adios2::ops::LossyZFP);
-            var.AddOperation(adios2::ops::LossyZFP, {{"rate", "32"}, {"backend", "omp"}});
+        if (name.find("part") != string::npos) {
+
+        //  var.AddOperation(adios2::ops::LossySZ, {{"accuracy", "0.00001"}});
+            //var.AddOperation(adios2::ops::LossyZFP, {{"accuracy", "0.01"}, {"backend", "serial"}});
+            // var.AddOperation(adios2::ops::LossyMGARD, {{"accuracy", "0.01"}});
+            // var.AddOperation(adios2::ops::LosslessBZIP2, {{"blockSize100k", "5"}});
+            // var.AddOperation(adios2::ops::LosslessBlosc, {{"compressor", "blosclz"}, {"clevel", "9"}});
             
         }
     }
