@@ -17,7 +17,9 @@
 #include "particleArraySoACUDA.cuh"
 #include "velocityHistogram.cuh"
 
-
+#ifdef USE_ADIOS2
+#include "adios2.h"
+#endif
 
 namespace dataAnalysis
 {
@@ -50,6 +52,12 @@ private:
 
     vector<array<vector<GMMResult<cudaCommonType, GMM_DATA_DIM>>, 3>> gmmResults;
 
+#ifdef USE_ADIOS2
+    adios2::ADIOS adios;
+    adios2::IO ioGMM;
+    adios2::Engine engineGMM;
+#endif
+
 public:
 
     dataAnalysisPipelineImpl(c_Solver& KCode) {
@@ -70,7 +78,16 @@ public:
                 GMMSubDomainOutputPath = GMM_OUTPUT_DIR + "subDomain" + std::to_string(KCode.myrank) + "/";
                 gmmArray = new cudaGMMWeight::GMM<cudaCommonType, GMM_DATA_DIM, weightType>[3];
 
-                if constexpr (GMM_OUTPUT) gmmResults.resize(ns);
+                if constexpr (GMM_OUTPUT) {
+                    gmmResults.resize(ns);
+
+#ifdef USE_ADIOS2
+                    adios = adios2::ADIOS(MPIdata::get_PicGlobalComm());
+                    ioGMM = adios.DeclareIO("GMM");
+                    engineGMM = ioGMM.Open(GMM_OUTPUT_DIR + "subDomain" + std::to_string(KCode.myrank) + "/" + "GMMResult.bp", adios2::Mode::Write, MPI_COMM_SELF);
+#endif
+
+                }
 
             }
         }
@@ -82,22 +99,32 @@ public:
 
     int waitForAnalysis();
 
+#ifdef USE_ADIOS2
+    void outputGMMADIOS2();
+#endif
+
     void writeGMMResults() {
 
-        if constexpr (GMM_OUTPUT) {
-            std::string uvw[3] = {"uv", "vw", "uw"};
+        if constexpr (!GMM_OUTPUT) return;
 
-            int i = 0; // species index
-            for (auto& speciesResArray : gmmResults) {
-                int j = 0; // uvw index
-                for (auto& plane : speciesResArray) {
-                    string planePath = GMMSubDomainOutputPath + "species" + std::to_string(i) + "_" + uvw[j] + ".json";
-                    GMMResult<cudaCommonType, GMM_DATA_DIM>::outputResultArray(plane, planePath, uvw[j]); 
-                    j++;  
-                }
-                i++;
+        // json file
+        std::string uvw[3] = {"uv", "vw", "uw"};
+
+        int i = 0; // species index
+        for (auto& speciesResArray : gmmResults) {
+            int j = 0; // uvw index
+            for (auto& plane : speciesResArray) {
+                string planePath = GMMSubDomainOutputPath + "species" + std::to_string(i) + "_" + uvw[j] + ".json";
+                GMMResult<cudaCommonType, GMM_DATA_DIM>::outputResultArray(plane, planePath, uvw[j]); 
+                j++;  
             }
+            i++;
         }
+
+#ifdef USE_ADIOS2
+        outputGMMADIOS2();  
+#endif
+        
     }
 
 
@@ -329,6 +356,88 @@ int dataAnalysisPipelineImpl::waitForAnalysis(){
 
     return 0;
 }
+
+#ifdef USE_ADIOS2
+
+void dataAnalysisPipelineImpl::outputGMMADIOS2() {
+    if constexpr (!GMM_OUTPUT) return;
+
+    constexpr int GMMDim = 2;
+
+    // variable array
+    adios2::Variable<cudaCommonType> varReal[ns][3][4];
+    adios2::Variable<int> varInt[ns][3][3];
+
+    // register the variables
+    for(int i = 0; i < ns; i++){
+        for(int j = 0; j < 3; j++){
+            std::string uvw[3] = {"uv", "vw", "uw"};
+            std::string varName = "species" + std::to_string(i) + "_" + uvw[j];
+
+            adios2::Dims shape = {1}; // {component}
+            varReal[i][j][0] = ioGMM.DefineVariable<cudaCommonType>(varName+"_weight", shape, {0}, shape, false);
+            varReal[i][j][1] = ioGMM.DefineVariable<cudaCommonType>(varName+"_mean", shape, {0}, shape, false);
+            varReal[i][j][2] = ioGMM.DefineVariable<cudaCommonType>(varName+"_coVariance", shape, {0}, shape, false);
+
+
+            // loglikelihood
+            std::string logLikelihoodVarName = "species" + std::to_string(i) + "_" + uvw[j] + "_logLikelihood";
+            varReal[i][j][3] = ioGMM.DefineVariable<cudaCommonType>(logLikelihoodVarName);
+
+            // convergence step
+            std::string convergeStepVarName = "species" + std::to_string(i) + "_" + uvw[j] + "_convergeStep";
+            varInt[i][j][0] = ioGMM.DefineVariable<int>(convergeStepVarName);
+
+            // simulation step
+            std::string simuStepVarName = "species" + std::to_string(i) + "_" + uvw[j] + "_simulationStep";
+            varInt[i][j][1] = ioGMM.DefineVariable<int>(simuStepVarName);
+
+            // number of components
+            std::string numComponentsVarName = "species" + std::to_string(i) + "_" + uvw[j] + "_numComponents";
+            varInt[i][j][2] = ioGMM.DefineVariable<int>(numComponentsVarName);
+
+        }
+    }
+
+
+    int cycleCount = gmmResults[0][0].size();
+    for(int i = 0; i < cycleCount; i++){
+        engineGMM.BeginStep();
+        for(int j=0; j < ns; j++){ 
+            for(int k=0; k < 3; k++){
+
+                // write data
+                engineGMM.Put(varInt[j][k][0], gmmResults[j][k][i].convergeStep, adios2::Mode::Deferred);
+                engineGMM.Put(varInt[j][k][1], gmmResults[j][k][i].simulationStep, adios2::Mode::Deferred);
+                engineGMM.Put(varInt[j][k][2], gmmResults[j][k][i].numComponents, adios2::Mode::Deferred);
+
+                engineGMM.Put(varReal[j][k][3], gmmResults[j][k][i].logLikelihoodFinal, adios2::Mode::Deferred);
+
+                // write the GMM components, adjust the shape first
+                const size_t componentNum = (size_t)gmmResults[j][k][i].numComponents;
+                varReal[j][k][0].SetShape({componentNum}); 
+                varReal[j][k][1].SetShape({componentNum * GMMDim});
+                varReal[j][k][2].SetShape({componentNum * GMMDim * GMMDim});
+
+                varReal[j][k][0].SetSelection({{0}, {componentNum}});
+                varReal[j][k][1].SetSelection({{0}, {componentNum * GMMDim}});
+                varReal[j][k][2].SetSelection({{0}, {componentNum * GMMDim * GMMDim}});
+
+                engineGMM.Put<cudaCommonType>(varReal[j][k][0], gmmResults[j][k][i].weight.get(), adios2::Mode::Deferred);
+                engineGMM.Put<cudaCommonType>(varReal[j][k][1], gmmResults[j][k][i].mean.get(), adios2::Mode::Deferred);
+                engineGMM.Put<cudaCommonType>(varReal[j][k][2], gmmResults[j][k][i].coVariance.get(), adios2::Mode::Deferred);
+                
+            }
+        }
+        engineGMM.EndStep();
+    }
+
+    engineGMM.Close();
+}
+
+
+#endif
+
 
 
 /**
