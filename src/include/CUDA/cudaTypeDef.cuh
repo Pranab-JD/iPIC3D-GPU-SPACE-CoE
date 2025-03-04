@@ -19,9 +19,9 @@ using cudaTypeDouble = double;
 using cudaTypeHalf = __half;
 
 using cudaCommonType = cudaTypeDouble;
-using cudaParticleType = cudaTypeSingle;
-using cudaFieldType = cudaTypeSingle; // type for the field array from host to device
-using cudaMomentType = cudaTypeDouble; // type for the moment array from device to host
+using cudaParticleType = cudaTypeDouble;
+using cudaFieldType = cudaTypeDouble; // type for the field array from host to device
+using cudaMomentType = cudaTypeDouble; // MUST be DOUBLE now, type for the moment array from device to host
 
 template <class T, int dim2, int dim3, int dim4>
 using cudaTypeArray4 = T (*)[dim2][dim3][dim4];

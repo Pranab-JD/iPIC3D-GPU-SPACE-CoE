@@ -77,11 +77,18 @@ class SpeciesParticle
   __host__ __device__ cudaParticleType get_q()const{ return q; }
   __host__ __device__ cudaParticleType get_x(int i)const{ return x[i]; }
   __host__ __device__ cudaParticleType get_t()const{ return t; }
-  __host__ __device__ void set_u(cudaParticleType* in, int n=3) { for(int i=0;i<n;i++) u[i] = in[i]; }
-  __host__ __device__ void set_u(int i, cudaParticleType in) { u[i] = in; }
-  __host__ __device__ void set_q(cudaParticleType in) { q = in; }
-  __host__ __device__ void set_x(int i, cudaParticleType in) { x[i] = in; }
-  __host__ __device__ void set_t(cudaParticleType in){ t=in; }
+
+  __host__ __device__ void set_u(cudaTypeSingle* in, int n=3) { for(int i=0;i<n;i++) u[i] = in[i]; }
+  __host__ __device__ void set_u(int i, cudaTypeSingle in) { u[i] = in; }
+  __host__ __device__ void set_q(cudaTypeSingle in) { q = in; }
+  __host__ __device__ void set_x(int i, cudaTypeSingle in) { x[i] = in; }
+  __host__ __device__ void set_t(cudaTypeSingle in){ t=in; }
+
+  __host__ __device__ void set_u(cudaTypeDouble* in, int n=3) { for(int i=0;i<n;i++) u[i] = in[i]; }
+  __host__ __device__ void set_u(int i, cudaTypeDouble in) { u[i] = in; }
+  __host__ __device__ void set_q(cudaTypeDouble in) { q = in; }
+  __host__ __device__ void set_x(int i, cudaTypeDouble in) { x[i] = in; }
+  __host__ __device__ void set_t(cudaTypeDouble in){ t=in; }
 
   __host__ __device__ void set_x_u(cudaParticleType x, cudaParticleType y, cudaParticleType z, 
                                     cudaParticleType u, cudaParticleType v, cudaParticleType w){
@@ -94,12 +101,6 @@ class SpeciesParticle
     this->x[2] = z;
 
   }
-// double for compatibility
-  __host__ __device__ void set_u(double* in, int n=3) { for(int i=0;i<n;i++) u[i] = in[i]; }
-  __host__ __device__ void set_u(int i, double in) { u[i] = in; }
-  __host__ __device__ void set_q(double in) { q = in; }
-  __host__ __device__ void set_x(int i, double in) { x[i] = in; }
-  __host__ __device__ void set_t(double in){ t=in; }
   
   // tracking particles would actually use q for the ID
   longid get_ID()const{ return longid(t); }
@@ -119,19 +120,20 @@ class SpeciesParticle
   __host__ __device__ cudaParticleType& fetch_v(){ return u[1]; }
   __host__ __device__ cudaParticleType& fetch_w(){ return u[2]; }
   __host__ __device__ cudaParticleType& fetch_t(){ return t; }
-  __host__ __device__ void set_x(cudaParticleType in){ x[0]=in; }
-  __host__ __device__ void set_y(cudaParticleType in){ x[1]=in; }
-  __host__ __device__ void set_z(cudaParticleType in){ x[2]=in; }
-  __host__ __device__ void set_u(cudaParticleType in){ u[0]=in; }
-  __host__ __device__ void set_v(cudaParticleType in){ u[1]=in; }
-  __host__ __device__ void set_w(cudaParticleType in){ u[2]=in; }
+
+  __host__ __device__ void set_x(cudaTypeSingle in){ x[0]=in; }
+  __host__ __device__ void set_y(cudaTypeSingle in){ x[1]=in; }
+  __host__ __device__ void set_z(cudaTypeSingle in){ x[2]=in; }
+  __host__ __device__ void set_u(cudaTypeSingle in){ u[0]=in; }
+  __host__ __device__ void set_v(cudaTypeSingle in){ u[1]=in; }
+  __host__ __device__ void set_w(cudaTypeSingle in){ u[2]=in; }
 // double for compatibility
-  __host__ __device__ void set_x(double in){ x[0]=in; }
-  __host__ __device__ void set_y(double in){ x[1]=in; }
-  __host__ __device__ void set_z(double in){ x[2]=in; }
-  __host__ __device__ void set_u(double in){ u[0]=in; }
-  __host__ __device__ void set_v(double in){ u[1]=in; }
-  __host__ __device__ void set_w(double in){ u[2]=in; }
+  __host__ __device__ void set_x(cudaTypeDouble in){ x[0]=in; }
+  __host__ __device__ void set_y(cudaTypeDouble in){ x[1]=in; }
+  __host__ __device__ void set_z(cudaTypeDouble in){ x[2]=in; }
+  __host__ __device__ void set_u(cudaTypeDouble in){ u[0]=in; }
+  __host__ __device__ void set_v(cudaTypeDouble in){ u[1]=in; }
+  __host__ __device__ void set_w(cudaTypeDouble in){ u[2]=in; }
 
   __host__ __device__ void set_to_zero()
   {
