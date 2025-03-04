@@ -158,11 +158,11 @@ namespace iPic3D {
 
 	//! simple device buffers
     // [10][nxn][nyn][nzn], a piece of cuda memory to hold the moment
-    cudaTypeArray1<cudaCommonType>* momentsCUDAPtr; // for every species
+    cudaTypeArray1<cudaMomentType>* momentsCUDAPtr; // for every species
     // [nxn][nyn][nzn][2*4], a piece of cuda memory to hold E and B from host
-    cudaTypeArray1<cudaCommonType> fieldForPclCUDAPtr; // for all species
+    cudaTypeArray1<cudaFieldType> fieldForPclCUDAPtr; // for all species
 
-    cudaTypeArray1<cudaCommonType> fieldForPclHostPtr;
+    cudaTypeArray1<cudaFieldType> fieldForPclHostPtr;
     
     ThreadPool *threadPoolPtr;
 

@@ -24,14 +24,14 @@
 #include "particleArrayCUDA.cuh"
 #include "hashedSum.cuh"
 
-using commonType = cudaCommonType;
+using commonType = cudaParticleType;
 
 __device__ constexpr bool cap_velocity() { return false; }
 
-__host__ __device__ void get_field_components_for_cell(
-    const commonType *field_components[8],
-    cudaTypeArray1<commonType> fieldForPcls, grid3DCUDA *grid,
-    int cx, int cy, int cz);
+// __host__ __device__ void get_field_components_for_cell(
+//     const cudaFieldType *field_components[8],
+//     cudaTypeArray1<cudaFieldType> fieldForPcls, grid3DCUDA *grid,
+//     int cx, int cy, int cz);
 
 __device__ void prepareDepartureArray(SpeciesParticle* pcl, 
                                     departureArrayType* departureArray, 
@@ -40,7 +40,7 @@ __device__ void prepareDepartureArray(SpeciesParticle* pcl,
                                     uint32_t pidx);
 
 __global__ void moverKernel(moverParameter *moverParam,
-                            cudaTypeArray1<commonType> fieldForPcls,
+                            cudaTypeArray1<cudaFieldType> fieldForPcls,
                             grid3DCUDA *grid)
 {
     uint pidx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -69,8 +69,8 @@ __global__ void moverKernel(moverParameter *moverParam,
     commonType wavg_old = worig;
 
     int innter = 0;
-    const commonType PC_err_2 = 1E-12;  // square of error tolerance
-    commonType currErr = PC_err_2 + 1.; // initialize to a larger value
+    const cudaTypeDouble PC_err_2 = 1E-12;  // square of error tolerance
+    cudaTypeDouble currErr = PC_err_2 + 1.; // initialize to a larger value
 
     // calculate the average velocity iteratively
     while (currErr > PC_err_2 && innter < moverParam->NiterMover)
@@ -167,12 +167,12 @@ __global__ void moverKernel(moverParameter *moverParam,
         }
     }
     //
-    pcl->set_x(xorig + uavg * moverParam->dt);
-    pcl->set_y(yorig + vavg * moverParam->dt);
-    pcl->set_z(zorig + wavg * moverParam->dt);
-    pcl->set_u(2.0 * uavg - uorig);
-    pcl->set_v(2.0 * vavg - vorig);
-    pcl->set_w(2.0 * wavg - worig);
+
+
+    pcl->set_x_u(   xorig + uavg * moverParam->dt,  yorig + vavg * moverParam->dt,  zorig + wavg * moverParam->dt,
+                    2.0f * uavg - uorig,            2.0f * vavg - vorig,            2.0f * wavg - worig);
+
+
 
     // prepare the departure array
 
@@ -180,41 +180,46 @@ __global__ void moverKernel(moverParameter *moverParam,
     
 }
 
-__host__ __device__ void get_field_components_for_cell(
-    const commonType *field_components[8],
-    const cudaTypeArray1<commonType> fieldForPcls, grid3DCUDA *grid,
-    int cx, int cy, int cz)
-{
-    // interface to the right of cell
-    const int ix = cx + 1;
-    const int iy = cy + 1;
-    const int iz = cz + 1;
-/*
-    auto field0 = fieldForPcls[ix];
-    auto field1 = fieldForPcls[cx];
-    auto field00 = field0[iy];
-    auto field01 = field0[cy];
-    auto field10 = field1[iy];
-    auto field11 = field1[cy];
-    field_components[0] = field00[iz]; // field000
-    field_components[1] = field00[cz]; // field001
-    field_components[2] = field01[iz]; // field010
-    field_components[3] = field01[cz]; // field011
-    field_components[4] = field10[iz]; // field100
-    field_components[5] = field10[cz]; // field101
-    field_components[6] = field11[iz]; // field110
-    field_components[7] = field11[cz]; // field111
-*/
+// __host__ __device__ void get_field_components_for_cell(
+//     const cudaFieldType *field_components[8],
+//     const cudaTypeArray1<cudaFieldType> fieldForPcls, grid3DCUDA *grid,
+//     int cx, int cy, int cz)
+// {
+//     // interface to the right of cell
+//     const int ix = cx + 1;
+//     const int iy = cy + 1;
+//     const int iz = cz + 1;
     
-    field_components[0] = fieldForPcls + toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, ix, iy, iz, 0); // field000
-    field_components[1] = fieldForPcls + toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, ix, iy, cz, 0); // field001
-    field_components[2] = fieldForPcls + toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, ix, cy, iz, 0); // field010
-    field_components[3] = fieldForPcls + toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, ix, cy, cz, 0); // field011
-    field_components[4] = fieldForPcls + toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, cx, iy, iz, 0); // field100
-    field_components[5] = fieldForPcls + toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, cx, iy, cz, 0); // field101
-    field_components[6] = fieldForPcls + toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, cx, cy, iz, 0); // field110
-    field_components[7] = fieldForPcls + toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, cx, cy, cz, 0); // field111
-}
+//     constexpr int ratio = sizeof(cudaCommonType) / sizeof(cudaFieldType);
+
+//     field_components[0] = fieldForPcls + ratio * toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, ix, iy, iz, 0); // field000
+//     field_components[1] = fieldForPcls + ratio * toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, ix, iy, cz, 0); // field001
+//     field_components[2] = fieldForPcls + ratio * toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, ix, cy, iz, 0); // field010
+//     field_components[3] = fieldForPcls + ratio * toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, ix, cy, cz, 0); // field011
+//     field_components[4] = fieldForPcls + ratio * toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, cx, iy, iz, 0); // field100
+//     field_components[5] = fieldForPcls + ratio * toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, cx, iy, cz, 0); // field101
+//     field_components[6] = fieldForPcls + ratio * toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, cx, cy, iz, 0); // field110
+//     field_components[7] = fieldForPcls + ratio * toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, cx, cy, cz, 0); // field111
+// }
+
+// __global__ void castingField(grid3DCUDA *grid, cudaTypeArray1<cudaCommonType> fieldForPcls){
+//     uint pidx = blockIdx.x * blockDim.x + threadIdx.x;
+//     if(pidx >= (grid->nxn * grid->nyn * grid->nzn))return;
+
+//     //cudaFieldType temp[8];
+
+//     auto pointDoublePtr = fieldForPcls + pidx * 8;
+//     cudaFieldType* pointSinglePtr = (cudaFieldType*)pointDoublePtr;
+
+//     for(int i=0; i < 8; i++){
+//         pointSinglePtr[i] = (cudaFieldType)pointDoublePtr[i];
+//     }
+
+//     // for(int i=0; i < 8; i++){
+//     //     pointSinglePtr[i] = temp[i];
+//     // }
+    
+// }
 
 
 
