@@ -19,7 +19,7 @@ namespace iPic3D {
 
 namespace ADIOS2IO {
 
-using namespace std;
+using optionFuncType = std::function<void(adios2::IO&, adios2::Engine&)>;
 
 class ADIOS2Manager {
 
@@ -29,22 +29,17 @@ private:
 
     adios2::IO ioField;
     adios2::Engine engineField;
-    vector <function<void(int)>> fieldOptions;
+    std::vector <optionFuncType> fieldOptions;
 
     adios2::IO ioParticle;
     adios2::Engine engineParticle;
-    vector <function<void(int)>> particleOptions;
+    std::vector <optionFuncType> particleOptions;
     
     adios2::IO ioRestart;
     adios2::Engine engineRestart;
-    vector <function<void(int)>> restartOptions;
+    std::vector <optionFuncType> restartOptions;
 
-    unordered_map<string, function<void(int)>> outputTagOptions = {
-        {"position", bind(&ADIOS2Manager::_particlePosition, this, placeholders::_1)},
-        {"velocity", bind(&ADIOS2Manager::_particleVelocity, this, placeholders::_1)},
-        {"q", bind(&ADIOS2Manager::_particleCharge, this, placeholders::_1)},
-        {"ID", bind(&ADIOS2Manager::_particleID, this, placeholders::_1)}
-    };
+    std::unordered_map<std::string, optionFuncType> outputTagOptions;
 
     // general
     int cartisianRank;
@@ -82,6 +77,15 @@ private:
     
 
 public:
+
+    ADIOS2Manager() {
+        outputTagOptions = {
+            {"position", std::bind(&ADIOS2Manager::_particlePosition, this, std::placeholders::_1, std::placeholders::_2)},
+            {"velocity", std::bind(&ADIOS2Manager::_particleVelocity, this, std::placeholders::_1, std::placeholders::_2)},
+            {"q", std::bind(&ADIOS2Manager::_particleCharge, this, std::placeholders::_1, std::placeholders::_2)},
+            {"ID", std::bind(&ADIOS2Manager::_particleID, this, std::placeholders::_1, std::placeholders::_2)}
+        };
+    }
 
 /**
  * @brief Construct a new ADIOS2Manager object
@@ -132,16 +136,6 @@ adios2::Variable<T> _variableHelper(adios2::IO &io, const std::string &name, con
         var = shape.empty() ? io.DefineVariable<T>(name) : io.DefineVariable<T>(name, shape, start, count, constantDims);
         if (!var) throw std::runtime_error("Failed to define variable: " + name);
         
-        // Operator
-        if (name.find("part") != string::npos) {
-
-        //  var.AddOperation(adios2::ops::LossySZ, {{"accuracy", "0.00001"}});
-            //var.AddOperation(adios2::ops::LossyZFP, {{"accuracy", "0.01"}, {"backend", "serial"}});
-            // var.AddOperation(adios2::ops::LossyMGARD, {{"accuracy", "0.01"}});
-            // var.AddOperation(adios2::ops::LosslessBZIP2, {{"blockSize100k", "5"}});
-            // var.AddOperation(adios2::ops::LosslessBlosc, {{"compressor", "blosclz"}, {"clevel", "9"}});
-            
-        }
     }
 
     return var;            
@@ -152,15 +146,11 @@ adios2::Variable<T> _variableHelper(adios2::IO &io, const std::string &name, con
     collective
     total_topology 
     proc_topology
-    Ball --> to write all B components
-    Bx,By,Bz
-    Eall --> to write all E components
-    Ex,Ey,Ez
+    B --> to write all B components
+    E --> to write all E components
     phi --> scalar vector
     Jall --> to write all J (current density) components
-    Jx,Jy,Jz
     Jsall --> to write all Js (current densities for each species) components
-    Jxs,Jys,Jzs
     rho -> net charge density
     rhos -> charge densities for each species
     pressure -> pressure tensor for each species
@@ -176,51 +166,51 @@ adios2::Variable<T> _variableHelper(adios2::IO &io, const std::string &name, con
     q -> particle charge
     ID -> particle ID (note: TrackParticleID has to be set true in Collective)
 */
-void _particlePosition(int cycle){
+void _particlePosition(adios2::IO &io, adios2::Engine &engine){
     for (int i = 0; i < ns; i++) {
         const unsigned long sizeNOP = static_cast<unsigned long>(part[i].getNOP());
 
-        auto x = _variableHelper<cudaCommonType>(ioParticle, "part" + to_string(i) + "PositionX", {sizeNOP}, {0}, {sizeNOP});
-        auto y = _variableHelper<cudaCommonType>(ioParticle, "part" + to_string(i) + "PositionY", {sizeNOP}, {0}, {sizeNOP});
-        auto z = _variableHelper<cudaCommonType>(ioParticle, "part" + to_string(i) + "PositionZ", {sizeNOP}, {0}, {sizeNOP});
+        auto x = _variableHelper<cudaCommonType>(io, "part" + std::to_string(i) + "PositionX", {sizeNOP}, {0}, {sizeNOP});
+        auto y = _variableHelper<cudaCommonType>(io, "part" + std::to_string(i) + "PositionY", {sizeNOP}, {0}, {sizeNOP});
+        auto z = _variableHelper<cudaCommonType>(io, "part" + std::to_string(i) + "PositionZ", {sizeNOP}, {0}, {sizeNOP});
 
-        engineParticle.Put<cudaCommonType>(x, part[i].getXall(), adios2::Mode::Deferred);
-        engineParticle.Put<cudaCommonType>(y, part[i].getYall(), adios2::Mode::Deferred);
-        engineParticle.Put<cudaCommonType>(z, part[i].getZall(), adios2::Mode::Deferred);
+        engine.Put<cudaCommonType>(x, part[i].getXall(), adios2::Mode::Deferred);
+        engine.Put<cudaCommonType>(y, part[i].getYall(), adios2::Mode::Deferred);
+        engine.Put<cudaCommonType>(z, part[i].getZall(), adios2::Mode::Deferred);
     }
 }
 
-void _particleVelocity(int cycle){
+void _particleVelocity(adios2::IO &io, adios2::Engine &engine){
     for (int i = 0; i < ns; i++) {
         const unsigned long sizeNOP = static_cast<unsigned long>(part[i].getNOP());
 
-        auto u = _variableHelper<cudaCommonType>(ioParticle, "part" + to_string(i) + "VelocityU", {sizeNOP}, {0}, {sizeNOP});
-        auto v = _variableHelper<cudaCommonType>(ioParticle, "part" + to_string(i) + "VelocityV", {sizeNOP}, {0}, {sizeNOP});
-        auto w = _variableHelper<cudaCommonType>(ioParticle, "part" + to_string(i) + "VelocityW", {sizeNOP}, {0}, {sizeNOP});
+        auto u = _variableHelper<cudaCommonType>(io, "part" + std::to_string(i) + "VelocityU", {sizeNOP}, {0}, {sizeNOP});
+        auto v = _variableHelper<cudaCommonType>(io, "part" + std::to_string(i) + "VelocityV", {sizeNOP}, {0}, {sizeNOP});
+        auto w = _variableHelper<cudaCommonType>(io, "part" + std::to_string(i) + "VelocityW", {sizeNOP}, {0}, {sizeNOP});
 
-        engineParticle.Put<cudaCommonType>(u, part[i].getUall(), adios2::Mode::Deferred);
-        engineParticle.Put<cudaCommonType>(v, part[i].getVall(), adios2::Mode::Deferred);
-        engineParticle.Put<cudaCommonType>(w, part[i].getWall(), adios2::Mode::Deferred);
+        engine.Put<cudaCommonType>(u, part[i].getUall(), adios2::Mode::Deferred);
+        engine.Put<cudaCommonType>(v, part[i].getVall(), adios2::Mode::Deferred);
+        engine.Put<cudaCommonType>(w, part[i].getWall(), adios2::Mode::Deferred);
     }
 }
 
-void _particleCharge(int cycle){
+void _particleCharge(adios2::IO &io, adios2::Engine &engine){
     for (int i = 0; i < ns; i++) {
         const unsigned long sizeNOP = static_cast<unsigned long>(part[i].getNOP());
 
-        auto var = _variableHelper<cudaCommonType>(ioParticle, "part" + to_string(i) + "charge", {sizeNOP}, {0}, {sizeNOP});
+        auto var = _variableHelper<cudaCommonType>(io, "part" + std::to_string(i) + "charge", {sizeNOP}, {0}, {sizeNOP});
 
-        engineParticle.Put<cudaCommonType>(var, part[i].getQall(), adios2::Mode::Deferred);
+        engine.Put<cudaCommonType>(var, part[i].getQall(), adios2::Mode::Deferred);
     }
 }
 
-void _particleID(int cycle){
+void _particleID(adios2::IO &io, adios2::Engine &engine){
     for (int i = 0; i < ns; i++) {
         const unsigned long sizeNOP = static_cast<unsigned long>(part[i].getNOP());
 
-        auto var = _variableHelper<cudaCommonType>(ioParticle, "part" + to_string(i) + "ID", {sizeNOP}, {0}, {sizeNOP});
+        auto var = _variableHelper<cudaCommonType>(io, "part" + std::to_string(i) + "ID", {sizeNOP}, {0}, {sizeNOP});
 
-        engineParticle.Put<cudaCommonType>(var, part[i].getParticleIDall(), adios2::Mode::Deferred);
+        engine.Put<cudaCommonType>(var, part[i].getParticleIDall(), adios2::Mode::Deferred);
     }
 }
 

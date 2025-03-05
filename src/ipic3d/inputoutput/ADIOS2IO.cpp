@@ -20,7 +20,7 @@ namespace ADIOS2IO {
 using namespace std;
 
 
-void ADIOS2Manager::initOutputFiles(string fieldTag, string particleTag, int sample, iPic3D::c_Solver& KCode) {
+void ADIOS2Manager::initOutputFiles(string fieldTag, string particleTag, int sample, bool ifRestart, iPic3D::c_Solver& KCode) {
 
     if (open) {
         closeOutputFiles();
@@ -50,10 +50,10 @@ void ADIOS2Manager::initOutputFiles(string fieldTag, string particleTag, int sam
     this->adios = adios2::ADIOS(MPIdata::get_PicGlobalComm());
 
     // open files
-    if (!fieldTag.empty()) { throw std::runtime_error("Field output is not supported yet"); 
+    if (!fieldTag.empty()) { throw runtime_error("Field output is not supported yet"); 
         this->ioField = adios.DeclareIO("FieldOutput");
         this->ioField.SetEngine("BP5");
-        auto filePath = saveDirName + "/field_" + std::to_string(cartisianRank) + ".bp";
+        auto filePath = saveDirName + "/field_" + to_string(cartisianRank) + ".bp";
         engineField = ioField.Open(filePath, adios2::Mode::Write);
 
     }
@@ -61,7 +61,7 @@ void ADIOS2Manager::initOutputFiles(string fieldTag, string particleTag, int sam
     if (!particleTag.empty()) {
         this->ioParticle = adios.DeclareIO("ParticleOutput");
         this->ioParticle.SetEngine("BP5");
-        auto filePath = saveDirName + "/particle_" + std::to_string(cartisianRank) + ".bp";
+        auto filePath = saveDirName + "/particle_" + to_string(cartisianRank) + ".bp";
         engineParticle = ioParticle.Open(filePath, adios2::Mode::Write, MPI_COMM_SELF);
 
         // parse the tag and prepae the map
@@ -78,17 +78,17 @@ void ADIOS2Manager::initOutputFiles(string fieldTag, string particleTag, int sam
             if (outputTagOptions.find(tag) != outputTagOptions.end()) {
                 particleOptions.push_back(outputTagOptions[tag]);
             } else {
-                throw std::runtime_error("Particle output tag is not supported: " + tag);
+                throw runtime_error("Particle output tag is not supported: " + tag);
             }
         }
 
 
     }
 
-    if (restartStatus > 0) { throw std::runtime_error("Restart output is not supported yet"); 
+    if (restartStatus > 0) { throw runtime_error("Restart output is not supported yet"); 
         this->ioRestart = adios.DeclareIO("RestartOutput");
         this->ioRestart.SetEngine("BP5");
-        auto filePath = restartDirName + "/restart_" + std::to_string(cartisianRank) + ".bp";
+        auto filePath = restartDirName + "/restart_" + to_string(cartisianRank) + ".bp";
         engineRestart = ioRestart.Open(filePath, adios2::Mode::Write, MPI_COMM_SELF);
 
 
@@ -102,7 +102,7 @@ void ADIOS2Manager::initOutputFiles(string fieldTag, string particleTag, int sam
 
 
 void ADIOS2Manager::appendFieldOutput(int cycle) {
-    throw std::runtime_error("Field output is not supported yet");
+    throw runtime_error("Field output is not supported yet");
 }
 
 void ADIOS2Manager::appendParticleOutput(int cycle) {
@@ -117,7 +117,7 @@ void ADIOS2Manager::appendParticleOutput(int cycle) {
     auto start = chrono::high_resolution_clock::now();
 
     for (auto option : particleOptions) {
-        option(cycle);
+        option(ioParticle, engineParticle);
     }
 
     engineParticle.PerformPuts(); // do the heavy job here
@@ -133,12 +133,12 @@ void ADIOS2Manager::appendParticleOutput(int cycle) {
 
 
 void ADIOS2Manager::appendRestartOutput(int cycle) {
-    throw std::runtime_error("Restart output is not supported yet");
+    throw runtime_error("Restart output is not supported yet");
 }
 
 
 void ADIOS2Manager::appendOutput(int cycle) {
-    if (!open) throw std::runtime_error("Output files are not open");
+    if (!open) throw runtime_error("Output files are not open");
 
 
     appendParticleOutput(cycle);
