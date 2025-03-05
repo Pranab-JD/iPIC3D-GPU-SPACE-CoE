@@ -25,12 +25,17 @@ namespace dataAnalysis
 {
 
 using namespace iPic3D;
-using velocitySoA = particleArraySoA::particleArraySoACUDA<cudaCommonType, 0, 3>;
+using velocitySoA = particleArraySoA::particleArraySoACUDA<cudaParticleType, 0, 3>;
 using namespace std;
 using namespace cudaGMMWeight;
 
+using GMMType = cudaParticleType;
+using weightType = velocityHistogram::histogramTypeOut;
+
+
 class dataAnalysisPipelineImpl {
-using weightType = cudaTypeSingle;
+
+
 private:
     int ns;
     int deviceOnNode;
@@ -48,9 +53,9 @@ private:
 
     // GMM
     string GMMSubDomainOutputPath;
-    cudaGMMWeight::GMM<cudaCommonType, GMM_DATA_DIM, weightType>* gmmArray = nullptr;
+    cudaGMMWeight::GMM<GMMType, GMM_DATA_DIM, weightType>* gmmArray = nullptr;
 
-    vector<array<vector<GMMResult<cudaCommonType, GMM_DATA_DIM>>, 3>> gmmResults;
+    vector<array<vector<GMMResult<GMMType, GMM_DATA_DIM>>, 3>> gmmResults;
 
 #ifdef USE_ADIOS2
     adios2::ADIOS adios;
@@ -76,7 +81,7 @@ public:
 
             if constexpr (GMM_ENABLE) { // GMM
                 GMMSubDomainOutputPath = GMM_OUTPUT_DIR + "subDomain" + std::to_string(KCode.myrank) + "/";
-                gmmArray = new cudaGMMWeight::GMM<cudaCommonType, GMM_DATA_DIM, weightType>[3];
+                gmmArray = new cudaGMMWeight::GMM<GMMType, GMM_DATA_DIM, weightType>[3];
 
                 if constexpr (GMM_OUTPUT) {
                     gmmResults.resize(ns);
@@ -115,7 +120,7 @@ public:
             int j = 0; // uvw index
             for (auto& plane : speciesResArray) {
                 string planePath = GMMSubDomainOutputPath + "species" + std::to_string(i) + "_" + uvw[j] + ".json";
-                GMMResult<cudaCommonType, GMM_DATA_DIM>::outputResultArray(plane, planePath, uvw[j]); 
+                GMMResult<GMMType, GMM_DATA_DIM>::outputResultArray(plane, planePath, uvw[j]); 
                 j++;  
             }
             i++;
@@ -153,8 +158,6 @@ private:
  */
 int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int species, const std::string outputPath){
 
-    using weightType = cudaTypeSingle;
-
     std::future<int> future[3];
 
     auto GMMLambda = [=](int i) mutable {
@@ -165,27 +168,27 @@ int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int spec
         // set the random number generator
         std::random_device rd;  // True random seed
         std::mt19937 gen(rd()); // Mersenne Twister PRN
-        const cudaCommonType maxVelocity = species == 0 || species == 2 ? MAX_VELOCITY_HIST_E : MAX_VELOCITY_HIST_I;
+        const GMMType maxVelocity = species == 0 || species == 2 ? MAX_VELOCITY_HIST_E : MAX_VELOCITY_HIST_I;
 
         // it is assumed that GMM_DATA_DIM == 2 and thta the velocity range is homogenues in all dimensions
-        const cudaCommonType maxVelocityArray[GMM_DATA_DIM] = {maxVelocity,maxVelocity};
+        const GMMType maxVelocityArray[GMM_DATA_DIM] = {maxVelocity,maxVelocity};
 
-        std::uniform_real_distribution<cudaCommonType> distR(1e-8, maxVelocity);
-        std::uniform_real_distribution<cudaCommonType> distTheta(0, 2*M_PI);
+        std::uniform_real_distribution<GMMType> distR(1e-8, maxVelocity);
+        std::uniform_real_distribution<GMMType> distTheta(0, 2*M_PI);
         
 
         cudaErrChk(cudaSetDevice(deviceOnNode));
 
-        cudaCommonType weightVector[NUM_COMPONENT_GMM];
-        cudaCommonType meanVector[NUM_COMPONENT_GMM * GMM_DATA_DIM];
-        cudaCommonType coVarianceMatrix[NUM_COMPONENT_GMM * GMM_DATA_DIM * GMM_DATA_DIM ];
+        GMMType weightVector[NUM_COMPONENT_GMM];
+        GMMType meanVector[NUM_COMPONENT_GMM * GMM_DATA_DIM];
+        GMMType coVarianceMatrix[NUM_COMPONENT_GMM * GMM_DATA_DIM * GMM_DATA_DIM ];
 
-        const cudaCommonType uth = species == 0 || species == 2 ? 0.045 : 0.0126;
-        const cudaCommonType vth = species == 0 || species == 2 ? 0.045 : 0.0126;
-        const cudaCommonType wth = species == 0 || species == 2 ? 0.045 : 0.0126;
+        const GMMType uth = species == 0 || species == 2 ? 0.045 : 0.0126;
+        const GMMType vth = species == 0 || species == 2 ? 0.045 : 0.0126;
+        const GMMType wth = species == 0 || species == 2 ? 0.045 : 0.0126;
         
-        cudaCommonType var1 = 0.01;
-        cudaCommonType var2 = 0.01; 
+        GMMType var1 = 0.01;
+        GMMType var2 = 0.01; 
         
         if (i==0)
         {
@@ -204,7 +207,7 @@ int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int spec
         }
         
         
-        cudaCommonType normalization = 1.0;
+        GMMType normalization = 1.0;
         // normalize initial parameters if NORMALIZE_DATA_FOR_GMM==true
         if constexpr(NORMALIZE_DATA_FOR_GMM)
         {
@@ -212,8 +215,8 @@ int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int spec
         }
         for(int j = 0; j < NUM_COMPONENT_GMM; j++){
             weightVector[j] = 1.0/NUM_COMPONENT_GMM;
-            cudaCommonType radius = distR(gen);
-            cudaCommonType theta = distTheta(gen);
+            GMMType radius = distR(gen);
+            GMMType theta = distTheta(gen);
             meanVector[j * 2] =  radius*cos(theta)/normalization;
             meanVector[j * 2 + 1] = radius*sin(theta)/normalization;
             coVarianceMatrix[j * 4] = var1/(normalization*normalization);
@@ -222,7 +225,7 @@ int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int spec
             coVarianceMatrix[j * 4 + 3] = var2/(normalization*normalization);
         }
 
-        GMMParam_t<cudaCommonType> GMMParam = {
+        GMMParam_t<GMMType> GMMParam = {
             .numComponents = NUM_COMPONENT_GMM,
             .maxIteration = MAX_ITERATION_GMM,
             .threshold = THRESHOLD_CONVERGENCE_GMM,
@@ -233,7 +236,7 @@ int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int spec
         };
 
         // data
-        GMMDataMultiDim<cudaCommonType, GMM_DATA_DIM, weightType> GMMData
+        GMMDataMultiDim<GMMType, GMM_DATA_DIM, weightType> GMMData
             (VELOCITY_HISTOGRAM_RES*VELOCITY_HISTOGRAM_RES, 
                 velocityHistogram->getHistogramScaleMark(i), 
                 velocityHistogram->getVelocityHistogramCUDAArray(i), 
@@ -365,7 +368,7 @@ void dataAnalysisPipelineImpl::outputGMMADIOS2() {
     constexpr int GMMDim = 2;
 
     // variable array
-    adios2::Variable<cudaCommonType> varReal[ns][3][4];
+    adios2::Variable<GMMType> varReal[ns][3][4];
     adios2::Variable<int> varInt[ns][3][3];
 
     // register the variables
@@ -375,14 +378,14 @@ void dataAnalysisPipelineImpl::outputGMMADIOS2() {
             std::string varName = "species" + std::to_string(i) + "_" + uvw[j];
 
             adios2::Dims shape = {1}; // {component}
-            varReal[i][j][0] = ioGMM.DefineVariable<cudaCommonType>(varName+"_weight", shape, {0}, shape, false);
-            varReal[i][j][1] = ioGMM.DefineVariable<cudaCommonType>(varName+"_mean", shape, {0}, shape, false);
-            varReal[i][j][2] = ioGMM.DefineVariable<cudaCommonType>(varName+"_coVariance", shape, {0}, shape, false);
+            varReal[i][j][0] = ioGMM.DefineVariable<GMMType>(varName+"_weight", shape, {0}, shape, false);
+            varReal[i][j][1] = ioGMM.DefineVariable<GMMType>(varName+"_mean", shape, {0}, shape, false);
+            varReal[i][j][2] = ioGMM.DefineVariable<GMMType>(varName+"_coVariance", shape, {0}, shape, false);
 
 
             // loglikelihood
             std::string logLikelihoodVarName = "species" + std::to_string(i) + "_" + uvw[j] + "_logLikelihood";
-            varReal[i][j][3] = ioGMM.DefineVariable<cudaCommonType>(logLikelihoodVarName);
+            varReal[i][j][3] = ioGMM.DefineVariable<GMMType>(logLikelihoodVarName);
 
             // convergence step
             std::string convergeStepVarName = "species" + std::to_string(i) + "_" + uvw[j] + "_convergeStep";
@@ -407,11 +410,11 @@ void dataAnalysisPipelineImpl::outputGMMADIOS2() {
             for(int k=0; k < 3; k++){
 
                 // write data
-                engineGMM.Put(varInt[j][k][0], gmmResults[j][k][i].convergeStep, adios2::Mode::Deferred);
-                engineGMM.Put(varInt[j][k][1], gmmResults[j][k][i].simulationStep, adios2::Mode::Deferred);
-                engineGMM.Put(varInt[j][k][2], gmmResults[j][k][i].numComponents, adios2::Mode::Deferred);
+                engineGMM.Put(varInt[j][k][0], gmmResults[j][k][i].convergeStep);
+                engineGMM.Put(varInt[j][k][1], gmmResults[j][k][i].simulationStep);
+                engineGMM.Put(varInt[j][k][2], gmmResults[j][k][i].numComponents);
 
-                engineGMM.Put(varReal[j][k][3], gmmResults[j][k][i].logLikelihoodFinal, adios2::Mode::Deferred);
+                engineGMM.Put(varReal[j][k][3], gmmResults[j][k][i].logLikelihoodFinal);
 
                 // write the GMM components, adjust the shape first
                 const size_t componentNum = (size_t)gmmResults[j][k][i].numComponents;
@@ -423,9 +426,9 @@ void dataAnalysisPipelineImpl::outputGMMADIOS2() {
                 varReal[j][k][1].SetSelection({{0}, {componentNum * GMMDim}});
                 varReal[j][k][2].SetSelection({{0}, {componentNum * GMMDim * GMMDim}});
 
-                engineGMM.Put<cudaCommonType>(varReal[j][k][0], gmmResults[j][k][i].weight.get(), adios2::Mode::Deferred);
-                engineGMM.Put<cudaCommonType>(varReal[j][k][1], gmmResults[j][k][i].mean.get(), adios2::Mode::Deferred);
-                engineGMM.Put<cudaCommonType>(varReal[j][k][2], gmmResults[j][k][i].coVariance.get(), adios2::Mode::Deferred);
+                engineGMM.Put<GMMType>(varReal[j][k][0], gmmResults[j][k][i].weight.get());
+                engineGMM.Put<GMMType>(varReal[j][k][1], gmmResults[j][k][i].mean.get());
+                engineGMM.Put<GMMType>(varReal[j][k][2], gmmResults[j][k][i].coVariance.get());
                 
             }
         }

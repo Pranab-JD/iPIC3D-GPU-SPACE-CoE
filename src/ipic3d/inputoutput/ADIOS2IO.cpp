@@ -20,7 +20,7 @@ namespace ADIOS2IO {
 using namespace std;
 
 
-void ADIOS2Manager::initOutputFiles(string fieldTag, string particleTag, int sample, bool ifRestart, iPic3D::c_Solver& KCode) {
+void ADIOS2Manager::initOutputFiles(string fieldTag, string particleTag, int sample, iPic3D::c_Solver& KCode) {
 
     if (open) {
         closeOutputFiles();

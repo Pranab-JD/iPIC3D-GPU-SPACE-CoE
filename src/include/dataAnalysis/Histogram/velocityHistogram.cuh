@@ -220,7 +220,7 @@ public:
 
 namespace velocityHistogram{
 
-using histogramTypeIn = cudaCommonType;
+using histogramTypeIn = cudaParticleType;
 using histogramTypeOut = cudaTypeSingle;
 
 using velocityHistogramCUDA = histogram::histogramCUDA<histogramTypeIn, 2, histogramTypeOut>;
