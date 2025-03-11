@@ -57,6 +57,7 @@
 #define cudaEventElapsedTime hipEventElapsedTime
 #define cudaEventDisableTiming hipEventDisableTiming
 #define cudaEventCreateWithFlags hipEventCreateWithFlags
+#define cudaEventBlockingSync hipEventBlockingSync
 
 // Texture and Surface References
 #define cudaTextureObject_t hipTextureObject_t
