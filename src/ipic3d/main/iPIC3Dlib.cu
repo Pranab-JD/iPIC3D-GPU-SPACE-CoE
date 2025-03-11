@@ -1179,7 +1179,7 @@ void c_Solver::WriteTestParticles(int cycle)
 // and methods that save field data
 //
 void c_Solver::Finalize() {
-  if (col->getCallFinalize() && Parameters::get_doWriteOutput())
+  if (col->getCallFinalize() && Parameters::get_doWriteOutput() && col->getRestartOutputCycle() > 0)
   {
     #ifndef NO_HDF5
     outputCopyAsync(-1);
