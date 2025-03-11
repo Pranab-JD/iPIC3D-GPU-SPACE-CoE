@@ -64,6 +64,10 @@ public:
   /** constructor */
   Particles3Dcomm(int species, CollectiveIO * col,
     VirtualTopology3D * vct, Grid * grid);
+
+  void reserveSpace(int nop);
+  void restartLoad();
+
   /** destructor */
   ~Particles3Dcomm();
 

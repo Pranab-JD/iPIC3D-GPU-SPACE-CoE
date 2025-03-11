@@ -29,7 +29,7 @@ void ADIOS2Manager::initOutputFiles(string fieldTag, string particleTag, int sam
     this->cartisianRank = KCode.vct->getCartesian_rank();
     this->saveDirName = KCode.col->getSaveDirName();
     this->restartDirName = KCode.col->getRestartDirName();
-    this->restartStatus = KCode.col->getRestart_status();
+    this->restartTag = KCode.col->getRestartOutputCycle()? "proc_topology+E+B+rhos+Js+pressure+position+velocity+q+ID"s : ""s;
 
     this->fieldTag = fieldTag;
     this->particleTag = particleTag;
@@ -62,7 +62,7 @@ void ADIOS2Manager::initOutputFiles(string fieldTag, string particleTag, int sam
         this->ioParticle = adios.DeclareIO("ParticleOutput");
         this->ioParticle.SetEngine("BP5");
         auto filePath = saveDirName + "/particle_" + to_string(cartisianRank) + ".bp";
-        engineParticle = ioParticle.Open(filePath, adios2::Mode::Write, MPI_COMM_SELF);
+        engineParticle = ioParticle.Open(filePath, col->getRestart_status() == 0 ? adios2::Mode::Write : adios2::Mode::Append, MPI_COMM_SELF);
 
         // parse the tag and prepae the map
         particleTag.erase(remove(particleTag.begin(), particleTag.end(), ' '), particleTag.end());
@@ -85,12 +85,30 @@ void ADIOS2Manager::initOutputFiles(string fieldTag, string particleTag, int sam
 
     }
 
-    if (restartStatus > 0) { throw runtime_error("Restart output is not supported yet"); 
+
+    if (!restartTag.empty()) { 
+        
         this->ioRestart = adios.DeclareIO("RestartOutput");
         this->ioRestart.SetEngine("BP5");
         auto filePath = restartDirName + "/restart_" + to_string(cartisianRank) + ".bp";
-        engineRestart = ioRestart.Open(filePath, adios2::Mode::Write, MPI_COMM_SELF);
+        engineRestart = ioRestart.Open(filePath, col->getRestart_status() == 0 ? adios2::Mode::Write : adios2::Mode::Append, MPI_COMM_SELF);
 
+        // parse the tag and prepae the map
+        restartTag.erase(remove(restartTag.begin(), restartTag.end(), ' '), restartTag.end());
+        vector<string> tags;
+        stringstream ss(restartTag);
+        string tag;
+        while (getline(ss, tag, '+')) {
+            tags.push_back(tag);
+        }
+        // find the function in the map and register it to vector
+        for (auto tag : tags) {
+            if (outputTagOptions.find(tag) != outputTagOptions.end()) {
+                restartOptions.push_back(outputTagOptions[tag]);
+            } else {
+                throw runtime_error("Restart output tag is not supported: " + tag);
+            }
+        }
 
     }
 
@@ -113,19 +131,18 @@ void ADIOS2Manager::appendParticleOutput(int cycle) {
     auto cycleVar = _variableHelper<int>(ioParticle, "cycle");
     engineParticle.Put<int>(cycleVar, cycle);
 
-    auto timeVar = _variableHelper<int>(ioParticle, "IOTimeMS");
-    auto start = chrono::high_resolution_clock::now();
+    // auto timeVar = _variableHelper<int>(ioParticle, "IOTimeMS");
+    // auto start = chrono::high_resolution_clock::now();
 
     for (auto option : particleOptions) {
         option(ioParticle, engineParticle);
     }
 
-    engineParticle.PerformPuts(); // do the heavy job here
+    // engineParticle.PerformPuts(); // do the heavy job here
 
-    auto stop = chrono::high_resolution_clock::now();
-    auto duration = chrono::duration_cast<chrono::milliseconds>(stop - start);
-
-    engineParticle.Put<int>(timeVar, duration.count());
+    // auto stop = chrono::high_resolution_clock::now();
+    // auto duration = chrono::duration_cast<chrono::milliseconds>(stop - start);
+    // engineParticle.Put<int>(timeVar, duration.count());
 
     engineParticle.EndStep();
 
@@ -133,7 +150,17 @@ void ADIOS2Manager::appendParticleOutput(int cycle) {
 
 
 void ADIOS2Manager::appendRestartOutput(int cycle) {
-    throw runtime_error("Restart output is not supported yet");
+
+    engineRestart.BeginStep();
+
+    auto cycleVar = _variableHelper<int>(ioRestart, "cycle");
+    engineRestart.Put<int>(cycleVar, cycle);
+    for (auto option : restartOptions) {
+        option(ioRestart, engineRestart);
+    }
+
+    engineRestart.EndStep();
+
 }
 
 
@@ -161,7 +188,7 @@ void ADIOS2Manager::closeOutputFiles() {
         engineParticle.Close();
     }
 
-    if (restartStatus > 0) {
+    if (!restartTag.empty()) {
         engineRestart.Close();
     }
 

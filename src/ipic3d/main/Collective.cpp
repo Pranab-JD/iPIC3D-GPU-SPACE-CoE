@@ -34,6 +34,10 @@
 #include "asserts.h" // for assert_ge
 #include "string.h"
 
+#ifdef USE_ADIOS2
+#include "adios2.h"
+#endif
+
 // order must agree with Enum in Collective.h
 static const char *enumNames[] =
 {
@@ -472,20 +476,39 @@ void Collective::ReadInput(string inputfile) {
   bcPfaceZleft  = config.read < int >("bcPfaceZleft",1);
 
 #ifndef NO_HDF5 
-  if (RESTART1) {               // you are restarting
+  if (RESTART1) {               // you are restarting 
     RestartDirName = config.read < string > ("RestartDirName","data");
-    //ReadRestart(RestartDirName);
+    //ReadRestart(RestartDirName); // not from restart file
     restart_status = 1;
-    hid_t file_id = H5Fopen((RestartDirName + "/restart0.hdf").c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
-    if (file_id < 0) {
-      cout << "couldn't open file: " << inputfile << endl;
-      return;
-    }
 
-    hid_t dataset_id = H5Dopen2(file_id, "/last_cycle", H5P_DEFAULT);  // HDF 1.8.8
-    herr_t status = H5Dread(dataset_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &last_cycle);
-    status = H5Dclose(dataset_id);
-    status = H5Fclose(file_id);
+    // read last cycle from BP
+    string filePath = RestartDirName + "/restart_0.bp";
+    adios2::ADIOS adios;
+    adios2::IO io;
+    adios2::Engine engine;
+
+    io = adios.DeclareIO("restart");
+    io.SetEngine("BP5");
+    engine = io.Open(filePath, adios2::Mode::Read);
+
+    auto stepNum = engine.Steps();
+
+    for(unsigned int step = 0; engine.BeginStep() == adios2::StepStatus::OK; ++step) {
+
+      if (step < stepNum-1) {// to read the last step
+        engine.EndStep();
+        continue; 
+      }
+      // read the last cycle
+      engine.Get("cycle", last_cycle);
+      engine.EndStep();
+
+      if(MPIdata::get_rank() == 0) std::cout << "[*]Restarting last cycle = " << last_cycle << std::endl;
+      break; // a must, or loop forever in next beginStep
+
+    }
+    engine.Close();
+
   }
 #endif
 
@@ -524,7 +547,7 @@ bool Collective::testparticle_output_is_off()const
  * There are three restart status: restart_status = 0 ---> new inputfile
  * restart_status = 1 ---> RESTART and restart and result directories does not coincide
  * restart_status = 2 ---> RESTART and restart and result directories coincide */
-int Collective::ReadRestart(string inputfile) {
+int Collective::ReadRestart(string inputfile) { // not used
 #ifdef NO_HDF5
   eprintf("restart requires compiling with HDF5");
 #else
@@ -822,147 +845,88 @@ int Collective::ReadRestart(string inputfile) {
 }
 
 
-
-void Collective::read_field_restart(
+void Collective::read_field_restart(// real field read from restart file
     const VCtopology3D* vct,
     const Grid* grid,
     arr3_double Bxn, arr3_double Byn, arr3_double Bzn,
     arr3_double Ex, arr3_double Ey, arr3_double Ez,
     array4_double* rhons_, int ns)const
 {
-#ifdef NO_HDF5
-  eprintf("Require HDF5 to read from restart file.");
+#ifndef USE_ADIOS2
+  eprintf("Require ADIOS2 to read from restart file.");
 #else
     const int nxn = grid->getNXN();
     const int nyn = grid->getNYN();
     const int nzn = grid->getNZN();
     if (vct->getCartesian_rank() == 0)
     {
-      printf("LOADING EM FIELD FROM RESTART FILE in %s/restart.hdf\n",getRestartDirName().c_str());
+      printf("LOADING EM FIELD FROM RESTART FILE in %s/restart.bp\n",getRestartDirName().c_str());
     }
 
     stringstream ss;
     ss << vct->getCartesian_rank();
-    string name_file = getRestartDirName() + "/restart" + ss.str() + ".hdf";
+    string name_file = getRestartDirName() + "/restart_" + ss.str() + ".bp";
 
-    // hdf stuff
-    hid_t file_id, dataspace;
-    hid_t datatype, dataset_id;
-    herr_t status;
-    size_t size;
-    hsize_t dims_out[3];        /* dataset dimensions */
-    int status_n;
+    // ghost cells are also copied 
 
-    // open the hdf file
-    file_id = H5Fopen(name_file.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
-    if (file_id < 0) {
-      eprintf("Failed to open file: %s\n ", name_file.c_str());
+    adios2::ADIOS adios;
+    adios2::IO ioField;
+    adios2::Engine engineField;
+
+    // open BP file
+    ioField = adios.DeclareIO("Field");
+    ioField.SetEngine("BP5");
+    engineField = ioField.Open(name_file, adios2::Mode::Read);
+
+    auto stepNum = engineField.Steps();
+
+    for(unsigned int step = 0; engineField.BeginStep() == adios2::StepStatus::OK; ++step) {
+
+      if (step < stepNum-1) {// to read the last step
+        engineField.EndStep();
+        continue; 
+      }
+
+      // last cycle
+      int lastCycle = -1;
+
+      engineField.Get<int>("cycle", lastCycle, adios2::Mode::Sync);
+      if (lastCycle != last_cycle) {
+        engineField.EndStep();
+        engineField.Close();  
+
+        printf("last_cycle = %d\n", lastCycle);
+        printf("last_cycle = %d\n", last_cycle);
+        eprintf("last_cycle in restart file does not match the one in settings file");
+      } else {
+        if(MPIdata::get_rank() == 0) std::cout << "[*] Fields Restarting from cycle: " << lastCycle << std::endl;
+      }
+
+      // Bxn
+      engineField.Get<cudaCommonType>("Bx", (cudaCommonType*)Bxn.get_arr(), adios2::Mode::Deferred);
+      // Byn
+      engineField.Get<cudaCommonType>("By", (cudaCommonType*)Byn.get_arr(), adios2::Mode::Deferred);
+      // Bzn
+      engineField.Get<cudaCommonType>("Bz", (cudaCommonType*)Bzn.get_arr(), adios2::Mode::Deferred);
+      // Ex
+      engineField.Get<cudaCommonType>("Ex", (cudaCommonType*)Ex.get_arr(), adios2::Mode::Deferred);
+      // Ey
+      engineField.Get<cudaCommonType>("Ey", (cudaCommonType*)Ey.get_arr(), adios2::Mode::Deferred);
+      // Ez
+      engineField.Get<cudaCommonType>("Ez", (cudaCommonType*)Ez.get_arr(), adios2::Mode::Deferred);
+
+      // rhos
+      for (int i = 0; i < ns; i++)
+      {
+        engineField.Get<cudaCommonType>("rhosSpecies" + std::to_string(i), (cudaCommonType*)&((*rhons_)[i][0][0][0]), adios2::Mode::Deferred);
+      }
+
+      engineField.EndStep();
+      break; // a must, or loop forever in next beginStep
     }
 
-    //find the last cycle
-    int lastcycle=0;
-    dataset_id = H5Dopen2(file_id, "/last_cycle", H5P_DEFAULT); // HDF 1.8.8
-    status = H5Dread(dataset_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &lastcycle);
-    status = H5Dclose(dataset_id);
+    engineField.Close();
 
-    // Bxn
-    ss.str("");ss << "/fields/Bx/cycle_" << lastcycle;
-    dataset_id = H5Dopen2(file_id, ss.str().c_str(), H5P_DEFAULT); // HDF 1.8.8
-    datatype = H5Dget_type(dataset_id);
-    size = H5Tget_size(datatype);
-    dataspace = H5Dget_space(dataset_id);
-    status_n = H5Sget_simple_extent_dims(dataspace, dims_out, NULL);
-
-    std::vector<double> temp_storage(dims_out[0] * dims_out[1] * dims_out[2]);
-    status = H5Dread(dataset_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, temp_storage.data());
-    int k = 0;
-    for (int i = 1; i < nxn - 1; i++)
-      for (int j = 1; j < nyn - 1; j++)
-        for (int jj = 1; jj < nzn - 1; jj++)
-          Bxn[i][j][jj] = temp_storage[k++];
-
-
-    status = H5Dclose(dataset_id);
-
-    // Byn
-    ss.str("");ss << "/fields/By/cycle_" << lastcycle;
-    dataset_id = H5Dopen2(file_id, ss.str().c_str(), H5P_DEFAULT); // HDF 1.8.8
-    status = H5Dread(dataset_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, temp_storage.data());
-    k = 0;
-    for (int i = 1; i < nxn - 1; i++)
-      for (int j = 1; j < nyn - 1; j++)
-        for (int jj = 1; jj < nzn - 1; jj++)
-          Byn[i][j][jj] = temp_storage[k++];
-
-    status = H5Dclose(dataset_id);
-
-
-    // Bzn
-    ss.str("");ss << "/fields/Bz/cycle_" << lastcycle;
-    dataset_id = H5Dopen2(file_id, ss.str().c_str(), H5P_DEFAULT); // HDF 1.8.8
-    status = H5Dread(dataset_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, temp_storage.data());
-    k = 0;
-    for (int i = 1; i < nxn - 1; i++)
-      for (int j = 1; j < nyn - 1; j++)
-        for (int jj = 1; jj < nzn - 1; jj++)
-          Bzn[i][j][jj] = temp_storage[k++];
-
-    status = H5Dclose(dataset_id);
-
-
-    // Ex
-    ss.str("");ss << "/fields/Ex/cycle_" << lastcycle;
-    dataset_id = H5Dopen2(file_id, ss.str().c_str(), H5P_DEFAULT); // HDF 1.8.8
-    status = H5Dread(dataset_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, temp_storage.data());
-    k = 0;
-    for (int i = 1; i < nxn - 1; i++)
-      for (int j = 1; j < nyn - 1; j++)
-        for (int jj = 1; jj < nzn - 1; jj++)
-          Ex[i][j][jj] = temp_storage[k++];
-
-    status = H5Dclose(dataset_id);
-
-
-    // Ey
-    ss.str("");ss << "/fields/Ey/cycle_" << lastcycle;
-    dataset_id = H5Dopen2(file_id, ss.str().c_str(), H5P_DEFAULT); // HDF 1.8.8
-    status = H5Dread(dataset_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, temp_storage.data());
-    k = 0;
-    for (int i = 1; i < nxn - 1; i++)
-      for (int j = 1; j < nyn - 1; j++)
-        for (int jj = 1; jj < nzn - 1; jj++)
-          Ey[i][j][jj] = temp_storage[k++];
-
-    status = H5Dclose(dataset_id);
-
-    // Ez
-    ss.str("");ss << "/fields/Ez/cycle_" << lastcycle;
-    dataset_id = H5Dopen2(file_id, ss.str().c_str(), H5P_DEFAULT); // HDF 1.8.8
-    status = H5Dread(dataset_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, temp_storage.data());
-    k = 0;
-    for (int i = 1; i < nxn - 1; i++)
-      for (int j = 1; j < nyn - 1; j++)
-        for (int jj = 1; jj < nzn - 1; jj++)
-          Ez[i][j][jj] = temp_storage[k++];
-
-    status = H5Dclose(dataset_id);
-
-    // open the charge density for species
-    for (int is = 0; is < ns; is++) {
-      ss.str("");ss << "/moments/species_" << is << "/rho/cycle_" << lastcycle;
-      dataset_id = H5Dopen2(file_id, ss.str().c_str(), H5P_DEFAULT); // HDF 1.8.8
-      status = H5Dread(dataset_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, temp_storage.data());
-      status = H5Dclose(dataset_id);
-      array4_double& rhons = *rhons_;
-      k = 0;
-      for (int i = 1; i < nxn - 1; i++)
-        for (int j = 1; j < nyn - 1; j++)
-          for (int jj = 1; jj < nzn - 1; jj++)
-            rhons[is][i][j][jj] = temp_storage[k++];
-    }
-
-    // close the hdf file
-    status = H5Fclose(file_id);
 #endif
 }
 
@@ -979,60 +943,55 @@ void Collective::read_particles_restart(
     vector_double& y,
     vector_double& z,
     vector_double& t)const
-{
-#ifdef NO_HDF5
-  eprintf("Require HDF5 to read from restart file.");
+{ // real particles read from restart file
+
+#ifndef USE_ADIOS2
+  eprintf("Require ADIOS2 to read from restart file.");
 #else
-    if (vct->getCartesian_rank() == 0 && species_number == 0)
+
+    if (vct->getCartesian_rank() == 0)
     {
-      printf("LOADING PARTICLES FROM RESTART FILE in %s/restart.hdf\n",
-        getRestartDirName().c_str());
+      printf("LOADING PARTICLE FROM RESTART FILE in %s/restart.bp\n",getRestartDirName().c_str());
     }
+
     stringstream ss;
     ss << vct->getCartesian_rank();
-    string name_file = getRestartDirName() + "/restart" + ss.str() + ".hdf";
-    // hdf stuff
-    hid_t file_id, dataspace;
-    hid_t datatype, dataset_id;
-    herr_t status;
-    size_t size;
-    hsize_t dims_out[1];        /* dataset dimensions */
-    int status_n;
+    string name_file = getRestartDirName() + "/restart_" + ss.str() + ".bp";
 
-    // open the hdf file
-    file_id = H5Fopen(name_file.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
-    if (file_id < 0) {
-      eprintf("couldn't open file: %s\n"
-        "\tRESTART NOT POSSIBLE", name_file.c_str());
-      //cout << "couldn't open file: " << name_file << endl;
-      //cout << "RESTART NOT POSSIBLE" << endl;
-    }
+    adios2::ADIOS adios;
+    adios2::IO ioParticle;
+    adios2::Engine engineParticle;
+    // open BP file
+    ioParticle = adios.DeclareIO("Particles");
+    ioParticle.SetEngine("BP5");
+    engineParticle = ioParticle.Open(name_file, adios2::Mode::Read);
+    auto stepNum = engineParticle.Steps();
+    for(unsigned int step = 0; engineParticle.BeginStep() == adios2::StepStatus::OK; ++step) {
 
+      if (step < stepNum-1) {// to read the last step
+        engineParticle.EndStep();
+        continue; 
+      }
 
-    //find the last cycle
-    int lastcycle=0;
-    dataset_id = H5Dopen2(file_id, "/last_cycle", H5P_DEFAULT); // HDF 1.8.8
-    status = H5Dread(dataset_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &lastcycle);
-    status = H5Dclose(dataset_id);
+      // last cycle
+      int lastCycle = -1;
 
-    stringstream species_name;
-    species_name << species_number;
+      engineParticle.Get<int>("cycle", lastCycle, adios2::Mode::Sync);
+      if (lastCycle != last_cycle) {
+        printf("last_cycle = %d\n", lastCycle);
+        printf("last_cycle = %d\n", last_cycle);
+        eprintf("last_cycle in restart file does not match the one in settings file");
+      } else {
+        if(MPIdata::get_rank() == 0)std::cout << "[*] Particle Restarting from cycle: " << lastCycle << std::endl;
+      }
 
-    ss.str("");ss << "/particles/species_" << species_number << "/x/cycle_" << lastcycle;
-    dataset_id = H5Dopen2(file_id, ss.str().c_str(), H5P_DEFAULT); // HDF 1.8.8
-    datatype = H5Dget_type(dataset_id);
-    size = H5Tget_size(datatype);
-    dataspace = H5Dget_space(dataset_id); /* dataspace handle */
-    status_n = H5Sget_simple_extent_dims(dataspace, dims_out, NULL);
+      // reserve first
+      // read nop
+      int nop = 0;
+      auto varX = ioParticle.InquireVariable<cudaCommonType>("part" + std::to_string(species_number) + "PositionX");
+      nop = varX.Shape()[0];
+      // std::cout << "[*] Particle Restarting Species" << species_number << "nop = " << nop << std::endl;
 
-    // get how many particles there are on this processor for this species
-    status_n = H5Sget_simple_extent_dims(dataspace, dims_out, NULL);
-    const int nop = dims_out[0]; // number of particles in this process
-    //Particles3Dcomm::resize_SoA(nop);
-    {
-      //
-      // allocate space for particles including padding
-      //
       const int padded_nop = roundup_to_multiple(nop,DVECWIDTH);
       u.reserve(padded_nop);
       v.reserve(padded_nop);
@@ -1053,61 +1012,29 @@ void Collective::read_particles_restart(
       y.resize(nop);
       z.resize(nop);
       t.resize(nop);
+
+
+      // particles
+      engineParticle.Get<cudaCommonType>("part" + std::to_string(species_number) + "VelocityU", &u[0], adios2::Mode::Deferred);
+      engineParticle.Get<cudaCommonType>("part" + std::to_string(species_number) + "VelocityV", &v[0], adios2::Mode::Deferred);
+      engineParticle.Get<cudaCommonType>("part" + std::to_string(species_number) + "VelocityW", &w[0], adios2::Mode::Deferred);
+
+      engineParticle.Get<cudaCommonType>("part" + std::to_string(species_number) + "charge", &q[0], adios2::Mode::Deferred);
+
+      engineParticle.Get<cudaCommonType>("part" + std::to_string(species_number) + "PositionX", &x[0], adios2::Mode::Deferred);
+      engineParticle.Get<cudaCommonType>("part" + std::to_string(species_number) + "PositionY", &y[0], adios2::Mode::Deferred);
+      engineParticle.Get<cudaCommonType>("part" + std::to_string(species_number) + "PositionZ", &z[0], adios2::Mode::Deferred);
+
+      engineParticle.Get<cudaCommonType>("part" + std::to_string(species_number) + "ID", &t[0], adios2::Mode::Deferred);
+
+      engineParticle.EndStep();
+      break; // a must, or loop forever in next beginStep
     }
-    // get x
-    status = H5Dread(dataset_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &x[0]);
-    // close the data set
-    status = H5Dclose(dataset_id);
+    engineParticle.Close();
 
-    // get y
-    ss.str("");ss << "/particles/species_" << species_number << "/y/cycle_" << lastcycle;
-    dataset_id = H5Dopen2(file_id, ss.str().c_str(), H5P_DEFAULT); // HDF 1.8.8
-    status = H5Dread(dataset_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &y[0]);
-    status = H5Dclose(dataset_id);
-
-    // get z
-    ss.str("");ss << "/particles/species_" << species_number << "/z/cycle_" << lastcycle;
-    dataset_id = H5Dopen2(file_id, ss.str().c_str(), H5P_DEFAULT); // HDF 1.8.8
-    status = H5Dread(dataset_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &z[0]);
-    status = H5Dclose(dataset_id);
-
-    // get u
-    ss.str("");ss << "/particles/species_" << species_number << "/u/cycle_" << lastcycle;
-    dataset_id = H5Dopen2(file_id, ss.str().c_str(), H5P_DEFAULT); // HDF 1.8.8
-    status = H5Dread(dataset_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &u[0]);
-    status = H5Dclose(dataset_id);
-
-    // get v
-    ss.str("");ss << "/particles/species_" << species_number << "/v/cycle_" << lastcycle;
-    dataset_id = H5Dopen2(file_id, ss.str().c_str(), H5P_DEFAULT); // HDF 1.8.8
-    status = H5Dread(dataset_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &v[0]);
-    status = H5Dclose(dataset_id);
-
-    // get w
-    ss.str("");ss << "/particles/species_" << species_number << "/w/cycle_" << lastcycle;
-    dataset_id = H5Dopen2(file_id, ss.str().c_str(), H5P_DEFAULT); // HDF 1.8.8
-    status = H5Dread(dataset_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &w[0]);
-    status = H5Dclose(dataset_id);
-
-    // get q
-    ss.str("");ss << "/particles/species_" << species_number << "/q/cycle_" << lastcycle;
-    dataset_id = H5Dopen2(file_id, ss.str().c_str(), H5P_DEFAULT); // HDF 1.8.8
-    status = H5Dread(dataset_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &q[0]);
-
-    //if ID is not saved, read in q as ID
-    status = H5Dread(dataset_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &t[0]);
-
-    status = H5Dclose(dataset_id);
-
-    /* get ID
-		ss.str("");ss << "/particles/species_" << species_number << "/ID/cycle_" << lastcycle;
-		dataset_id = H5Dopen2(file_id, ss.str().c_str(), H5P_DEFAULT); // HDF 1.8.8
-		status = H5Dread(dataset_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &t[0]);
-		status = H5Dclose(dataset_id);
-    */
-
-    status = H5Fclose(file_id);
 #endif
+
+
 }
 
 
@@ -1135,6 +1062,8 @@ Collective::Collective(int argc, char **argv) {
       cout << "Error: syntax error in mpirun arguments. Did you mean to 'restart' ?" << endl;
       return;
     }
+
+    if(MPIdata::get_rank() == 0)std::cout << "Restarting..." << endl;
   }
   ReadInput(inputfile);
   init_derived_parameters();

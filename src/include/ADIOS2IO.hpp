@@ -10,6 +10,7 @@
 #include "cudaTypeDef.cuh"
 #include "particleArrayCUDA.cuh"
 #include "iPic3D.h"
+#include "VCtopology3D.h"
 
 #include "adios2.h"
 
@@ -51,17 +52,14 @@ private:
     int outputCount = 0; // output times count
 
     // field
-    string fieldFile;
     string fieldTag;
 
     // particle
-    string particleFile;
     string particleTag;
     int sample;
 
     // restart
-    int restartStatus; //! restart_status 0 --> no restart; 1--> restart, create new; 2--> restart, append;
-    string restartFile;
+    string restartTag;
 
 
     // pointer registration
@@ -80,10 +78,18 @@ public:
 
     ADIOS2Manager() {
         outputTagOptions = {
+            // particle
             {"position", std::bind(&ADIOS2Manager::_particlePosition, this, std::placeholders::_1, std::placeholders::_2)},
             {"velocity", std::bind(&ADIOS2Manager::_particleVelocity, this, std::placeholders::_1, std::placeholders::_2)},
             {"q", std::bind(&ADIOS2Manager::_particleCharge, this, std::placeholders::_1, std::placeholders::_2)},
-            {"ID", std::bind(&ADIOS2Manager::_particleID, this, std::placeholders::_1, std::placeholders::_2)}
+            {"ID", std::bind(&ADIOS2Manager::_particleID, this, std::placeholders::_1, std::placeholders::_2)},
+            // field
+            {"proc_topology", std::bind(&ADIOS2Manager::_procTopology, this, std::placeholders::_1, std::placeholders::_2)},
+            {"E", std::bind(&ADIOS2Manager::_E, this, std::placeholders::_1, std::placeholders::_2)},
+            {"B", std::bind(&ADIOS2Manager::_B, this, std::placeholders::_1, std::placeholders::_2)},
+            {"Js", std::bind(&ADIOS2Manager::_Js, this, std::placeholders::_1, std::placeholders::_2)},
+            {"rhos", std::bind(&ADIOS2Manager::_rhos, this, std::placeholders::_1, std::placeholders::_2)},
+            {"pressure", std::bind(&ADIOS2Manager::_pressure, this, std::placeholders::_1, std::placeholders::_2)},
         };
     }
 
@@ -105,7 +111,7 @@ void closeOutputFiles();
 
 // void loadRestart(iPic3D::c_Solver& KCode);
 
-private:
+public:
 /**
  * @brief these are the output routines for different categories of data
  */
@@ -115,6 +121,8 @@ void appendFieldOutput(int cycle);
 void appendParticleOutput(int cycle);
 
 void appendRestartOutput(int cycle);
+
+private:
 
 /**
  * @brief helper function to create or inquire a variable
@@ -158,6 +166,108 @@ adios2::Variable<T> _variableHelper(adios2::IO &io, const std::string &name, con
     B_energy -> energy of magnetic field
     E_energy -> energy of electric field
 */
+
+void _procTopology(adios2::IO &io, adios2::Engine &engine){
+    int coord[3] = {vct->getCoordinates(0), vct->getCoordinates(1), vct->getCoordinates(2)};
+    auto varCoord = _variableHelper<int>(io, "cartesian_coord", {3}, {0}, {3});
+    engine.Put<int>(varCoord, coord, adios2::Mode::Sync);
+
+    auto varRank = _variableHelper<int>(io, "cartesian_rank");
+    engine.Put<int>(varRank, vct->getCartesian_rank(), adios2::Mode::Sync);
+
+    int xleft = vct->getXleft_neighbor();
+    auto varXleft = _variableHelper<int>(io, "Xleft_neighbor");
+    engine.Put<int>(varXleft, xleft, adios2::Mode::Sync);
+
+    int xright = vct->getXright_neighbor();
+    auto varXright = _variableHelper<int>(io, "Xright_neighbor");
+    engine.Put<int>(varXright, xright, adios2::Mode::Sync);
+
+    int yleft = vct->getYleft_neighbor();
+    auto varYleft = _variableHelper<int>(io, "Yleft_neighbor");
+    engine.Put<int>(varYleft, yleft, adios2::Mode::Sync);
+
+    int yright = vct->getYright_neighbor();
+    auto varYright = _variableHelper<int>(io, "Yright_neighbor");
+    engine.Put<int>(varYright, yright, adios2::Mode::Sync);
+
+    int zleft = vct->getZleft_neighbor();
+    auto varZleft = _variableHelper<int>(io, "Zleft_neighbor");
+    engine.Put<int>(varZleft, zleft, adios2::Mode::Sync);
+
+    int zright = vct->getZright_neighbor();
+    auto varZright = _variableHelper<int>(io, "Zright_neighbor");
+    engine.Put<int>(varZright, zright, adios2::Mode::Sync);
+}
+
+// Note that the ghost cells are also included in the output
+void _E(adios2::IO &io, adios2::Engine &engine){
+    const adios2::Dims shape = {static_cast<unsigned long>(grid->getNXN()), static_cast<unsigned long>(grid->getNYN()), static_cast<unsigned long>(grid->getNZN())};
+
+    auto ex = _variableHelper<cudaCommonType>(io, "Ex", shape, {0, 0, 0}, shape);
+    auto ey = _variableHelper<cudaCommonType>(io, "Ey", shape, {0, 0, 0}, shape);
+    auto ez = _variableHelper<cudaCommonType>(io, "Ez", shape, {0, 0, 0}, shape);
+
+    engine.Put<cudaCommonType>(ex, EMf->getEx().get_arr(), adios2::Mode::Deferred);
+    engine.Put<cudaCommonType>(ey, EMf->getEy().get_arr(), adios2::Mode::Deferred);
+    engine.Put<cudaCommonType>(ez, EMf->getEz().get_arr(), adios2::Mode::Deferred);
+}
+
+void _B(adios2::IO &io, adios2::Engine &engine){
+    const adios2::Dims shape = {static_cast<unsigned long>(grid->getNXN()), static_cast<unsigned long>(grid->getNYN()), static_cast<unsigned long>(grid->getNZN())};
+
+    auto bx = _variableHelper<cudaCommonType>(io, "Bx", shape, {0, 0, 0}, shape);
+    auto by = _variableHelper<cudaCommonType>(io, "By", shape, {0, 0, 0}, shape);
+    auto bz = _variableHelper<cudaCommonType>(io, "Bz", shape, {0, 0, 0}, shape);
+
+    engine.Put<cudaCommonType>(bx, EMf->getBxTot().get_arr(), adios2::Mode::Deferred);
+    engine.Put<cudaCommonType>(by, EMf->getByTot().get_arr(), adios2::Mode::Deferred);
+    engine.Put<cudaCommonType>(bz, EMf->getBzTot().get_arr(), adios2::Mode::Deferred);
+}
+
+void _rhos(adios2::IO &io, adios2::Engine &engine){
+    const adios2::Dims shape = {static_cast<unsigned long>(grid->getNXN()), static_cast<unsigned long>(grid->getNYN()), static_cast<unsigned long>(grid->getNZN())};
+
+    for (int i = 0; i < ns; i++) {
+        auto var = _variableHelper<cudaCommonType>(io, "rhosSpecies" + std::to_string(i), shape, {0, 0, 0}, shape);
+        engine.Put<cudaCommonType>(var, (cudaCommonType*)(EMf->getRHOns()[i]), adios2::Mode::Deferred);
+    }
+}
+
+void _Js(adios2::IO &io, adios2::Engine &engine){
+    const adios2::Dims shape = {static_cast<unsigned long>(grid->getNXN()), static_cast<unsigned long>(grid->getNYN()), static_cast<unsigned long>(grid->getNZN())};
+
+    for (int i = 0; i < ns; i++) {
+        auto jx = _variableHelper<cudaCommonType>(io, "JxsSpecies" + std::to_string(i), shape, {0, 0, 0}, shape);
+        auto jy = _variableHelper<cudaCommonType>(io, "JysSpecies" + std::to_string(i), shape, {0, 0, 0}, shape);
+        auto jz = _variableHelper<cudaCommonType>(io, "JzsSpecies" + std::to_string(i), shape, {0, 0, 0}, shape);
+
+        engine.Put<cudaCommonType>(jx, (cudaCommonType*)(EMf->getJxs()[i]), adios2::Mode::Deferred);
+        engine.Put<cudaCommonType>(jy, (cudaCommonType*)(EMf->getJys()[i]), adios2::Mode::Deferred);
+        engine.Put<cudaCommonType>(jz, (cudaCommonType*)(EMf->getJzs()[i]), adios2::Mode::Deferred);
+    }
+}
+
+void _pressure(adios2::IO &io, adios2::Engine &engine){
+    const adios2::Dims shape = {static_cast<unsigned long>(grid->getNXN()), static_cast<unsigned long>(grid->getNYN()), static_cast<unsigned long>(grid->getNZN())};
+
+    for (int i = 0; i < ns; i++) {
+        auto pxx = _variableHelper<cudaCommonType>(io, "pXXSpecies" + std::to_string(i), shape, {0, 0, 0}, shape);
+        auto pxy = _variableHelper<cudaCommonType>(io, "pXYSpecies" + std::to_string(i), shape, {0, 0, 0}, shape);
+        auto pxz = _variableHelper<cudaCommonType>(io, "pXZSpecies" + std::to_string(i), shape, {0, 0, 0}, shape);
+        auto pyy = _variableHelper<cudaCommonType>(io, "pYYSpecies" + std::to_string(i), shape, {0, 0, 0}, shape);
+        auto pyz = _variableHelper<cudaCommonType>(io, "pYZSpecies" + std::to_string(i), shape, {0, 0, 0}, shape);
+        auto pzz = _variableHelper<cudaCommonType>(io, "pZZSpecies" + std::to_string(i), shape, {0, 0, 0}, shape);
+
+        engine.Put<cudaCommonType>(pxx, (cudaCommonType*)(EMf->getpXXsn()[i]), adios2::Mode::Deferred);
+        engine.Put<cudaCommonType>(pxy, (cudaCommonType*)(EMf->getpXYsn()[i]), adios2::Mode::Deferred);
+        engine.Put<cudaCommonType>(pxz, (cudaCommonType*)(EMf->getpXZsn()[i]), adios2::Mode::Deferred);
+        engine.Put<cudaCommonType>(pyy, (cudaCommonType*)(EMf->getpYYsn()[i]), adios2::Mode::Deferred);
+        engine.Put<cudaCommonType>(pyz, (cudaCommonType*)(EMf->getpYZsn()[i]), adios2::Mode::Deferred);
+        engine.Put<cudaCommonType>(pzz, (cudaCommonType*)(EMf->getpZZsn()[i]), adios2::Mode::Deferred);
+ 
+    }
+}
 
 
 /* Particle

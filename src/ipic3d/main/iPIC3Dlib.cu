@@ -207,20 +207,28 @@ int c_Solver::Init(int argc, char **argv) {
   for (int i = 0; i < ns; i++)
   {
     new(&part[i]) Particles3D(i,col,vct,grid);
-    const auto capacity = part[i].get_pcl_array().capacity(); 
+    const auto totalPcl = col->getNpcel(i) * grid->getNXN() * grid->getNYN() * grid->getNZN();
+    part[i].reserveSpace(totalPcl * 0.1); // reserve the size for exchange
     part[i].get_pcl_array().clear();
-    part[i].get_pcl_array().reserve(capacity * 0.1); // reserve the size for exchange
   }
 
   outputPart = (Particles3D*) malloc(sizeof(Particles3D)*ns);
   for (int i = 0; i < ns; i++)
   {
     new(&outputPart[i]) Particles3D(i,col,vct,grid);
+    const auto totalPcl = col->getNpcel(i) * grid->getNXN() * grid->getNYN() * grid->getNZN();
+
+    if (col->getRestart_status() == 0){
+      outputPart[i].reserveSpace(totalPcl); 
+      outputPart[i].get_pcl_array().clear();
+    } else { // restart
+      outputPart[i].restartLoad();
+    }
   }
 
 #ifdef USE_ADIOS2
   adiosManager = new ADIOS2IO::ADIOS2Manager();
-  if(col->getParticlesOutputCycle()) adiosManager->initOutputFiles("", col->getPclOutputTag(), 0, *this);
+  adiosManager->initOutputFiles(""s, col->getParticlesOutputCycle()? col->getPclOutputTag() : ""s, 0, *this);
 #endif
 
   // Initial Condition for PARTICLES if you are not starting from RESTART
@@ -256,7 +264,9 @@ int c_Solver::Init(int argc, char **argv) {
 			  (col->getWriteMethod()=="pvtk" && !col->particle_output_is_off()) )
 		{
 			  outputWrapperFPP = new OutputWrapperFPP;
+#ifndef USE_ADIOS2
 			  fetch_outputWrapperFPP().init_output_files(col,vct,grid,EMf,outputPart,ns,testpart,nstestpart);
+#endif
 		}
 		#endif
 	  if(!col->field_output_is_off()){
@@ -992,7 +1002,12 @@ void c_Solver::WriteRestart(int cycle)
     cudaErrChk(cudaEventSynchronize(eventOutputCopy));
 
 	  convertOutputParticlesToSynched();
+
+#ifdef USE_ADIOS2
+    adiosManager->appendRestartOutput(cycle);
+#else
 	  fetch_outputWrapperFPP().append_restart(cycle);
+#endif
   }
 #endif
 }
@@ -1137,7 +1152,7 @@ void c_Solver::WriteParticles(int cycle)
   }
 
 #ifdef USE_ADIOS2
-  adiosManager->appendOutput(cycle);
+  adiosManager->appendParticleOutput(cycle);
 #else
   fetch_outputWrapperFPP().append_output((col->getPclOutputTag()).c_str(), cycle, 0);//"position + velocity + q "
 #endif
@@ -1171,7 +1186,11 @@ void c_Solver::Finalize() {
     cudaErrChk(cudaEventSynchronize(eventOutputCopy));
 
     convertOutputParticlesToSynched();
+#ifdef USE_ADIOS2
+    adiosManager->appendRestartOutput((col->getNcycles() + first_cycle) - 1);
+#else
     fetch_outputWrapperFPP().append_restart((col->getNcycles() + first_cycle) - 1);
+#endif
     #endif
   }
 
