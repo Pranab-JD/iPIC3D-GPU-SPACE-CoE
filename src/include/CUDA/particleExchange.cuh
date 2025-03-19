@@ -20,14 +20,26 @@ typedef struct departureArrayElement_s{
         DELETE = 7
     };
 
+    enum hashedSumIndex{
+        XLOW_HASHEDSUM_INDEX = 0,
+        XHIGH_HASHEDSUM_INDEX,
+        YLOW_HASHEDSUM_INDEX,
+        YHIGH_HASHEDSUM_INDEX,
+        ZLOW_HASHEDSUM_INDEX,
+        ZHIGH_HASHEDSUM_INDEX,
+        DELETE_HASHEDSUM_INDEX = 6,
+        HOLE_HASHEDSUM_INDEX,
+        FILLER_HASHEDSUM_INDEX,
+
+        HASHED_SUM_NUM = 9
+    };
+
     uint32_t dest;          // destination of the particle exchange
     uint32_t hashedId;      // the id got from hashed sum
 }departureArrayElement_t;
 
 using departureArrayElementType = departureArrayElement_t;
 using departureArrayType = arrayCUDA<departureArrayElementType>;
-
-inline constexpr int HASHED_SUM_NUM = departureArrayElementType::DELETE+2;
 
 using exitingArray = arrayCUDA<SpeciesParticle>;
 

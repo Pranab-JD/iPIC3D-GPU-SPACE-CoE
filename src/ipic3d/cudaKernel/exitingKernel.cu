@@ -31,7 +31,7 @@ __global__ void exitingKernel(particleArrayCUDA* pclsArray, departureArrayType* 
     __shared__ int x; // y, the number of holes (eixitng + deleted)
     if(threadIdx.x == 0){ 
         x = 0; 
-        for(int i=0; i < departureArrayElementType::DELETE ; i++)x += hashedSumArray[i].getSum(); 
+        for(int i=0; i <= departureArrayElementType::DELETE_HASHEDSUM_INDEX ; i++)x += hashedSumArray[i].getSum(); 
     }
     __syncthreads();
     
@@ -57,13 +57,13 @@ __global__ void exitingKernel(particleArrayCUDA* pclsArray, departureArrayType* 
     // holes
     if(departureElement->dest !=0){
         if(pidx >= (pclsArray->getNOP()-x))return; // return holes in the back part
-        departureElement->hashedId = hashedSumArray[departureArrayElementType::DELETE].add(pidx);
+        departureElement->hashedId = hashedSumArray[departureArrayElementType::HOLE_HASHEDSUM_INDEX].add(pidx);
         return; // return all holes
     }
 
     // Only fillers reach here
     if(pidx >= (pclsArray->getNOP()-x)){ 
-        departureElement->hashedId = hashedSumArray[departureArrayElementType::DELETE+1].add(pidx);
+        departureElement->hashedId = hashedSumArray[departureArrayElementType::FILLER_HASHEDSUM_INDEX].add(pidx);
     }
 
 }
