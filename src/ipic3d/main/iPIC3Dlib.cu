@@ -391,9 +391,9 @@ int c_Solver::initCUDA(){
       //   hashedSum(5), hashedSum(5), hashedSum(10), hashedSum(10)
       // };
 
-      hashedSumArrayHostPtr[i] = newHostPinnedObjectArray<hashedSum>(8, 10);
+      hashedSumArrayHostPtr[i] = newHostPinnedObjectArray<hashedSum>(HASHED_SUM_NUM, 10);
 
-      hashedSumArrayCUDAPtr[i] = copyArrayToDevice(hashedSumArrayHostPtr[i], 8);
+      hashedSumArrayCUDAPtr[i] = copyArrayToDevice(hashedSumArrayHostPtr[i], HASHED_SUM_NUM);
       
       exitingArrayHostPtr[i] = newHostPinnedObject<exitingArray>(0.1 * pclsArrayHostPtr[i]->getNOP());
       exitingArrayCUDAPtr[i] = exitingArrayHostPtr[i]->copyToDevice();
@@ -413,6 +413,31 @@ int c_Solver::initCUDA(){
   moverParamCUDAPtr = new moverParameter*[ns];
   for(int i=0; i<ns; i++){
     moverParamHostPtr[i] = newHostPinnedObject<moverParameter>(outputPart+i, pclsArrayCUDAPtr[i], departureArrayCUDAPtr[i], hashedSumArrayCUDAPtr[i]);
+
+    // init the moverParam for OpenBC, repopulateInjection, sphere
+    outputPart[i].openbc_particles_outflowInfo(&moverParamHostPtr[i]->doOpenBC, moverParamHostPtr[i]->applyOpenBC, moverParamHostPtr[i]->deleteBoundary, moverParamHostPtr[i]->openBoundary);
+    moverParamHostPtr[i]->appendCountAtomic = 0;
+
+    if(col->getRHOinject(i)>0.0)
+    outputPart[i].repopulate_particlesInfo(&moverParamHostPtr[i]->doRepopulateInjection, moverParamHostPtr[i]->doRepopulateInjectionSide, moverParamHostPtr[i]->repopulateBoundary);
+    else moverParamHostPtr[i]->doRepopulateInjection = false;
+
+    if (col->getCase()=="Dipole") {
+      moverParamHostPtr[i]->doSphere = 1;
+      moverParamHostPtr[i]->sphereOrigin[0] = col->getx_center();
+      moverParamHostPtr[i]->sphereOrigin[1] = col->gety_center();
+      moverParamHostPtr[i]->sphereOrigin[2] = col->getz_center();
+      moverParamHostPtr[i]->sphereRadius = col->getL_square();
+    } else if (col->getCase()=="Dipole2D") {
+      moverParamHostPtr[i]->doSphere = 2;
+      moverParamHostPtr[i]->sphereOrigin[0] = col->getx_center();
+      moverParamHostPtr[i]->sphereOrigin[1] = 0.0;
+      moverParamHostPtr[i]->sphereOrigin[2] = col->getz_center();
+      moverParamHostPtr[i]->sphereRadius = col->getL_square();
+    } else {
+      moverParamHostPtr[i]->doSphere = 0;
+    }
+
     moverParamCUDAPtr[i] = copyToDevice(moverParamHostPtr[i], streams[i]);
   }
 
@@ -490,7 +515,7 @@ int c_Solver::deInitCUDA(){
 
     deleteHostPinnedObject(pclsArrayHostPtr[i]);
     deleteHostPinnedObject(departureArrayHostPtr[i]);
-    deleteHostPinnedObjectArray(hashedSumArrayHostPtr[i], 8);
+    deleteHostPinnedObjectArray(hashedSumArrayHostPtr[i], HASHED_SUM_NUM);
     deleteHostPinnedObject(exitingArrayHostPtr[i]);
     deleteHostPinnedObject(fillerBufferArrayHostPtr[i]);
 
@@ -624,6 +649,14 @@ int c_Solver::cudaLauncherAsync(const int species){
   cudaErrChk(cudaMemcpyAsync(hashedSumArrayHostPtr[species], hashedSumArrayCUDAPtr[species], 
                               6*sizeof(hashedSum), cudaMemcpyDefault, streams[species+ns]));
 
+  // Copy OpenBC appended particle number to host
+  if (moverParamHostPtr[species]->doOpenBC) {
+    cudaErrChk(cudaMemcpyAsync(&moverParamHostPtr[species]->appendCountAtomic, &moverParamCUDAPtr[species]->appendCountAtomic, 
+                                sizeof(uint32_t), cudaMemcpyDefault, streams[species+ns]));
+    cudaErrChk(cudaMemsetAsync(&moverParamCUDAPtr[species]->appendCountAtomic, 0, sizeof(uint32_t), streams[species+ns]));
+  }
+
+
   // After Mover
   cudaErrChk(cudaStreamSynchronize(streams[species+ns]));
   int x = 0;
@@ -707,6 +740,10 @@ bool c_Solver::MoverAwaitAndPclExchange()
   {
     auto a = part[i].separate_and_send_particles();
     part[i].recommunicate_particles_until_done(1);
+    // injection
+    if (moverParamHostPtr[i]->doRepopulateInjection) { // Now part contains incoming particles and the injection
+      part[i].repopulate_particles_onlyInjection();
+    }
   }
 
   /* -------------------------------------- */
@@ -732,29 +769,56 @@ bool c_Solver::MoverAwaitAndPclExchange()
 
   for(int i=0; i<ns; i++){
 
+  // Copy, the OpenBC appended particle, repopulate particle and the incoming particles to device
+    const auto oldPclNum = pclsArrayHostPtr[i]->getNOP();
+    pclsArrayHostPtr[i]->setNOE(stayedParticle[i]); // After the Sorting
+    auto newPclNum = stayedParticle[i] + part[i].getNOP();
+
+    if (moverParamHostPtr[i]->doOpenBC) {
+      newPclNum += moverParamHostPtr[i]->appendCountAtomic;
+
+      if(oldPclNum - stayedParticle[i] >= moverParamHostPtr[i]->appendCountAtomic) {
+        // copy directly
+        cudaErrChk(cudaMemcpyAsync(pclsArrayHostPtr[i]->getpcls() + stayedParticle[i], 
+                                  pclsArrayHostPtr[i]->getpcls() + oldPclNum, 
+                                  moverParamHostPtr[i]->appendCountAtomic*sizeof(SpeciesParticle),
+                                  cudaMemcpyDefault, streams[i]));
+
+      }else { 
+        const auto theGAP = oldPclNum - stayedParticle[i];
+        cudaErrChk(cudaMemcpyAsync(pclsArrayHostPtr[i]->getpcls() + stayedParticle[i], 
+                                  pclsArrayHostPtr[i]->getpcls() + oldPclNum + (moverParamHostPtr[i]->appendCountAtomic - theGAP), 
+                                  theGAP*sizeof(SpeciesParticle),
+                                  cudaMemcpyDefault, streams[i]));
+      }
+      
+      pclsArrayHostPtr[i]->setNOE(stayedParticle[i] + moverParamHostPtr[i]->appendCountAtomic); // With the openBC appended particles
+      
+    }
+
     // now the host array contains the entering particles
-    if((part[i].getNOP() + stayedParticle[i]) >= pclsArrayHostPtr[i]->getSize()){ // not enough size, expand the device array size
-      pclsArrayHostPtr[i]->expand((part[i].getNOP() + stayedParticle[i]) * 1.5, streams[i]);
+    if(newPclNum >= pclsArrayHostPtr[i]->getSize()){ // not enough size, expand the device array size
+      pclsArrayHostPtr[i]->expand(newPclNum * 1.5, streams[i]);
       departureArrayHostPtr[i]->expand(pclsArrayHostPtr[i]->getSize(), streams[i]);
       cudaErrChk(cudaMemcpyAsync(departureArrayCUDAPtr[i], departureArrayHostPtr[i], sizeof(departureArrayType), cudaMemcpyDefault, streams[i]));
     }
     // now enough size on device pcls array, copy particles
-    cudaErrChk(cudaMemcpyAsync(pclsArrayHostPtr[i]->getpcls() + stayedParticle[i], 
+    cudaErrChk(cudaMemcpyAsync(pclsArrayHostPtr[i]->getpcls() + pclsArrayHostPtr[i]->getNOP(), 
               (void*)&(part[i].get_pcl_list()[0]), 
               part[i].getNOP()*sizeof(SpeciesParticle),
               cudaMemcpyDefault, streams[i]));
-    // update counter
-    pclsArrayHostPtr[i]->setNOE(stayedParticle[i] + part[i].getNOP()); 
-    // copy the new object to device, device has new copy of the object now
+
+
+    pclsArrayHostPtr[i]->setNOE(newPclNum); 
     cudaErrChk(cudaMemcpyAsync(pclsArrayCUDAPtr[i], pclsArrayHostPtr[i], sizeof(particleArrayCUDA), cudaMemcpyDefault, streams[i]));
     
-    // moment for entering particle, might be 0
-    momentKernelNew<<<getGridSize(part[i].getNOP(), 128), 128, 0, streams[i] >>>
+    // moment for new particles, incoming, openbc appended, repopulate
+    momentKernelNew<<<getGridSize(pclsArrayHostPtr[i]->getNOP() - stayedParticle[i], 128u), 128, 0, streams[i] >>>
                       (momentParamCUDAPtr[i], grid3DCUDACUDAPtr, momentsCUDAPtr[i], stayedParticle[i]);
 
     // reset the hashedSum, no need for departureArray it will be cleared in Mover
-    for(int j=0; j<8; j++)hashedSumArrayHostPtr[i][j].resetBucket();
-    cudaErrChk(cudaMemcpyAsync(hashedSumArrayCUDAPtr[i], hashedSumArrayHostPtr[i], 8 * sizeof(hashedSum), cudaMemcpyDefault, streams[i]));
+    for(int j=0; j<HASHED_SUM_NUM; j++)hashedSumArrayHostPtr[i][j].resetBucket();
+    cudaErrChk(cudaMemcpyAsync(hashedSumArrayCUDAPtr[i], hashedSumArrayHostPtr[i], (HASHED_SUM_NUM) * sizeof(hashedSum), cudaMemcpyDefault, streams[i]));
 
   }
 

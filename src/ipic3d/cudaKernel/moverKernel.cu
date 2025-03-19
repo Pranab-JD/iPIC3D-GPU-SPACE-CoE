@@ -34,6 +34,7 @@ __device__ constexpr bool cap_velocity() { return false; }
 //     int cx, int cy, int cz);
 
 __device__ void prepareDepartureArray(SpeciesParticle* pcl, 
+                                    moverParameter *moverParam,
                                     departureArrayType* departureArray, 
                                     grid3DCUDA* grid, 
                                     hashedSum* hashedSumArray, 
@@ -176,7 +177,7 @@ __global__ void moverKernel(moverParameter *moverParam,
 
     // prepare the departure array
 
-    prepareDepartureArray(pcl, moverParam->departureArray, grid, moverParam->hashedSumArray, pidx);
+    prepareDepartureArray(pcl, moverParam, moverParam->departureArray, grid, moverParam->hashedSumArray, pidx);
     
 }
 
@@ -364,84 +365,163 @@ __global__ void moverSubcyclesKernel(moverParameter *moverParam,
     
     // prepare the departure array
 
-    prepareDepartureArray(pcl, moverParam->departureArray, grid, moverParam->hashedSumArray, pidx);
+    prepareDepartureArray(pcl, moverParam, moverParam->departureArray, grid, moverParam->hashedSumArray, pidx);
+
+}
+
+__device__ uint32_t deleteAppendOpenBCOutflow(SpeciesParticle* pcl, moverParameter *moverParam, grid3DCUDA *grid) {
+
+    if (!moverParam->doOpenBC) return 0;
+
+    auto& delBdry = moverParam->deleteBoundary;
+    auto& openBdry = moverParam->openBoundary;
+    
+    for (int side = 0; side < 6; side++) {
+
+        if (!moverParam->applyOpenBC[side]) continue;
+
+        const auto direction = side / 2; // x,y,z
+        const auto location = pcl->get_x(direction);
+        const bool leftRight = side % 2; // 0: left, 1: right
+
+        // delete boundary
+        if( (leftRight == 0 && location < delBdry[side]) || (leftRight == 1 && location > delBdry[side]) ) {
+            // delete the particle
+            return departureArrayElementType::DELETE;
+        }
+
+        // open boundary
+        if ( (leftRight == 0 && location < openBdry[side]) || (leftRight == 1 && location > openBdry[side]) ) {
+            SpeciesParticle newPcl = *pcl;
+            
+            // update the position
+            newPcl.set_x(direction, newPcl.get_x(direction) + (leftRight==0?-1:1) * openBdry[direction*2]);
+            newPcl.fetch_x() += newPcl.get_u() * moverParam->dt;
+            newPcl.fetch_y() += newPcl.get_v() * moverParam->dt;
+            newPcl.fetch_z() += newPcl.get_w() * moverParam->dt;
+
+            // if the new particle is still in the domain
+            if (
+                newPcl.get_x() > delBdry[0] && newPcl.get_x() < delBdry[1] &&
+                newPcl.get_y() > delBdry[2] && newPcl.get_y() < delBdry[3] &&
+                newPcl.get_z() > delBdry[4] && newPcl.get_z() < delBdry[5]
+            ) {
+                const auto index = moverParam->pclsArray->getNOP() + atomicAdd(&moverParam->appendCountAtomic, 1);
+                // check memory overflow
+                if (index >= moverParam->pclsArray->getSize()) {
+                    printf("Memory overflow in open boundary outflow\n");
+                    __trap();
+                }
+                memcpy(moverParam->pclsArray->getpcls() + index, &newPcl, sizeof(SpeciesParticle));
+            }
+        }
+
+    }
+
+    return 0;
+
+}
+
+__device__ uint32_t deleteRepopulateInjection(SpeciesParticle* pcl, moverParameter *moverParam, grid3DCUDA *grid) {
+    if (!moverParam->doRepopulateInjection) return 0;
+
+    auto& doRepopulateInjectionSide = moverParam->doRepopulateInjectionSide;
+    auto& repopulateBoundary = moverParam->repopulateBoundary;
+
+    if (
+        (doRepopulateInjectionSide[0] && pcl->get_x() < repopulateBoundary[0]) ||
+        (doRepopulateInjectionSide[1] && pcl->get_x() > repopulateBoundary[1]) ||
+        (doRepopulateInjectionSide[2] && pcl->get_y() < repopulateBoundary[2]) ||
+        (doRepopulateInjectionSide[3] && pcl->get_y() > repopulateBoundary[3]) ||
+        (doRepopulateInjectionSide[4] && pcl->get_z() < repopulateBoundary[4]) ||
+        (doRepopulateInjectionSide[5] && pcl->get_z() > repopulateBoundary[5])
+    ) { // In the repoopulate layers
+        return departureArrayElementType::DELETE;
+    } else {
+        return 0;
+    }
+
+}
+
+__device__ uint32_t deleteInsideSphere(SpeciesParticle* pcl, moverParameter *moverParam, grid3DCUDA *grid) {
+    
+    if (moverParam->doSphere == 0) return 0;
+
+    if(moverParam->doSphere == 1){ // 3D sphere
+        const auto& sphereOrigin = moverParam->sphereOrigin;
+        const auto& sphereRadius = moverParam->sphereRadius;
+
+        const auto dx = pcl->get_x() - sphereOrigin[0];
+        const auto dy = pcl->get_y() - sphereOrigin[1];
+        const auto dz = pcl->get_z() - sphereOrigin[2];
+
+        if (dx*dx + dy*dy + dz*dz < sphereRadius*sphereRadius) {
+            return departureArrayElementType::DELETE;
+        }
+    } else if(moverParam->doSphere == 2){ // 2D sphere
+        const auto& sphereOrigin = moverParam->sphereOrigin;
+        const auto& sphereRadius = moverParam->sphereRadius;
+
+        const auto dx = pcl->get_x() - sphereOrigin[0];
+        const auto dz = pcl->get_z() - sphereOrigin[2];
+
+        if (dx*dx + dz*dz < sphereRadius*sphereRadius) {
+            return departureArrayElementType::DELETE;
+        }
+    }
+
+    return 0;
 
 }
 
 
-
-// __host__ __device__ void get_field_components_for_cell(
-//     const cudaFieldType *field_components[8],
-//     const cudaTypeArray1<cudaFieldType> fieldForPcls, grid3DCUDA *grid,
-//     int cx, int cy, int cz)
-// {
-//     // interface to the right of cell
-//     const int ix = cx + 1;
-//     const int iy = cy + 1;
-//     const int iz = cz + 1;
-    
-//     constexpr int ratio = sizeof(cudaCommonType) / sizeof(cudaFieldType);
-
-//     field_components[0] = fieldForPcls + ratio * toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, ix, iy, iz, 0); // field000
-//     field_components[1] = fieldForPcls + ratio * toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, ix, iy, cz, 0); // field001
-//     field_components[2] = fieldForPcls + ratio * toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, ix, cy, iz, 0); // field010
-//     field_components[3] = fieldForPcls + ratio * toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, ix, cy, cz, 0); // field011
-//     field_components[4] = fieldForPcls + ratio * toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, cx, iy, iz, 0); // field100
-//     field_components[5] = fieldForPcls + ratio * toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, cx, iy, cz, 0); // field101
-//     field_components[6] = fieldForPcls + ratio * toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, cx, cy, iz, 0); // field110
-//     field_components[7] = fieldForPcls + ratio * toOneDimIndex(grid->nxn, grid->nyn, grid->nzn, 8, cx, cy, cz, 0); // field111
-// }
-
-// __global__ void castingField(grid3DCUDA *grid, cudaTypeArray1<cudaCommonType> fieldForPcls){
-//     uint pidx = blockIdx.x * blockDim.x + threadIdx.x;
-//     if(pidx >= (grid->nxn * grid->nyn * grid->nzn))return;
-
-//     //cudaFieldType temp[8];
-
-//     auto pointDoublePtr = fieldForPcls + pidx * 8;
-//     cudaFieldType* pointSinglePtr = (cudaFieldType*)pointDoublePtr;
-
-//     for(int i=0; i < 8; i++){
-//         pointSinglePtr[i] = (cudaFieldType)pointDoublePtr[i];
-//     }
-
-//     // for(int i=0; i < 8; i++){
-//     //     pointSinglePtr[i] = temp[i];
-//     // }
-    
-// }
-
-
-
-__device__ void prepareDepartureArray(SpeciesParticle* pcl, departureArrayType* departureArray, grid3DCUDA* grid, hashedSum* hashedSumArray, uint32_t pidx){
+__device__ void prepareDepartureArray(SpeciesParticle* pcl, moverParameter *moverParam, departureArrayType* departureArray, grid3DCUDA* grid, hashedSum* hashedSumArray, uint32_t pidx){
 
     departureArrayElementType element;
 
-    if(pcl->get_x() < grid->xStart)
-    {
-        element.dest = 1;
-    }
-    else if(pcl->get_x() > grid->xEnd)
-    {
-        element.dest = 2;
-    }
-    else if(pcl->get_y() < grid->yStart)
-    {
-        element.dest = 3;
-    }
-    else if(pcl->get_y() > grid->yEnd)
-    {
-        element.dest = 4;
-    }
-    else if(pcl->get_z() < grid->zStart)
-    {
-        element.dest = 5;
-    }
-    else if(pcl->get_z() > grid->zEnd)
-    {
-        element.dest = 6;
-    }
-    else element.dest = 0;
+    do {
+
+        // OpenBC_outflow
+        element.dest = deleteAppendOpenBCOutflow(pcl, moverParam, grid);
+        if(element.dest != 0)break;
+
+        // INJECT
+        element.dest = deleteRepopulateInjection(pcl, moverParam, grid);
+        if(element.dest != 0)break;
+
+        // sphere
+        element.dest = deleteInsideSphere(pcl, moverParam, grid);
+        if(element.dest != 0)break;
+
+        // Exiting
+
+        if(pcl->get_x() < grid->xStart)
+        {
+            element.dest = departureArrayElementType::XLOW;
+        }
+        else if(pcl->get_x() > grid->xEnd)
+        {
+            element.dest = departureArrayElementType::XHIGH;
+        }
+        else if(pcl->get_y() < grid->yStart)
+        {
+            element.dest = departureArrayElementType::YLOW;
+        }
+        else if(pcl->get_y() > grid->yEnd)
+        {
+            element.dest = departureArrayElementType::YHIGH;
+        }
+        else if(pcl->get_z() < grid->zStart)
+        {
+            element.dest = departureArrayElementType::ZLOW;
+        }
+        else if(pcl->get_z() > grid->zEnd)
+        {
+            element.dest = departureArrayElementType::ZHIGH;
+        }
+        else element.dest = departureArrayElementType::STAY;
+
+    }while (0);
 
     if(element.dest != 0){
         element.hashedId = hashedSumArray[element.dest - 1].add(pidx);

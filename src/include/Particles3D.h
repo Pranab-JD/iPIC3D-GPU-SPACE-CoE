@@ -109,11 +109,14 @@ class Particles3D:public Particles3Dcomm {
    public:
     /** repopulate particles in boundary layer */
     void repopulate_particles();
+    void repopulate_particlesInfo(bool* doRepopulateInjection, bool* doRepopulateInjectionSide, cudaCommonType* repopulateBoundary);
+    void repopulate_particles_onlyInjection();
     /*! Delete the particles inside the sphere with radius R and center x_center y_center and return the total charge removed */
     double deleteParticlesInsideSphere(double R, double x_center, double y_center, double z_center);
     double deleteParticlesInsideSphere2DPlaneXZ(double R, double x_center, double z_center);
     /**Particles Open Boundary */
     void openbc_particles_outflow();
+    void openbc_particles_outflowInfo(bool* doOpenBC, bool* applyOpenBC, cudaCommonType* delBdry, cudaCommonType* openBdry);
     void openbc_delete_testparticles();
     void openbc_particles_inflow();
 

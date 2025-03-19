@@ -1862,6 +1862,228 @@ void Particles3D::repopulate_particles()
   //}
 }
 
+void Particles3D::repopulate_particlesInfo(bool* doRepopulateInjection, bool* doRepopulateInjectionSide, cudaCommonType* repopulateBoundary) {
+  
+  using namespace BCparticles;
+
+  *doRepopulateInjection = false;
+
+  // if this is not a boundary process then there is nothing to do
+  if(!vct->isBoundaryProcess_P()) return;
+
+  // if there are no reemission boundaries then no one has anything to do
+  const bool repop_bndry_in_X = !vct->getPERIODICX_P() &&
+        (bcPfaceXleft == REEMISSION || bcPfaceXright == REEMISSION);
+  const bool repop_bndry_in_Y = !vct->getPERIODICY_P() &&
+        (bcPfaceYleft == REEMISSION || bcPfaceYright == REEMISSION);
+  const bool repop_bndry_in_Z = !vct->getPERIODICZ_P() &&
+        (bcPfaceZleft == REEMISSION || bcPfaceZright == REEMISSION);
+  const bool repopulation_boundary_exists =
+        repop_bndry_in_X || repop_bndry_in_Y || repop_bndry_in_Z;
+
+  if(!repopulation_boundary_exists) return;
+
+  // boundaries to repopulate
+  //
+  const bool repopulateXleft = (vct->noXleftNeighbor_P() && bcPfaceXleft == REEMISSION);
+  const bool repopulateYleft = (vct->noYleftNeighbor_P() && bcPfaceYleft == REEMISSION);
+  const bool repopulateZleft = (vct->noZleftNeighbor_P() && bcPfaceZleft == REEMISSION);
+  const bool repopulateXrght = (vct->noXrghtNeighbor_P() && bcPfaceXright == REEMISSION);
+  const bool repopulateYrght = (vct->noYrghtNeighbor_P() && bcPfaceYright == REEMISSION);
+  const bool repopulateZrght = (vct->noZrghtNeighbor_P() && bcPfaceZright == REEMISSION);
+  const bool do_repopulate = 
+       repopulateXleft || repopulateYleft || repopulateZleft
+    || repopulateXrght || repopulateYrght || repopulateZrght;
+
+  if (!do_repopulate) return;
+  
+  *doRepopulateInjection = true; // we do repopulate
+
+  const int nxc = grid->getNXC();
+  const int nyc = grid->getNYC(); const int nzc = grid->getNZC();
+  // number of cell layers to repopulate at boundary
+  const int num_layers = 3;
+  const double xLow = num_layers*dx;
+  const double yLow = num_layers*dy;
+  const double zLow = num_layers*dz;
+  const double xHgh = Lx-xLow;
+  const double yHgh = Ly-yLow;
+  const double zHgh = Lz-zLow;
+  if(repopulateXleft || repopulateXrght) assert_gt(nxc, 2*num_layers);
+  if(repopulateYleft || repopulateYrght) assert_gt(nyc, 2*num_layers);
+  if(repopulateZleft || repopulateZrght) assert_gt(nzc, 2*num_layers);
+
+  doRepopulateInjectionSide[0] = repopulateXleft;
+  doRepopulateInjectionSide[1] = repopulateXrght;
+  doRepopulateInjectionSide[2] = repopulateYleft;
+  doRepopulateInjectionSide[3] = repopulateYrght;
+  doRepopulateInjectionSide[4] = repopulateZleft;
+  doRepopulateInjectionSide[5] = repopulateZrght;
+
+  repopulateBoundary[0] = xLow;
+  repopulateBoundary[1] = xHgh;
+  repopulateBoundary[2] = yLow;
+  repopulateBoundary[3] = yHgh;
+  repopulateBoundary[4] = zLow;
+  repopulateBoundary[5] = zHgh;
+
+}
+
+void Particles3D::repopulate_particles_onlyInjection()
+{
+  using namespace BCparticles;
+
+  // if this is not a boundary process then there is nothing to do
+  if(!vct->isBoundaryProcess_P()) return;
+
+  // if there are no reemission boundaries then no one has anything to do
+  const bool repop_bndry_in_X = !vct->getPERIODICX_P() &&
+        (bcPfaceXleft == REEMISSION || bcPfaceXright == REEMISSION);
+  const bool repop_bndry_in_Y = !vct->getPERIODICY_P() &&
+        (bcPfaceYleft == REEMISSION || bcPfaceYright == REEMISSION);
+  const bool repop_bndry_in_Z = !vct->getPERIODICZ_P() &&
+        (bcPfaceZleft == REEMISSION || bcPfaceZright == REEMISSION);
+  const bool repopulation_boundary_exists =
+        repop_bndry_in_X || repop_bndry_in_Y || repop_bndry_in_Z;
+
+  if(!repopulation_boundary_exists) return;
+
+
+  // boundaries to repopulate
+  //
+  const bool repopulateXleft = (vct->noXleftNeighbor_P() && bcPfaceXleft == REEMISSION);
+  const bool repopulateYleft = (vct->noYleftNeighbor_P() && bcPfaceYleft == REEMISSION);
+  const bool repopulateZleft = (vct->noZleftNeighbor_P() && bcPfaceZleft == REEMISSION);
+  const bool repopulateXrght = (vct->noXrghtNeighbor_P() && bcPfaceXright == REEMISSION);
+  const bool repopulateYrght = (vct->noYrghtNeighbor_P() && bcPfaceYright == REEMISSION);
+  const bool repopulateZrght = (vct->noZrghtNeighbor_P() && bcPfaceZright == REEMISSION);
+  const bool do_repopulate = 
+       repopulateXleft || repopulateYleft || repopulateZleft
+    || repopulateXrght || repopulateYrght || repopulateZrght;
+  // if this process has no reemission boundaries then there is nothing to do
+  if(!do_repopulate)
+    return;
+
+  // there are better ways to obtain these values...
+  //
+  double  FourPI =16*atan(1.0);
+  const double q_per_particle
+    = (qom/fabs(qom))*(Ninj/FourPI/npcel)*(1.0/grid->getInvVOL());
+
+  const int nxc = grid->getNXC();
+  const int nyc = grid->getNYC(); const int nzc = grid->getNZC();
+  // number of cell layers to repopulate at boundary
+  const int num_layers = 3;
+  const double xLow = num_layers*dx;
+  const double yLow = num_layers*dy;
+  const double zLow = num_layers*dz;
+  const double xHgh = Lx-xLow;
+  const double yHgh = Ly-yLow;
+  const double zHgh = Lz-zLow;
+  if(repopulateXleft || repopulateXrght) assert_gt(nxc, 2*num_layers);
+  if(repopulateYleft || repopulateYrght) assert_gt(nyc, 2*num_layers);
+  if(repopulateZleft || repopulateZrght) assert_gt(nzc, 2*num_layers);
+
+
+  const double dx_per_pcl = dx/npcelx;
+  const double dy_per_pcl = dy/npcely;
+  const double dz_per_pcl = dz/npcelz;
+
+  // starting coordinate of upper layer
+  const int upXstart = nxc-1-num_layers;
+  const int upYstart = nyc-1-num_layers;
+  const int upZstart = nzc-1-num_layers;
+
+  // inject new particles.
+  //
+  {
+
+    int xbeg = 1;
+    int xend = nxc-2;
+    int ybeg = 1;
+    int yend = nyc-2;
+    int zbeg = 1;
+    int zend = nzc-2;
+    if (repopulateXleft)
+    {
+      //cout << "*** Repopulate Xleft species " << ns << " ***" << endl;
+      for (int i=1; i<= num_layers; i++)
+      for (int j=ybeg; j<=yend; j++)
+      for (int k=zbeg; k<=zend; k++)
+      {
+        populate_cell_with_particles(i,j,k,q_per_particle,
+          dx_per_pcl, dy_per_pcl, dz_per_pcl);
+      }
+      // these have all been filled, so never touch them again.
+      xbeg += num_layers;
+    }
+    if (repopulateXrght)
+    {      
+      cout << "*** Repopulate Xright species " << ns << " ***" << endl;
+      for (int i=upXstart; i<=xend; i++)
+      for (int j=ybeg; j<=yend; j++)
+      for (int k=zbeg; k<=zend; k++)
+      {
+        populate_cell_with_particles(i,j,k,q_per_particle,
+          dx_per_pcl, dy_per_pcl, dz_per_pcl);
+      }
+      // these have all been filled, so never touch them again.
+      xend -= num_layers;
+    }
+    if (repopulateYleft)
+    {     
+      // cout << "*** Repopulate Yleft species " << ns << " ***" << endl;
+      for (int i=xbeg; i<=xend; i++)
+      for (int j=1; j<=num_layers; j++)
+      for (int k=zbeg; k<=zend; k++)
+      {
+        populate_cell_with_particles(i,j,k,q_per_particle,
+          dx_per_pcl, dy_per_pcl, dz_per_pcl);
+      }
+      // these have all been filled, so never touch them again.
+      ybeg += num_layers;
+    }
+    if (repopulateYrght)
+    {     
+      // cout << "*** Repopulate Yright species " << ns << " ***" << endl;
+      for (int i=xbeg; i<=xend; i++)
+      for (int j=upYstart; j<=yend; j++)
+      for (int k=zbeg; k<=zend; k++)
+      {
+        populate_cell_with_particles(i,j,k,q_per_particle,
+          dx_per_pcl, dy_per_pcl, dz_per_pcl);
+      }
+      // these have all been filled, so never touch them again.
+      yend -= num_layers;
+    }
+    if (repopulateZleft)
+    {   
+      //   cout << "*** Repopulate Zleft species " << ns << " ***" << endl;
+      for (int i=xbeg; i<=xend; i++)
+      for (int j=ybeg; j<=yend; j++)
+      for (int k=1; k<=num_layers; k++)
+      {
+        populate_cell_with_particles(i,j,k,q_per_particle,
+          dx_per_pcl, dy_per_pcl, dz_per_pcl);
+      }
+    }
+    if (repopulateZrght)
+    {   
+      //   cout << "*** Repopulate Zright species " << ns << " ***" << endl;
+      for (int i=xbeg; i<=xend; i++)
+      for (int j=ybeg; j<=yend; j++)
+      for (int k=upZstart; k<=zend; k++)
+      {
+        populate_cell_with_particles(i,j,k,q_per_particle,
+          dx_per_pcl, dy_per_pcl, dz_per_pcl);
+      }
+    }
+  }
+
+}
+
+
+
 // Open BC for particles: duplicate particles on the boundary,.
 // shift outside the box and update location to test if inside box
 // if so, add to particle list
@@ -2089,6 +2311,49 @@ void Particles3D::openbc_particles_outflow()
   for(int outId=0;outId<nop_created;outId++)
 	  _pcls.push_back(injpcls[outId]);
 }
+
+void Particles3D::openbc_particles_outflowInfo(bool* doOpenBC, bool* applyOpenBC, cudaCommonType* delBdry, cudaCommonType* openBdry) {
+  *doOpenBC = false;
+  if(!vct->isBoundaryProcess_P()) return;
+
+  using namespace BCparticles;
+
+  const bool openXleft = !vct->getPERIODICX_P() && vct->noXleftNeighbor_P() &&  bcPfaceXleft == OPENBCOut;
+  const bool openYleft = !vct->getPERIODICY_P() && vct->noYleftNeighbor_P() &&  bcPfaceYleft == OPENBCOut;
+  const bool openZleft = !vct->getPERIODICZ_P() && vct->noZleftNeighbor_P() &&  bcPfaceZleft == OPENBCOut;
+
+  const bool openXright = !vct->getPERIODICX_P() && vct->noXrghtNeighbor_P() && bcPfaceXright == OPENBCOut;
+  const bool openYright = !vct->getPERIODICY_P() && vct->noYrghtNeighbor_P() && bcPfaceYright == OPENBCOut;
+  const bool openZright = !vct->getPERIODICZ_P() && vct->noZrghtNeighbor_P() && bcPfaceZright == OPENBCOut;
+
+  if(!openXleft && !openYleft && !openZleft && !openXright && !openYright && !openZright)  return;
+
+  *doOpenBC = true; // if we got here, we are doing openBC
+
+  applyOpenBC[0] = openXleft;
+  applyOpenBC[1] = openXright;
+  applyOpenBC[2] = openYleft;
+  applyOpenBC[3] = openYright;
+  applyOpenBC[4] = openZleft;
+  applyOpenBC[5] = openZright;
+
+  const int num_layers = 3;
+  assert_gt(nxc-2, (openXleft+openXright)*num_layers); 
+  assert_gt(nyc-2, (openYleft+openYright)*num_layers);
+  assert_gt(nzc-2, (openZleft+openZright)*num_layers);
+
+  const double xLow = num_layers*dx;
+  const double yLow = num_layers*dy;
+  const double zLow = num_layers*dz;
+  const double xHgh = Lx-xLow;
+  const double yHgh = Ly-yLow;
+  const double zHgh = Lz-zLow;
+
+  delBdry[0] = 0; delBdry[1] = Lx; delBdry[2] = 0; delBdry[3] = Ly; delBdry[4] = 0; delBdry[5] = Lz;
+  openBdry[0] = xLow; openBdry[1] = xHgh; openBdry[2] = yLow; openBdry[3] = yHgh; openBdry[4] = zLow; openBdry[5] = zHgh;
+
+}
+
 
 //Simply delete exiting test particles if openBC
 void Particles3D::openbc_delete_testparticles()

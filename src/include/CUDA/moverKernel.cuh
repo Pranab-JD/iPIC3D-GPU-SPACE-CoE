@@ -38,6 +38,22 @@ public: // common parameter
 
     // moverOutflowParameter outflowParam;
 
+    // For openBC, XLeft, XRight, YLeft, YRight, ZLeft, ZRight
+    bool doOpenBC; // a OR of applyOpenBC
+    bool applyOpenBC[6];
+    cudaCommonType deleteBoundary[6];
+    cudaCommonType openBoundary[6];
+    uint32_t appendCountAtomic; // the number of duplicated particles to be appended to the array, just in time
+
+    // For repopulate injection, XLeft, XRight, YLeft, YRight, ZLeft, ZRight
+    bool doRepopulateInjection;
+    bool doRepopulateInjectionSide[6];
+    cudaCommonType repopulateBoundary[6];
+
+    // For sphere
+    int doSphere; // 0: no sphere, 1: sphere, 2: sphere2D(XZ)
+    cudaCommonType sphereOrigin[3];
+    cudaCommonType sphereRadius;
 
 public:
 

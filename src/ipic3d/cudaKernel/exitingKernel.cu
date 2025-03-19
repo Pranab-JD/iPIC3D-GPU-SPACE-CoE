@@ -19,7 +19,7 @@
  *          elements of the departure array.
  *          
  * @param exitingArray The buffer used for exiting particles for 6 directions, the size and distriburtion are decided by the 6 hashedSum
- * @param hashedSumArray 8 hashedSum, 6 from the Mover, 2 for Sorting.
+ * @param hashedSumArray 9 hashedSum, 6 from the Mover, 1 for the deleted, 2 for Sorting.
  * 
  */
 __global__ void exitingKernel(particleArrayCUDA* pclsArray, departureArrayType* departureArray, 
@@ -28,15 +28,19 @@ __global__ void exitingKernel(particleArrayCUDA* pclsArray, departureArrayType* 
     uint pidx = blockIdx.x * blockDim.x + threadIdx.x;
     if(pidx >= pclsArray->getNOP())return;
 
-    __shared__ int x; // x, the number of exiting particles  , can be a increasing array
-    if(threadIdx.x == 0){ x = 0; for(int i=0; i < 6; i++)x += hashedSumArray[i].getSum(); }
+    __shared__ int x; // y, the number of holes (eixitng + deleted)
+    if(threadIdx.x == 0){ 
+        x = 0; 
+        for(int i=0; i < departureArrayElementType::DELETE ; i++)x += hashedSumArray[i].getSum(); 
+    }
     __syncthreads();
     
     auto departureElement = departureArray->getArray() + pidx;
-    // the remained are 1. exiting particles in the front part 2. rear part
+    // return the stayed particles in the front part
     if(pidx < (pclsArray->getNOP()-x) && departureElement->dest == 0)return; 
     
-    if(departureElement->dest != 0){ // all exiting particles
+    // Exiting particles
+    if(departureElement->dest > 0 && departureElement->dest < departureArrayElementType::DELETE){ 
         auto pcl = pclsArray->getpcls() + pidx;
 
         int index = 0;
@@ -48,14 +52,18 @@ __global__ void exitingKernel(particleArrayCUDA* pclsArray, departureArrayType* 
         index += hashedSumArray[departureElement->dest-1].getIndex(pidx, departureElement->hashedId);
         // copy the particle
         memcpy(exitingArray->getArray() + index, pcl, sizeof(SpeciesParticle));
+    }
 
+    // holes
+    if(departureElement->dest !=0){
+        if(pidx >= (pclsArray->getNOP()-x))return; // return holes in the back part
+        departureElement->hashedId = hashedSumArray[departureArrayElementType::DELETE].add(pidx);
+        return; // return all holes
+    }
 
-        if(pidx >= (pclsArray->getNOP()-x))return;
-        // holes
-        departureElement->hashedId = hashedSumArray[6].add(pidx);
-
-    }else{ // the fillers
-        departureElement->hashedId = hashedSumArray[7].add(pidx);
+    // Only fillers reach here
+    if(pidx >= (pclsArray->getNOP()-x)){ 
+        departureElement->hashedId = hashedSumArray[departureArrayElementType::DELETE+1].add(pidx);
     }
 
 }
