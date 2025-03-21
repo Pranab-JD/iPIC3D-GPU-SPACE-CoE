@@ -400,11 +400,16 @@ __device__ uint32_t deleteAppendOpenBCOutflow(SpeciesParticle* pcl, moverParamet
             newPcl.fetch_y() += newPcl.get_v() * moverParam->dt;
             newPcl.fetch_z() += newPcl.get_w() * moverParam->dt;
 
+            newPcl.set_t(114514.0);
+
             // if the new particle is still in the domain
             if (
-                newPcl.get_x() > delBdry[0] && newPcl.get_x() < delBdry[1] &&
-                newPcl.get_y() > delBdry[2] && newPcl.get_y() < delBdry[3] &&
-                newPcl.get_z() > delBdry[4] && newPcl.get_z() < delBdry[5]
+                // newPcl.get_x() > delBdry[0] && newPcl.get_x() < delBdry[1] &&
+                // newPcl.get_y() > delBdry[2] && newPcl.get_y() < delBdry[3] &&
+                // newPcl.get_z() > delBdry[4] && newPcl.get_z() < delBdry[5]
+                newPcl.get_x() > grid->xStart && newPcl.get_x() < grid->xEnd &&
+                newPcl.get_y() > grid->yStart && newPcl.get_y() < grid->yEnd &&
+                newPcl.get_z() > grid->zStart && newPcl.get_z() < grid->zEnd
             ) {
                 const auto index = moverParam->pclsArray->getNOP() + atomicAdd(&moverParam->appendCountAtomic, 1);
                 // check memory overflow
