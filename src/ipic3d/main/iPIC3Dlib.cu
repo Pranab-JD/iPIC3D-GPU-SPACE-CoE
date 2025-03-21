@@ -637,7 +637,12 @@ int c_Solver::cudaLauncherAsync(const int species){
 
   // Mover
   cudaErrChk(cudaStreamWaitEvent(streams[species], event0, 0));
+  if (col->getCase()=="GEM")
   moverKernel<<<getGridSize((int)pclsArrayHostPtr[species]->getNOP(), 256), 256, 0, streams[species]>>>(moverParamCUDAPtr[species], fieldForPclCUDAPtr, grid3DCUDACUDAPtr);
+  else if (col->getCase()=="Dipole" || col->getCase()=="Dipole2D")
+  moverSubcyclesKernel<<<getGridSize((int)pclsArrayHostPtr[species]->getNOP(), 256), 256, 0, streams[species]>>>(moverParamCUDAPtr[species], fieldForPclCUDAPtr, grid3DCUDACUDAPtr);
+
+  
   cudaErrChk(cudaEventRecord(event1, streams[species]));
   // Moment stayed
   cudaErrChk(cudaMemsetAsync(momentsCUDAPtr[species], 0, gridSize*10*sizeof(cudaMomentType), streams[species]));  // set moments to 0
