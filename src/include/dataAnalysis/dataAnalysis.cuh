@@ -34,9 +34,6 @@ public:
     // blocking wait for the analysis to finish
     int waitForAnalysis();
 
-    // write the results of GMM, the aggregated method
-    void writeGMMResults();
-
     ~dataAnalysisPipeline();
 
 };

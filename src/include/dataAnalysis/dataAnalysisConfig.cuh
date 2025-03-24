@@ -4,20 +4,21 @@
 #include <string>
 #include "cudaTypeDef.cuh"
 
-#pragma once
+namespace DAConfig {
+
 
 // General configuration
 inline constexpr bool DATA_ANALYSIS_ENABLED = true;
-inline constexpr bool VELOCITY_HISTOGRAM_ENABLE = true;
-inline constexpr bool GMM_ENABLE = true;
+inline constexpr bool VELOCITY_HISTOGRAM_ENABLE = DATA_ANALYSIS_ENABLED && true;
+inline constexpr bool GMM_ENABLE = VELOCITY_HISTOGRAM_ENABLE && true;
 
 inline const std::string DATA_ANALYSIS_OUTPUT_DIR = "./";
-inline constexpr int DATA_ANALYSIS_EVERY_CYCLE = 200; // 0 to disable
+inline constexpr int DATA_ANALYSIS_EVERY_CYCLE = 200; 
 
 // Histogram configuration
 inline constexpr int VELOCITY_HISTOGRAM_RES = 200; // must be multiply of VELOCITY_HISTOGRAM_TILE
 inline constexpr int VELOCITY_HISTOGRAM_TILE = 100;
-inline constexpr bool HISTOGRAM_OUTPUT = true;
+inline constexpr bool HISTOGRAM_OUTPUT = VELOCITY_HISTOGRAM_ENABLE && true;
 inline const std::string HISTOGRAM_OUTPUT_DIR = DATA_ANALYSIS_OUTPUT_DIR + "velocityHistogram/";
 
 inline constexpr bool HISTOGRAM_FIXED_RANGE = true; // edit the range in velocityHistogram::getRange --> moved here
@@ -30,8 +31,7 @@ inline constexpr bool HISTOGRAM_OUTPUT_3D = false; // the vtk file format, if fa
 
 // GMM configuration
 
-inline constexpr bool GMM_OUTPUT = true;
-inline constexpr bool OUTPUT_ALL_END_GMM = true;
+inline constexpr bool GMM_OUTPUT = GMM_ENABLE && true;
 inline const std::string GMM_OUTPUT_DIR = DATA_ANALYSIS_OUTPUT_DIR + "velocityGMM/";
 inline constexpr int DATA_DIM_GMM = 2; // only works with DATA_DIM = 2 now
 inline constexpr int NUM_COMPONENT_GMM = 12; // number of components used in GMM - array with length NUM_ANALYSIS_GMM
@@ -54,6 +54,9 @@ constexpr bool checkDAEnabled(){
 
 inline auto discard = checkDAEnabled();
 
+inline std::string DA_2D_PLANE_NAME[3] = {"uv", "vw", "uw"};
+
+} // namespace DAConfig
 
 
 #endif

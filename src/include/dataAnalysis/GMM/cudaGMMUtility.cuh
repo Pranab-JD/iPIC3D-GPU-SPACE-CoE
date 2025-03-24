@@ -11,8 +11,12 @@
 #include <sstream>
 #include <iomanip>
 
+#include "dataAnalysisConfig.cuh"
+
 namespace cudaGMMWeight
 {
+
+using namespace DAConfig;
 
 template <typename T, int dataDim, typename U = int>
 class GMMDataMultiDim{
@@ -80,19 +84,6 @@ template <typename T>
 using GMMParam_t = GMMParam_s<T>;
 
 
-// store output GMM data of the previous DA cycle to be used as initial GMM parameters in next DA cycle
-// at each DA cycle data in GMMParam_output_store are overwritten
-template <typename T>
-struct GMMParam_output_store{
-    int numComponents;
-    int maxIteration;
-    T threshold; // the threshold for the log likelihood
-    T weightVector[NUM_COMPONENT_GMM];
-    T meanVector[NUM_COMPONENT_GMM * DATA_DIM_GMM];
-    T coVarianceMatrix[NUM_COMPONENT_GMM * DATA_DIM_GMM * DATA_DIM_GMM ];
-};
-
-
 // result class. T is output parameter type, this can not be reused
 template <typename T, int dataDim>
 class GMMResult{
@@ -109,7 +100,7 @@ public:
     T logLikelihoodFinal; // the final log likelihood
     // std::vector<T> logLikelihoodArray; // th elog lilelihood, in each iteration
 
-private:
+public:
 
     std::string outputString() const {
         std::ostringstream outputStream;

@@ -13,6 +13,8 @@
 using namespace velocityHistogram;
 using SoAElements = particleArraySoA::particleArraySoAElement;
 
+using namespace DAConfig;
+
 constexpr int nop = 5000000;
 
 

@@ -7,6 +7,9 @@
 #include <random>
 #include <type_traits>
 #include <cstring>
+#include <iostream>
+#include <fstream>
+#include <filesystem>
 
 #include "iPic3D.h"
 #include "VCtopology3D.h"
@@ -20,7 +23,7 @@
 #include "particleArraySoACUDA.cuh"
 #include "velocityHistogram.cuh"
 
-
+#include "mpi.h"
 
 namespace dataAnalysis
 {
@@ -29,6 +32,8 @@ using namespace iPic3D;
 using velocitySoA = particleArraySoA::particleArraySoACUDA<cudaParticleType, 0, 3>;
 using GMMType = cudaParticleType;
 using weightType = velocityHistogram::histogramTypeOut;
+
+using namespace DAConfig;
 
 class dataAnalysisPipelineImpl {
 private:
@@ -49,8 +54,7 @@ private:
     // GMM
     string GMMSubDomainOutputPath;
     cudaGMMWeight::GMM<GMMType, DATA_DIM_GMM, weightType>* gmmArray = nullptr;
-    cudaGMMWeight::GMMParam_output_store<GMMType> paramHost_last_array[12]; // object on host, GMM output parameters at the last cycle - numSpecies * numPlanes(uvw) (4*3 in this case)
-    // dimensions: numSpecies, numPlanes (uvw), numGMMDA
+    // dimensions: numSpecies, numPlanes (uvw), cycles
     std::vector<std::array<std::vector<cudaGMMWeight::GMMResult<GMMType, DATA_DIM_GMM>>, 3>> gmmResults;
 
 public:
@@ -66,13 +70,13 @@ public:
         if constexpr (VELOCITY_HISTOGRAM_ENABLE) { // velocity histogram
             velocitySoACUDA = new velocitySoA();
 
-            HistogramSubDomainOutputPath = HISTOGRAM_OUTPUT_DIR + "subDomain" + std::to_string(KCode.myrank) + "/";
+            HistogramSubDomainOutputPath = HISTOGRAM_OUTPUT_DIR + "subDomain" + std::to_string(KCode.myrank) + "_";
             velocityHistogram = new velocityHistogram::velocityHistogram(VELOCITY_HISTOGRAM_RES*VELOCITY_HISTOGRAM_RES);
 
             if constexpr (GMM_ENABLE) { // GMM
-                GMMSubDomainOutputPath = GMM_OUTPUT_DIR + "subDomain" + std::to_string(KCode.myrank) + "/";
+                GMMSubDomainOutputPath = GMM_OUTPUT_DIR + "subDomain" + std::to_string(KCode.myrank) + "_";
                 gmmArray = new cudaGMMWeight::GMM<GMMType, DATA_DIM_GMM, weightType>[3];
-                if constexpr (GMM_OUTPUT) gmmResults.resize(ns);
+                gmmResults.resize(ns);
             }
         }
     }
@@ -82,23 +86,6 @@ public:
     int checkAnalysis();
 
     int waitForAnalysis();
-
-    void writeGMMResults() {
-        if constexpr (GMM_OUTPUT && OUTPUT_ALL_END_GMM) {
-            std::string uvw[3] = {"uv", "vw", "uw"};
-
-            int i = 0; // species index
-            for (auto& speciesResArray : gmmResults) {
-                int j = 0; // uvw index
-                for (auto& plane : speciesResArray) {
-                    string planePath = GMMSubDomainOutputPath + "species" + std::to_string(i) + "_" + uvw[j] + ".json";
-                    cudaGMMWeight::GMMResult<GMMType, DATA_DIM_GMM>::outputResultArray(plane, planePath, uvw[j]); 
-                    j++;  
-                }
-                i++;
-            }
-        }
-    }
 
 
     ~dataAnalysisPipelineImpl() {     
@@ -137,7 +124,6 @@ int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int spec
         cudaErrChk(cudaSetDevice(deviceOnNode));
 
         // GMM config
-        auto& paramHost_last = paramHost_last_array[species * 3 + i];
 
         // set the random number generator to sample velocity from circle of radius max velocity
         std::random_device rd;  // True random seed
@@ -181,13 +167,9 @@ int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int spec
 
         if constexpr (START_WITH_LAST_PARAMETERS_GMM) // start GMM with output GMM parameters from last cycle as initial parameters
         {
-            // if cycle == 0 initialize GMM with the usual fixed parameters
-            if(cycle == 0)
-            {
-                paramHost_last.numComponents = NUM_COMPONENT_GMM;
-                paramHost_last.maxIteration = MAX_ITERATION_GMM;
-                paramHost_last.threshold = THRESHOLD_CONVERGENCE_GMM;
-                
+            // if first time initialize GMM with the usual fixed parameters
+            if(gmmResults[species][i].size() == 0)
+            {                
                 for(int j = 0; j < NUM_COMPONENT_GMM; j++){
                     weightVector[j] = 1.0/NUM_COMPONENT_GMM;
                     GMMType radius = maxVelocity * sqrt(unif01(gen));
@@ -200,16 +182,18 @@ int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int spec
                     coVarianceMatrix[j * 4 + 3] = var2;
                 }
             }
-            else // if cycle > 0 initialize GMM with previous output parameters
+            else // Initialize GMM with previous output parameters
             {   
+                auto& lastResult = gmmResults[species][i].back();
+
                 bool reset = false;
                 
                 // safety checks on components weights and mean since after pruning some components have zero weight
                 // check if meanVector is NaN or component weight is too small
                 // if meanVector is NaN sample new mean vector
                 for(int j = 0; j < NUM_COMPONENT_GMM; j++){ 
-                    if( std::isnan(paramHost_last.meanVector[j * 2]) || std::isnan(paramHost_last.meanVector[j * 2 + 1]) || 
-                        std::isinf(paramHost_last.meanVector[j * 2]) || std::isinf(paramHost_last.meanVector[j * 2 + 1]) ){
+                    if( std::isnan(lastResult.mean[j * 2]) || std::isnan(lastResult.mean[j * 2 + 1]) || 
+                        std::isinf(lastResult.mean[j * 2]) || std::isinf(lastResult.mean[j * 2 + 1]) ){
                         reset = true;
                         GMMType radius = maxVelocity * sqrt(unif01(gen));
                         GMMType theta = distTheta(gen);
@@ -217,11 +201,11 @@ int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int spec
                         meanVector[j * 2 + 1] = radius*sin(theta) / normalization;
                     }
                     else{
-                        meanVector[j * 2] = paramHost_last.meanVector[j * 2] / normalization;
-                        meanVector[j * 2 + 1] = paramHost_last.meanVector[j * 2 + 1] / normalization;
+                        meanVector[j * 2] = lastResult.mean[j * 2] / normalization;
+                        meanVector[j * 2 + 1] = lastResult.mean[j * 2 + 1] / normalization;
                     }
 
-                    if( paramHost_last.weightVector[j] < PRUNE_THRESHOLD_GMM*10 ) reset = true;
+                    if( lastResult.weight[j] < PRUNE_THRESHOLD_GMM*10 ) reset = true;
                 }
 
                 // if meanVector is NaN or weigth is too small reset components weights
@@ -231,16 +215,16 @@ int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int spec
                         weightVector[j] = 1.0/NUM_COMPONENT_GMM;
                     }
                     else{
-                        weightVector[j] = paramHost_last.weightVector[j];
+                        weightVector[j] = lastResult.weight[j];
                     }
 
-                    coVarianceMatrix[j * 4] = paramHost_last.coVarianceMatrix[j * 4] > (10 * EPS_COVMATRIX_GMM * (normalization*normalization)) ? 
-                                                        paramHost_last.coVarianceMatrix[j * 4] : var1;
+                    coVarianceMatrix[j * 4] = lastResult.coVariance[j * 4] > (10 * EPS_COVMATRIX_GMM * (normalization*normalization)) ? 
+                                                lastResult.coVariance[j * 4] : var1;
                     coVarianceMatrix[j * 4] /= (normalization*normalization);                               
                     coVarianceMatrix[j * 4 + 1] = 0.0;
                     coVarianceMatrix[j * 4 + 2] = 0.0;
-                    coVarianceMatrix[j * 4 + 3] = paramHost_last.coVarianceMatrix[j * 4 + 3] > (10 * EPS_COVMATRIX_GMM * (normalization*normalization)) ? 
-                                                            paramHost_last.coVarianceMatrix[j * 4 + 3] : var2;
+                    coVarianceMatrix[j * 4 + 3] = lastResult.coVariance[j * 4 + 3] > (10 * EPS_COVMATRIX_GMM * (normalization*normalization)) ? 
+                                                    lastResult.coVariance[j * 4 + 3] : var2;
                     coVarianceMatrix[j * 4 + 3] /= (normalization*normalization);
                 }
             }
@@ -277,41 +261,66 @@ int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int spec
 
         cudaErrChk(cudaHostRegister(&GMMData, sizeof(GMMData), cudaHostRegisterDefault));
         
-        // generate exact output file path
-        std::string uvw[3] = {"uv_", "vw_", "uw_"};
-        auto fileOutputPath = outputPath + uvw[i] + std::to_string(cycle) + ".json";
-        
+        // generate exact output file path        
         auto& gmm = gmmArray[i];
-
         gmm.config(&GMMParam, &GMMData);
         // preprocess the data --> normalize data
         gmm.preProcessDataGMM(meanArray);
         // run GMM
-        auto convergStep = gmm.initGMM(fileOutputPath); // the exact output file name
+        auto convergStep = gmm.initGMM(); // the exact output file name
         // postporcess data --> normalize data back
         gmm.postProcessDataGMM();
         // move GMM output to host
-        int moveBackToHost = gmm.moveBackToHostGMM(paramHost_last);
-        int ret = 0;
-        
-        if constexpr (GMM_OUTPUT) {
-            ret = gmm.outputGMM(convergStep, fileOutputPath, moveBackToHost); // immediate output
-            // results vector
-            if constexpr (OUTPUT_ALL_END_GMM) gmmResults[species][i].push_back(gmm.getGMMResult(cycle, convergStep));
-        }
+        gmmResults[species][i].push_back(gmm.getGMMResult(cycle, convergStep));
 
         cudaErrChk(cudaHostUnregister(&GMMData));
 
-        return ret;
+        return 0;
     };
 
     for(int i = 0; i < 3; i++){
-        // launch 3 async threads for uv, uw, vw
         future[i] = DAthreadPool->enqueue(GMMLambda, i); 
     }
 
     for(int i = 0; i < 3; i++){
         future[i].wait();
+    }
+
+    // GMM result output, in the gmmResult
+    if constexpr (GMM_OUTPUT) {
+        auto& uvw = DA_2D_PLANE_NAME;
+
+        if (!std::filesystem::exists(outputPath)){ 
+            std::ofstream output(outputPath);
+            if(output.is_open()){
+                output.close();
+            } else {
+                throw std::runtime_error("[!]Error: Can not open output file for velocity GMM species");
+            }
+        }
+
+        std::fstream output(outputPath, std::ios::in | std::ios::out | std::ios::ate);
+        if(output.is_open()){
+            std::ostringstream buffer;
+
+            if(output.tellg() == 0) buffer << "{\n"; 
+            else { 
+                output.seekp(-2, std::ios_base::end);
+                buffer << ",\n";
+            }
+
+            buffer << "\"" << std::to_string(cycle) << "\": {\n";
+            buffer << "\"" << uvw[0] << "\": " << gmmResults[species][0].back().outputString() << ",\n";
+            buffer << "\"" << uvw[1] << "\": " << gmmResults[species][1].back().outputString() << ",\n";
+            buffer << "\"" << uvw[2] << "\": " << gmmResults[species][2].back().outputString() << "\n";
+            buffer << "}\n}";
+            
+            output << buffer.str();
+            output.close();
+        } else {
+            throw std::runtime_error("[!]Error: Can not open output file for velocity GMM species");
+        }
+
     }
 
     return 0;
@@ -333,15 +342,15 @@ int dataAnalysisPipelineImpl::analysisEntre(int cycle){
             velocitySoACUDA->updateFromAoS(pclsArrayHostPtr[i], streams[i]);
 
             // histogram
-            auto histogramSpeciesOutputPath = HistogramSubDomainOutputPath + "species" + std::to_string(i) + "/";
+            auto histogramSpeciesOutputPath = HistogramSubDomainOutputPath + "species" + std::to_string(i) + "_";
             velocityHistogram->init(velocitySoACUDA, cycle, i, streams[i]);
             if constexpr (HISTOGRAM_OUTPUT)
-            velocityHistogram->writeToFile(histogramSpeciesOutputPath, streams[i]); // TODO
+            velocityHistogram->writeToFile(histogramSpeciesOutputPath, streams[i]); 
             else cudaErrChk(cudaStreamSynchronize(streams[i]));
 
             if constexpr (GMM_ENABLE) { // GMM
-                    auto GMMSpeciesOutputPath = GMMSubDomainOutputPath + "species" + std::to_string(i) + "/";
-                    GMMAnalysisSpecies(cycle, i, GMMSpeciesOutputPath);
+                auto GMMSpeciesOutputPath = GMMSubDomainOutputPath + "species" + std::to_string(i) + ".json";
+                GMMAnalysisSpecies(cycle, i, GMMSpeciesOutputPath);
             }
         }
     }
@@ -441,32 +450,27 @@ void dataAnalysisPipeline::createOutputDirectory(int myrank, int ns, VirtualTopo
     };
 
     if constexpr (VELOCITY_HISTOGRAM_ENABLE && HISTOGRAM_OUTPUT) {
-        auto histogramSubDomainOutputPath = HISTOGRAM_OUTPUT_DIR + "subDomain" + std::to_string(myrank) + "/";
-        if(0 != checkOutputFolder(histogramSubDomainOutputPath)){
+        const auto histogramSubDomainOutputPath = HISTOGRAM_OUTPUT_DIR;
+
+        if(myrank == 0 && 0 != checkOutputFolder(histogramSubDomainOutputPath)){
             throw std::runtime_error("[!]Error: Can not create output folder for velocity histogram");
         }
 
-        for(int i = 0; i < ns; i++){
-            auto histogramSpeciesOutputPath = histogramSubDomainOutputPath + "species" + std::to_string(i);
-            if(0 != checkOutputFolder(histogramSpeciesOutputPath)){
-            throw std::runtime_error("[!]Error: Can not create output folder for velocity histogram species");
-            }
-        }
-        writeVctMapping(histogramSubDomainOutputPath + "vctMapping.txt");
+        MPI_Barrier(MPIdata::get_PicGlobalComm());
+
+        writeVctMapping(histogramSubDomainOutputPath + "vctMapping_subDomain" + std::to_string(myrank) + ".txt");
     }
 
     if constexpr (GMM_ENABLE && GMM_OUTPUT) {
-        auto GMMSubDomainOutputPath = GMM_OUTPUT_DIR + "subDomain" + std::to_string(myrank) + "/";
-        if(0 != checkOutputFolder(GMMSubDomainOutputPath)){
+        const auto GMMSubDomainOutputPath = GMM_OUTPUT_DIR;
+
+        if(myrank == 0 && 0 != checkOutputFolder(GMMSubDomainOutputPath)){
             throw std::runtime_error("[!]Error: Can not create output folder for velocity GMM");
         }
-        for(int i = 0; i < ns; i++){
-            auto GMMSpeciesOutputPath = GMMSubDomainOutputPath + "species" + std::to_string(i) + "/";
-            if(0 != checkOutputFolder(GMMSpeciesOutputPath)){
-            throw std::runtime_error("[!]Error: Can not create output folder for velocity GMM species");
-            }
-        }
-        writeVctMapping(GMMSubDomainOutputPath + "vctMapping.txt");
+
+        MPI_Barrier(MPIdata::get_PicGlobalComm());
+
+        writeVctMapping(GMMSubDomainOutputPath + "vctMapping_subDomain" + std::to_string(myrank) + ".txt");
     }
 
 }
@@ -502,12 +506,6 @@ int dataAnalysisPipeline::waitForAnalysis() {
     return impl->waitForAnalysis();
 }
 
-void dataAnalysisPipeline::writeGMMResults() {
-    if constexpr (DATA_ANALYSIS_ENABLED == false){
-        return;
-    }
-    impl->writeGMMResults();
-}
 
 dataAnalysisPipeline::~dataAnalysisPipeline() {
     

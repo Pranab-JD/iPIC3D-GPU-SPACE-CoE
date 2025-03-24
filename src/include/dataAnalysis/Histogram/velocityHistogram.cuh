@@ -227,6 +227,7 @@ using velocityHistogramCUDA = histogram::histogramCUDA<histogramTypeIn, 2, histo
 
 using velocitySoA = particleArraySoA::particleArraySoACUDA<histogramTypeIn, 0, 3>;
 
+using namespace DAConfig;
 
 /**
  * @brief Histogram for one species
@@ -332,7 +333,7 @@ public:
     __host__ void writeToFile(std::string filePath, cudaStream_t stream = 0){
         copyHistogramToHost(stream);
         
-        std::string items[3] = {"uv", "vw", "uw"};
+        auto& items = DA_2D_PLANE_NAME;
 
         std::string vtkType;
         if constexpr (std::is_same_v<histogramTypeOut, float>){

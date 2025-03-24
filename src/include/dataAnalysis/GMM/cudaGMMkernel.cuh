@@ -2,6 +2,7 @@
 #define _CUDA_GMM_KERNEL_H_
 
 #include <assert.h>
+#include "dataAnalysisConfig.cuh"
 
 namespace cudaGMMWeight
 {
@@ -11,6 +12,8 @@ namespace cudaGMMWeight
 
 namespace cudaGMMWeightKernel
 {
+
+using namespace DAConfig;
 
 
 /**
