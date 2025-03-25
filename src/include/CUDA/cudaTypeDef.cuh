@@ -87,7 +87,7 @@ template <typename T>
 __host__ inline T* copyToDevice(T* objectOnHost, cudaStream_t stream = 0){
     if(objectOnHost == nullptr)throw std::runtime_error("CopyToDevice: can not copy a nullptr to device.");
     T* ptr = nullptr;
-    cudaErrChk(cudaMallocAsync(&ptr, sizeof(T), stream));
+    cudaErrChk(cudaMalloc(&ptr, sizeof(T)));
     cudaErrChk(cudaMemcpyAsync(ptr, objectOnHost, sizeof(T), cudaMemcpyDefault, stream));
 
     cudaErrChk(cudaStreamSynchronize(stream));
@@ -98,7 +98,7 @@ template <typename T>
 __host__ inline T* copyArrayToDevice(T* objectOnHost, int numberOfElement, cudaStream_t stream = 0){
     if(objectOnHost == nullptr)throw std::runtime_error("CopyToDevice: can not copy a nullptr to device.");
     T* ptr = nullptr;
-    cudaErrChk(cudaMallocAsync(&ptr, numberOfElement * sizeof(T), stream));
+    cudaErrChk(cudaMalloc(&ptr, numberOfElement * sizeof(T)));
     cudaErrChk(cudaMemcpyAsync(ptr, objectOnHost, numberOfElement * sizeof(T), cudaMemcpyDefault, stream));
 
     cudaErrChk(cudaStreamSynchronize(stream));

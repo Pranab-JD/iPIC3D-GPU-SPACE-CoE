@@ -25,7 +25,7 @@ public:
 
     __host__ virtual particleArrayCUDA* copyToDevice(){
         particleArrayCUDA* ptr = nullptr;
-        cudaErrChk(cudaMallocAsync((void**)&ptr, sizeof(particleArrayCUDA), stream));
+        cudaErrChk(cudaMalloc((void**)&ptr, sizeof(particleArrayCUDA)));
         cudaErrChk(cudaMemcpyAsync(ptr, this, sizeof(particleArrayCUDA), cudaMemcpyDefault, stream));
 
         cudaErrChk(cudaStreamSynchronize(stream));

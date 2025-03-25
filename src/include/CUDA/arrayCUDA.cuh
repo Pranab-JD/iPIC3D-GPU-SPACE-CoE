@@ -100,21 +100,21 @@ public: // utilities
         auto oldArray = arrayPtr;
         cudaErrChk(cudaMalloc(&arrayPtr, arraySize * sizeof(T)));
         cudaErrChk(cudaMemcpyAsync(arrayPtr, oldArray, numberOfElement * sizeof(T), cudaMemcpyDefault, stream));
-        cudaErrChk(cudaFreeAsync(oldArray, stream));
-
         cudaErrChk(cudaStreamSynchronize(stream));
+        cudaErrChk(cudaFree(oldArray));
+        
         return arraySize;
     }
     //! @brief expand the array, must be bigger than original size
     __host__ commonInt expand(commonInt targetedSize, cudaStream_t s){
         if(targetedSize <= arraySize) return arraySize;
-
         arraySize = roundUpToSizeUnit(targetedSize);
         auto oldArray = arrayPtr;
         cudaErrChk(cudaMalloc(&arrayPtr, arraySize * sizeof(T)));
         cudaErrChk(cudaMemcpyAsync(arrayPtr, oldArray, numberOfElement * sizeof(T), cudaMemcpyDefault, s));
-        cudaErrChk(cudaFreeAsync(oldArray, s));
-
+        cudaErrChk(cudaStreamSynchronize(s));
+        cudaErrChk(cudaFree(oldArray));
+        
         return arraySize;
     }
 
@@ -126,9 +126,8 @@ public: // utilities
         auto oldArray = arrayPtr;
         cudaErrChk(cudaMalloc(&arrayPtr, arraySize * sizeof(T)));
         cudaErrChk(cudaMemcpyAsync(arrayPtr, oldArray, numberOfElement * sizeof(T), cudaMemcpyDefault, stream));
-        cudaErrChk(cudaFreeAsync(oldArray, stream));
-
         cudaErrChk(cudaStreamSynchronize(stream));
+        cudaErrChk(cudaFree(oldArray));
 
     }
 

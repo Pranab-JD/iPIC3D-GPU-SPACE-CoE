@@ -371,6 +371,29 @@ void Grid3DCU::lapN2N(arr3_double lapN, const_arr3_double scFieldN,EMfields3D *E
   divC2N(lapN, gradXC, gradYC, gradZC);
 }
 
+
+/** calculate laplacian on nodes without communication (for solver preconditioner), given a scalar field defined on nodes */
+void Grid3DCU::lapN2NLocal(arr3_double lapN, const_arr3_double scFieldN,EMfields3D *EMf)const
+{
+  //const VirtualTopology3D *vct = &get_vct();
+  // calculate laplacian as divercence of gradient
+  // allocate 3 gradients: defined on central points
+  static array3_double gradXC(nxc, nyc, nzc);
+  static array3_double gradYC(nxc, nyc, nzc);
+  static array3_double gradZC(nxc, nyc, nzc);
+  eqValue(0.0, gradXC, nxc, nyc, nzc);
+  eqValue(0.0, gradYC, nxc, nyc, nzc);
+  eqValue(0.0, gradZC, nxc, nyc, nzc);
+  
+  gradN2C(gradXC, gradYC, gradZC, scFieldN);
+  // communicate with BC
+  //communicateCenterBC(nxc, nyc, nzc, gradXC, 1, 1, 1, 1, 1, 1, vct, EMf);
+  //communicateCenterBC(nxc, nyc, nzc, gradYC, 1, 1, 1, 1, 1, 1, vct, EMf);
+  //communicateCenterBC(nxc, nyc, nzc, gradZC, 1, 1, 1, 1, 1, 1, vct, EMf);
+  divC2N(lapN, gradXC, gradYC, gradZC);
+}
+
+
 /** calculate laplacian on central points, given a scalar field defined on central points */
 void Grid3DCU::lapC2C(arr3_double lapC, const_arr3_double scFieldC)const
 {

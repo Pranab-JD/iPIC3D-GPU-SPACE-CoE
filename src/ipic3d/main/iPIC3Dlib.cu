@@ -311,6 +311,13 @@ int c_Solver::Init(int argc, char **argv) {
 		  grid->getDZ());
 #endif
 
+  // Create or open the particle number file csv
+  pclNumCSV = std::ofstream(SaveDirName + "/particleNum" + std::to_string(myrank) + ".csv", std::ios::app); 
+  pclNumCSV << "cycle,";
+  for(int i=0; i<ns-1; i++){
+    pclNumCSV << "species" << i << ",";
+  }
+  pclNumCSV << "species" << ns-1 << std::endl;
 
   initCUDA();
 
@@ -453,7 +460,8 @@ int c_Solver::initCUDA(){
   // simple device buffer, allocate one dimension array on device memory
   auto gridSize = grid->getNXN() * grid->getNYN() * grid->getNZN();
   momentsCUDAPtr = new cudaTypeArray1<cudaMomentType>[ns];
-  for(int i=0; i<ns; i++)cudaMallocAsync(&(momentsCUDAPtr[i]), gridSize*10*sizeof(cudaMomentType), streams[i]);
+  //for(int i=0; i<ns; i++)cudaMallocAsync(&(momentsCUDAPtr[i]), gridSize*10*sizeof(cudaMomentType), streams[i]);
+  for(int i=0; i<ns; i++)cudaMalloc(&(momentsCUDAPtr[i]), gridSize*10*sizeof(cudaMomentType));
 
   { // register the 10 densities to host pinned memory
     for(int i=0; i<ns; i++){
@@ -475,7 +483,8 @@ int c_Solver::initCUDA(){
 
   const int fieldSize = grid->getNZN() * (grid->getNYN() - 1) * (grid->getNXN() - 1);
 
-  cudaMallocAsync(&fieldForPclCUDAPtr, fieldSize * 24 * sizeof(cudaFieldType), 0);
+  //cudaMallocAsync(&fieldForPclCUDAPtr, fieldSize * 24 * sizeof(cudaFieldType), 0);
+  cudaMalloc(&fieldForPclCUDAPtr, fieldSize * 24 * sizeof(cudaFieldType));
 
   cudaErrChk(cudaHostAlloc((void**)&fieldForPclHostPtr, fieldSize * 24 * sizeof(cudaFieldType), 0));
 
@@ -624,6 +633,8 @@ void c_Solver::CalculateField(int cycle) {
   EMf->calculateE(cycle);
 }
 
+
+
 /*  -------------- */
 /*!  Particle mover */
 /*  -------------- */
@@ -637,17 +648,17 @@ int c_Solver::cudaLauncherAsync(const int species){
 
   // Mover
   cudaErrChk(cudaStreamWaitEvent(streams[species], event0, 0));
-  if (col->getCase()=="GEM")
-  moverKernel<<<getGridSize((int)pclsArrayHostPtr[species]->getNOP(), 256), 256, 0, streams[species]>>>(moverParamCUDAPtr[species], fieldForPclCUDAPtr, grid3DCUDACUDAPtr);
-  else if (col->getCase()=="Dipole" || col->getCase()=="Dipole2D")
-  moverSubcyclesKernel<<<getGridSize((int)pclsArrayHostPtr[species]->getNOP(), 256), 256, 0, streams[species]>>>(moverParamCUDAPtr[species], fieldForPclCUDAPtr, grid3DCUDACUDAPtr);
-
+  
+  if (col->getCase()=="Dipole" || col->getCase()=="Dipole2D")
+    moverSubcyclesKernel<<<getGridSize((int)pclsArrayHostPtr[species]->getNOP(), 256), 256, 0, streams[species]>>>(moverParamCUDAPtr[species], fieldForPclCUDAPtr, grid3DCUDACUDAPtr);
+  else
+    moverKernel<<<getGridSize((int)pclsArrayHostPtr[species]->getNOP(), 256), 256, 0, streams[species]>>>(moverParamCUDAPtr[species], fieldForPclCUDAPtr, grid3DCUDACUDAPtr);
   
   cudaErrChk(cudaEventRecord(event1, streams[species]));
   // Moment stayed
   cudaErrChk(cudaMemsetAsync(momentsCUDAPtr[species], 0, gridSize*10*sizeof(cudaMomentType), streams[species]));  // set moments to 0
   momentKernelStayed<<<getGridSize((int)pclsArrayHostPtr[species]->getNOP(), 256), 256, 0, streams[species] >>>
-                          (momentParamCUDAPtr[species], grid3DCUDACUDAPtr, momentsCUDAPtr[species]);
+                          (&(moverParamCUDAPtr[species]->appendCountAtomic), momentParamCUDAPtr[species], grid3DCUDACUDAPtr, momentsCUDAPtr[species]);
 
   // Copy 7 exiting hashedSum to host
   cudaErrChk(cudaStreamWaitEvent(streams[species+ns], event1, 0));
@@ -659,6 +670,11 @@ int c_Solver::cudaLauncherAsync(const int species){
     cudaErrChk(cudaMemcpyAsync(&moverParamHostPtr[species]->appendCountAtomic, &moverParamCUDAPtr[species]->appendCountAtomic, 
                                 sizeof(uint32_t), cudaMemcpyDefault, streams[species+ns]));
     cudaErrChk(cudaMemsetAsync(&moverParamCUDAPtr[species]->appendCountAtomic, 0, sizeof(uint32_t), streams[species+ns]));
+    cudaErrChk(cudaStreamSynchronize(streams[species+ns]));
+
+    const uint32_t newPclAfterOBC = pclsArrayHostPtr[species]->getNOP() + moverParamHostPtr[species]->appendCountAtomic;
+    pclsArrayHostPtr[species]->setNOE(newPclAfterOBC);
+    cudaErrChk(cudaMemcpyAsync(pclsArrayCUDAPtr[species], pclsArrayHostPtr[species], sizeof(particleArrayCUDA), cudaMemcpyDefault, streams[species+ns]));
   }
 
 
@@ -692,6 +708,7 @@ int c_Solver::cudaLauncherAsync(const int species){
     // register the list
     cudaErrChk(cudaHostRegister(pclArray->getList(), pclArray->capacity() * sizeof(SpeciesParticle), cudaHostRegisterDefault));
   }
+
   exitingKernel<<<getGridSize((int)pclsArrayHostPtr[species]->getNOP(), 256), 256, 0, streams[species+ns]>>>(pclsArrayCUDAPtr[species], 
                 departureArrayCUDAPtr[species], exitingArrayCUDAPtr[species], hashedSumArrayCUDAPtr[species]);
   cudaErrChk(cudaEventRecord(event2, streams[species+ns]));
@@ -760,32 +777,10 @@ bool c_Solver::MoverAwaitAndPclExchange()
 
   for(int i=0; i<ns; i++){
 
-  // Copy, the OpenBC appended particle, repopulate particle and the incoming particles to device
+  // Copy repopulate particle and the incoming particles to device
     const auto oldPclNum = pclsArrayHostPtr[i]->getNOP();
     pclsArrayHostPtr[i]->setNOE(stayedParticle[i]); // After the Sorting
     auto newPclNum = stayedParticle[i] + part[i].getNOP();
-
-    if (moverParamHostPtr[i]->doOpenBC) {
-      newPclNum += moverParamHostPtr[i]->appendCountAtomic;
-
-      if(oldPclNum - stayedParticle[i] >= moverParamHostPtr[i]->appendCountAtomic) {
-        // copy directly
-        cudaErrChk(cudaMemcpyAsync(pclsArrayHostPtr[i]->getpcls() + stayedParticle[i], 
-                                  pclsArrayHostPtr[i]->getpcls() + oldPclNum, 
-                                  moverParamHostPtr[i]->appendCountAtomic*sizeof(SpeciesParticle),
-                                  cudaMemcpyDefault, streams[i]));
-
-      }else { 
-        const auto theGAP = oldPclNum - stayedParticle[i];
-        cudaErrChk(cudaMemcpyAsync(pclsArrayHostPtr[i]->getpcls() + stayedParticle[i], 
-                                  pclsArrayHostPtr[i]->getpcls() + oldPclNum + (moverParamHostPtr[i]->appendCountAtomic - theGAP), 
-                                  theGAP*sizeof(SpeciesParticle),
-                                  cudaMemcpyDefault, streams[i]));
-      }
-      
-      pclsArrayHostPtr[i]->setNOE(stayedParticle[i] + moverParamHostPtr[i]->appendCountAtomic); // With the openBC appended particles
-      
-    }
 
     // now the host array contains the entering particles
     if((newPclNum * 1.2) >= pclsArrayHostPtr[i]->getSize()){ // not enough size, expand the device array size
@@ -803,7 +798,7 @@ bool c_Solver::MoverAwaitAndPclExchange()
     pclsArrayHostPtr[i]->setNOE(newPclNum); 
     cudaErrChk(cudaMemcpyAsync(pclsArrayCUDAPtr[i], pclsArrayHostPtr[i], sizeof(particleArrayCUDA), cudaMemcpyDefault, streams[i]));
     
-    // moment for new particles, incoming, openbc appended, repopulate
+    // moment for new particles, incoming, repopulate
     momentKernelNew<<<getGridSize(pclsArrayHostPtr[i]->getNOP() - stayedParticle[i], 128u), 128, 0, streams[i] >>>
                       (momentParamCUDAPtr[i], grid3DCUDACUDAPtr, momentsCUDAPtr[i], stayedParticle[i]);
 
@@ -829,9 +824,9 @@ bool c_Solver::MoverAwaitAndPclExchange()
   }
 
 
-  /* --------------------------------------- */
-  /* Test Particles mover 					 */
-  /* --------------------------------------- */
+  // --------------------------------------- 
+  // Test Particles mover 					 
+  // --------------------------------------- 
   for (int i = 0; i < nstestpart; i++)  // move each species
   {
 	switch(Parameters::get_MOVER_TYPE())
@@ -902,6 +897,15 @@ void c_Solver::MomentsAwait() {
   // calculate the hat quantities for the implicit method
   EMf->calculateHatFunctions();
 }
+
+void c_Solver::writeParticleNum(int cycle) {
+  pclNumCSV << cycle << ",";
+  for(int i=0; i<ns-1; i++){
+    pclNumCSV << pclsArrayHostPtr[i]->getNOP() << ",";
+  }
+  pclNumCSV << pclsArrayHostPtr[ns-1]->getNOP() << std::endl;
+}
+
 
 void c_Solver::WriteOutput(int cycle) {
 
@@ -1234,6 +1238,9 @@ void c_Solver::WriteTestParticles(int cycle)
 // and methods that save field data
 //
 void c_Solver::Finalize() {
+
+  pclNumCSV.close();
+  
   if (col->getCallFinalize() && Parameters::get_doWriteOutput() && col->getRestartOutputCycle() > 0)
   {
     #ifndef NO_HDF5
