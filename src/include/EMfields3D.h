@@ -86,6 +86,8 @@ class EMfields3D                // :public Field
     void PoissonImage(double *image, double *vector);
     /*! Image of Maxwell Solver (for Solver) */
     void MaxwellImage(double *im, double *vector);
+    /*! Image of Maxwell Solver without communication (for Solver preconditioner) */
+    void MaxwellImageLocal(double *im, double *vector);
     /*! Maxwell source term (for SOLVER) */
     void MaxwellSource(double *bkrylov);
     /*! Impose a constant charge inside a spherical zone of the domain */

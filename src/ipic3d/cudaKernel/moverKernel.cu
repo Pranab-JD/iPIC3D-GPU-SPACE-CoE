@@ -369,7 +369,7 @@ __global__ void moverSubcyclesKernel(moverParameter *moverParam,
 
 }
 
-__device__ uint32_t deleteAppendOpenBCOutflow(SpeciesParticle* pcl, moverParameter *moverParam, grid3DCUDA *grid) {
+__device__ uint32_t deleteAppendOpenBCOutflow(SpeciesParticle* pcl, moverParameter *moverParam, departureArrayType* departureArray, grid3DCUDA* grid, hashedSum* hashedSumArray) {
 
     if (!moverParam->doOpenBC) return 0;
 
@@ -403,21 +403,57 @@ __device__ uint32_t deleteAppendOpenBCOutflow(SpeciesParticle* pcl, moverParamet
             newPcl.set_t(114514.0);
 
             // if the new particle is still in the domain
+            
             if (
-                // newPcl.get_x() > delBdry[0] && newPcl.get_x() < delBdry[1] &&
-                // newPcl.get_y() > delBdry[2] && newPcl.get_y() < delBdry[3] &&
-                // newPcl.get_z() > delBdry[4] && newPcl.get_z() < delBdry[5]
-                newPcl.get_x() > grid->xStart && newPcl.get_x() < grid->xEnd &&
-                newPcl.get_y() > grid->yStart && newPcl.get_y() < grid->yEnd &&
-                newPcl.get_z() > grid->zStart && newPcl.get_z() < grid->zEnd
+                newPcl.get_x() > delBdry[0] && newPcl.get_x() < delBdry[1] &&
+                newPcl.get_y() > delBdry[2] && newPcl.get_y() < delBdry[3] &&
+                newPcl.get_z() > delBdry[4] && newPcl.get_z() < delBdry[5]
+                //newPcl.get_x() > grid->xStart && newPcl.get_x() < grid->xEnd &&
+                //newPcl.get_y() > grid->yStart && newPcl.get_y() < grid->yEnd &&
+                //newPcl.get_z() > grid->zStart && newPcl.get_z() < grid->zEnd
             ) {
+                departureArrayElementType element;
                 const auto index = moverParam->pclsArray->getNOP() + atomicAdd(&moverParam->appendCountAtomic, 1);
                 // check memory overflow
                 if (index >= moverParam->pclsArray->getSize()) {
                     printf("Memory overflow in open boundary outflow\n");
-                    __trap();
+                    //__trap();
+                    return -1;
                 }
                 memcpy(moverParam->pclsArray->getpcls() + index, &newPcl, sizeof(SpeciesParticle));
+                if(newPcl.get_x() < grid->xStart)
+                {
+                    element.dest = departureArrayElementType::XLOW;
+                }
+                else if(newPcl.get_x() > grid->xEnd)
+                {
+                    element.dest = departureArrayElementType::XHIGH;
+                }
+                else if(newPcl.get_y() < grid->yStart)
+                {
+                    element.dest = departureArrayElementType::YLOW;
+                }
+                else if(newPcl.get_y() > grid->yEnd)
+                {
+                    element.dest = departureArrayElementType::YHIGH;
+                }
+                else if(newPcl.get_z() < grid->zStart)
+                {
+                    element.dest = departureArrayElementType::ZLOW;
+                }
+                else if(newPcl.get_z() > grid->zEnd)
+                {
+                    element.dest = departureArrayElementType::ZHIGH;
+                }
+                else element.dest = departureArrayElementType::STAY;
+
+                if(element.dest != 0){
+                    element.hashedId = hashedSumArray[element.dest - 1].add(index);
+                }else{
+                    element.hashedId = 0;
+                }
+            
+                departureArray->getArray()[index] = element;
             }
         }
 
@@ -487,7 +523,7 @@ __device__ void prepareDepartureArray(SpeciesParticle* pcl, moverParameter *move
     do {
 
         // OpenBC_outflow
-        element.dest = deleteAppendOpenBCOutflow(pcl, moverParam, grid);
+        element.dest = deleteAppendOpenBCOutflow(pcl, moverParam, departureArray, grid, hashedSumArray);
         if(element.dest != 0)break;
 
         // INJECT

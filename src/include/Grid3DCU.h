@@ -100,6 +100,8 @@ public:
 
   /** calculate laplacian on nodes, given a scalar field defined on nodes */
   void lapN2N(arr3_double lapN, const_arr3_double scFieldN, EMfields3D *EMf)const;
+  /** calculate laplacian on nodes without ghost nodes (for solver preconditioner), given a scalar field defined on nodes */
+  void lapN2NLocal(arr3_double lapN, const_arr3_double scFieldN, EMfields3D *EMf)const;
   /** calculate laplacian on central points, given a scalar field defined on central points for Poisson */
   //void lapC2Cpoisson(arr3_double lapC, arr3_double scFieldC)const;
   void lapC2Cpoisson(arr3_double lapC, arr3_double scFieldC, EMfields3D *EMf)const;

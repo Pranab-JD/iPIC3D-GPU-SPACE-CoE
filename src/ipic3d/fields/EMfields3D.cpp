@@ -45,6 +45,7 @@
 #include "cudaTypeDef.cuh"
 
 #include <iostream>
+#include <chrono>
 //#include <sstream>
 using std::cout;
 using std::endl;
@@ -2158,10 +2159,19 @@ void EMfields3D::calculateE(int cycle)
   // prepare the source 
   MaxwellSource(bkrylov);
   phys2solver(xkrylov, Ex, Ey, Ez, nxn, nyn, nzn);
+  
   // solver
-  GMRES(&Field::MaxwellImage, xkrylov, 3 * (nxn - 2) * (nyn - 2) * (nzn - 2),
-    bkrylov, 20, 200, GMREStol, this);
-  // move from krylov space to physical space
+  //auto start = std::chrono::high_resolution_clock::now();
+  
+  GMRES(&Field::MaxwellImage, xkrylov, 3 * (nxn - 2) * (nyn - 2) * (nzn - 2), bkrylov, 20, 200, GMREStol, this);
+  //FGMRES(&Field::MaxwellImage, &Field::MaxwellImageLocal, xkrylov, 3 * (nxn - 2) * (nyn - 2) * (nzn - 2), bkrylov, 20, 200, GMREStol, this);
+  
+  //auto end = std::chrono::high_resolution_clock::now();
+  //auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  //if (vct->getCartesian_rank() == 0)
+  //  std::cout << "Execution Time Maxwell Solver: " << duration.count()/1000.0 << " ms" << std::endl;
+  
+    // move from krylov space to physical space
   solver2phys(Exth, Eyth, Ezth, xkrylov, nxn, nyn, nzn);
 
   addscale(1 / th, -(1.0 - th) / th, Ex, Exth, nxn, nyn, nzn);
@@ -2377,6 +2387,91 @@ void EMfields3D::MaxwellImage(double *im, double* vector)
   
 
   communicateCenterBC(nxc, nyc, nzc, divC, 2, 2, 2, 2, 2, 2, vct, this);
+
+  grid->gradC2N(tempX, tempY, tempZ, divC);
+
+  // -lap(E(n +theta)) - grad(div(mu dot E(n + theta))
+  sub(imageX, tempX, nxn, nyn, nzn);
+  sub(imageY, tempY, nxn, nyn, nzn);
+  sub(imageZ, tempZ, nxn, nyn, nzn);
+
+  // scale delt*delt
+  scale(imageX, delt * delt, nxn, nyn, nzn);
+  scale(imageY, delt * delt, nxn, nyn, nzn);
+  scale(imageZ, delt * delt, nxn, nyn, nzn);
+
+  // -lap(E(n +theta)) - grad(div(mu dot E(n + theta)) + eps dot E(n + theta)
+  sum(imageX, Dx, nxn, nyn, nzn);
+  sum(imageY, Dy, nxn, nyn, nzn);
+  sum(imageZ, Dz, nxn, nyn, nzn);
+  sum(imageX, vectX, nxn, nyn, nzn);
+  sum(imageY, vectY, nxn, nyn, nzn);
+  sum(imageZ, vectZ, nxn, nyn, nzn);
+
+  // boundary condition: Xleft
+  if (vct->getXleft_neighbor() == MPI_PROC_NULL && bcEMfaceXleft == 0)  // perfect conductor
+    perfectConductorLeft(imageX, imageY, imageZ, vectX, vectY, vectZ, 0);
+  // boundary condition: Xright
+  if (vct->getXright_neighbor() == MPI_PROC_NULL && bcEMfaceXright == 0)  // perfect conductor
+    perfectConductorRight(imageX, imageY, imageZ, vectX, vectY, vectZ, 0);
+  // boundary condition: Yleft
+  if (vct->getYleft_neighbor() == MPI_PROC_NULL && bcEMfaceYleft == 0)  // perfect conductor
+    perfectConductorLeft(imageX, imageY, imageZ, vectX, vectY, vectZ, 1);
+  // boundary condition: Yright
+  if (vct->getYright_neighbor() == MPI_PROC_NULL && bcEMfaceYright == 0)  // perfect conductor
+    perfectConductorRight(imageX, imageY, imageZ, vectX, vectY, vectZ, 1);
+  // boundary condition: Zleft
+  if (vct->getZleft_neighbor() == MPI_PROC_NULL && bcEMfaceZleft == 0)  // perfect conductor
+    perfectConductorLeft(imageX, imageY, imageZ, vectX, vectY, vectZ, 2);
+  // boundary condition: Zright
+  if (vct->getZright_neighbor() == MPI_PROC_NULL && bcEMfaceZright == 0)  // perfect conductor
+    perfectConductorRight(imageX, imageY, imageZ, vectX, vectY, vectZ, 2);
+
+  // OpenBC
+  OpenBoundaryInflowEImage(imageX, imageY, imageZ, vectX, vectY, vectZ, nxn, nyn, nzn);
+
+  // move from physical space to krylov space
+  phys2solver(im, imageX, imageY, imageZ, nxn, nyn, nzn);
+
+
+}
+
+
+
+
+void EMfields3D::MaxwellImageLocal(double *im, double* vector)
+{
+  const Collective *col = &get_col();
+  const VirtualTopology3D *vct = &get_vct();
+  const Grid *grid = &get_grid();
+
+  eqValue(0.0, im, 3 * (nxn - 2) * (nyn - 2) * (nzn - 2));
+  eqValue(0.0, imageX, nxn, nyn, nzn);
+  eqValue(0.0, imageY, nxn, nyn, nzn);
+  eqValue(0.0, imageZ, nxn, nyn, nzn);
+  eqValue(0.0, tempX, nxn, nyn, nzn);
+  eqValue(0.0, tempY, nxn, nyn, nzn);
+  eqValue(0.0, tempZ, nxn, nyn, nzn);
+  eqValue(0.0, Dx, nxn, nyn, nzn);
+  eqValue(0.0, Dy, nxn, nyn, nzn);
+  eqValue(0.0, Dz, nxn, nyn, nzn);
+  // move from krylov space to physical space
+  solver2phys(vectX, vectY, vectZ, vector, nxn, nyn, nzn);
+  grid->lapN2NLocal(imageX, vectX,this);
+  grid->lapN2NLocal(imageY, vectY,this);
+  grid->lapN2NLocal(imageZ, vectZ,this);
+  neg(imageX, nxn, nyn, nzn);
+  neg(imageY, nxn, nyn, nzn);
+  neg(imageZ, nxn, nyn, nzn);
+  // grad(div(mu dot E(n + theta)) mu dot E(n + theta) = D
+  MUdot(Dx, Dy, Dz, vectX, vectY, vectZ);
+  grid->divN2C(divC, Dx, Dy, Dz);
+  // communicate you should put BC 
+  // think about the Physics 
+  // communicateCenterBC(nxc,nyc,nzc,divC,1,1,1,1,1,1,vct);
+  
+
+  //communicateCenterBC(nxc, nyc, nzc, divC, 2, 2, 2, 2, 2, 2, vct, this);
 
   grid->gradC2N(tempX, tempY, tempZ, divC);
 

@@ -48,6 +48,8 @@ int main(int argc, char **argv) {
 
     timeTasks.resetCycle();
 
+    KCode.writeParticleNum(i);
+
     DA.startAnalysis(i);
     KCode.CalculateField(i); // E field
     DA.waitForAnalysis();

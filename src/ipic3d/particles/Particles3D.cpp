@@ -1791,7 +1791,7 @@ void Particles3D::repopulate_particles()
     }
     if (repopulateXrght)
     {      
-      cout << "*** Repopulate Xright species " << ns << " ***" << endl;
+      //cout << "*** Repopulate Xright species " << ns << " ***" << endl;
       for (int i=upXstart; i<=xend; i++)
       for (int j=ybeg; j<=yend; j++)
       for (int k=zbeg; k<=zend; k++)
@@ -2019,7 +2019,7 @@ void Particles3D::repopulate_particles_onlyInjection()
     }
     if (repopulateXrght)
     {      
-      cout << "*** Repopulate Xright species " << ns << " ***" << endl;
+      //cout << "*** Repopulate Xright species " << ns << " ***" << endl;
       for (int i=upXstart; i<=xend; i++)
       for (int j=ybeg; j<=yend; j++)
       for (int k=zbeg; k<=zend; k++)

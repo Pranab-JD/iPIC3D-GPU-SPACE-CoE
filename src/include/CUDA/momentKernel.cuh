@@ -28,7 +28,7 @@ public:
 
 };
 
-__global__ void momentKernelStayed(momentParameter* momentParam,
+__global__ void momentKernelStayed(const uint32_t* appendCount, momentParameter* momentParam,
                                     grid3DCUDA* grid,
                                     cudaTypeArray1<cudaMomentType> moments);
 
