@@ -10,88 +10,49 @@
 namespace velocityHistogram
 {
 
-__global__ void histogramUpdateKernel(histogramTypeIn* minUVW, histogramTypeIn* maxUVW, int binDim0, int binDim1, velocityHistogramCUDA* histogramCUDAPtr){
-    int idx = threadIdx.x;
-    if(idx >= 3)return;
-
-    histogramTypeIn min[2];
-    histogramTypeIn max[2];
-    int binDim[2] = {binDim0, binDim1};
-
-    if(idx == 0){ // UV
-        min[0] = minUVW[0];
-        min[1] = minUVW[1];
-        max[0] = maxUVW[0];
-        max[1] = maxUVW[1];
-    }else if(idx == 1){ // VW
-        min[0] = minUVW[1];
-        min[1] = minUVW[2];
-        max[0] = maxUVW[1];
-        max[1] = maxUVW[2];
-    }else{ // UW
-        min[0] = minUVW[0];
-        min[1] = minUVW[2];
-        max[0] = maxUVW[0];
-        max[1] = maxUVW[2];
-    }
+__global__ void resetBin(velocityHistogramCUDA3D* histogramCUDAPtr);
 
 
-    histogramCUDAPtr[idx].setHistogramDevice(min, max, binDim);
+__global__ void histogramKernel3D(const int nop, const histogramTypeIn *d1, const histogramTypeIn *d2, const histogramTypeIn *d3, 
+    const histogramTypeIn *q,
+    velocityHistogramCUDA3D *histogramCUDAPtr);
 
 
-}
-
-
-__global__ void resetBinScaleMarkKernel(velocityHistogramCUDA* histogramCUDAPtr);
-
-__global__ void velocityHistogramKernel(const int nop, const histogramTypeIn* d1, const histogramTypeIn* d2, const histogramTypeIn* q,
-    velocityHistogramCUDA* histogramCUDAPtr);
-
-
-__host__ void velocityHistogram::init(velocitySoA* pclArray, int cycleNum, const int species, cudaStream_t stream){
+__host__ void velocityHistogram3D::init(velocitySoA* pclArray, const int species, cudaStream_t stream){
     using namespace particleArraySoA;
-    
+
     getRange(pclArray, species, stream);
-    histogramUpdateKernel<<<1, 3, 0, stream>>>(reductionMinResultCUDA, reductionMaxResultCUDA, 
-                                                binThisDim[0], binThisDim[1], 
-                                                histogramCUDAPtr);
+    histogramHostPtr->setHistogram(minArray, maxArray, binThisDim);
+    cudaErrChk(cudaMemcpyAsync(histogramCUDAPtr, histogramHostPtr, sizeof(velocityHistogramCUDA3D), cudaMemcpyHostToDevice, stream));
 
-    const int binNum = binThisDim[0] * binThisDim[1];
-    // reset the histogram buffer, set the scalMark
-    resetBinScaleMarkKernel<<<getGridSize(binNum, 256), 256, 0, stream>>>(histogramCUDAPtr);
-
+    const int binNum = binThisDim[0] * binThisDim[1] * binThisDim[2];
+    resetBin<<<getGridSize(binNum / 8, 256), 256, 0, stream>>>(histogramCUDAPtr);
 
     // shared memory size
-    constexpr int tileSize = VELOCITY_HISTOGRAM_TILE * VELOCITY_HISTOGRAM_TILE;
+    constexpr int tileSize = VELOCITY_HISTOGRAM3D_TILE * VELOCITY_HISTOGRAM3D_TILE * VELOCITY_HISTOGRAM3D_TILE;
     constexpr int sharedMemSize = sizeof(histogramTypeOut) * tileSize;
     if constexpr (sharedMemSize > 48 * 1024) throw std::runtime_error("Shared memory size exceeds the limit ...");
     if(binNum % tileSize != 0) throw std::runtime_error("Adjust histogram resolution to multiply of tile ...");
 
-    velocityHistogramKernel<<<getGridSize((int)pclArray->getNOP() / 128, 512), 512, sharedMemSize, stream>>>
-        (pclArray->getNOP(), pclArray->getElement(U), pclArray->getElement(V), pclArray->getElement(Q),
+    histogramKernel3D<<<getGridSize((int)pclArray->getNOP() / 128, 512), 512, sharedMemSize, stream>>>
+        (pclArray->getNOP(), pclArray->getElement(U), pclArray->getElement(V), pclArray->getElement(W), pclArray->getElement(Q),
         histogramCUDAPtr);
 
-    velocityHistogramKernel<<<getGridSize((int)pclArray->getNOP() / 128, 512), 512, sharedMemSize, stream>>>
-        (pclArray->getNOP(), pclArray->getElement(V), pclArray->getElement(W), pclArray->getElement(Q),
-        histogramCUDAPtr + 1);
-
-    velocityHistogramKernel<<<getGridSize((int)pclArray->getNOP() / 128, 512), 512, sharedMemSize, stream>>>
-        (pclArray->getNOP(), pclArray->getElement(U), pclArray->getElement(W), pclArray->getElement(Q),
-        histogramCUDAPtr + 2);
-
-    // copy the histogram object to host
-    cudaErrChk(cudaMemcpyAsync(histogramHostPtr, histogramCUDAPtr, 3 * sizeof(velocityHistogramCUDA), cudaMemcpyDefault, stream));
-
-    this->cycleNum = cycleNum;
 }
 
-__host__ int velocityHistogram::getRange(velocitySoA* pclArray, const int species, cudaStream_t stream){
-    using namespace cudaReduction;
 
-    constexpr int blockSize = 256;
-    auto blockNum = reduceBlockNum(pclArray->getNOP(), blockSize);
+/**
+ * @brief Synchronous function to get the min and max for 3 dimensions, result is stored in minArray and maxArray
+ */
+__host__ int velocityHistogram3D::getRange(velocitySoA* pclArray, const int species, cudaStream_t stream){
+
 
     if(HISTOGRAM_FIXED_RANGE == false){
+        using namespace cudaReduction;
+
+        constexpr int blockSize = 256;
+        auto blockNum = reduceBlockNum(pclArray->getNOP(), blockSize);
+
         for(int i=0; i<3; i++){ // UVW
             reduceMin<histogramTypeIn, blockSize><<<blockNum, blockSize, blockSize * sizeof(histogramTypeIn), stream>>>
                 (pclArray->getElement(i), reductionTempArrayCUDA + i * reductionTempArraySize, pclArray->getNOP());
@@ -103,14 +64,19 @@ __host__ int velocityHistogram::getRange(velocitySoA* pclArray, const int specie
             reduceMaxWarp<histogramTypeIn><<<1, WARP_SIZE, 0, stream>>>
                 (reductionTempArrayCUDA + (i+3) * reductionTempArraySize, reductionMaxResultCUDA + i, blockNum);
         }
+        cudaErrChk(cudaMemcpyAsync(minArray, reductionMinResultCUDA, sizeof(histogramTypeIn) * 3, cudaMemcpyDeviceToHost, stream));
+        cudaErrChk(cudaMemcpyAsync(maxArray, reductionMaxResultCUDA, sizeof(histogramTypeIn) * 3, cudaMemcpyDeviceToHost, stream));
+        cudaErrChk(cudaStreamSynchronize(stream));
+
     }else{
         histogramTypeIn min = species == 0 || species == 2 ? MIN_VELOCITY_HIST_E : MIN_VELOCITY_HIST_I;
-        histogramTypeIn minArray[3] = {min, min, min};
+        minArray[0] = min;
+        minArray[1] = min;
+        minArray[2] = min;
         histogramTypeIn max = species == 0 || species == 2 ? MAX_VELOCITY_HIST_E : MAX_VELOCITY_HIST_I;
-        histogramTypeIn maxArray[3] = {max, max, max};
-
-        cudaErrChk(cudaMemcpyAsync(reductionMinResultCUDA, minArray, 3 * sizeof(histogramTypeIn), cudaMemcpyDefault, stream));
-        cudaErrChk(cudaMemcpyAsync(reductionMaxResultCUDA, maxArray, 3 * sizeof(histogramTypeIn), cudaMemcpyDefault, stream));
+        maxArray[0] = max;
+        maxArray[1] = max;
+        maxArray[2] = max;
     }
 
     return 0;

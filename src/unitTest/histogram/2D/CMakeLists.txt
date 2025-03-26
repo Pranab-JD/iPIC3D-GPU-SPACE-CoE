@@ -29,7 +29,7 @@ endif()
 
 find_package(MPI REQUIRED COMPONENTS CXX)
 
-set(PROJECT_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../..)
+set(PROJECT_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../../..)
 set(SOURCE_CODE_DIR ${PROJECT_ROOT}/src/ipic3d)
 set(INCLUDE_CODE_DIR ${PROJECT_ROOT}/src/include)
 

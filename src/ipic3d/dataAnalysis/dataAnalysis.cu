@@ -49,7 +49,7 @@ private:
     velocitySoA* velocitySoACUDA = nullptr;
     // histogram
     string HistogramSubDomainOutputPath;
-    velocityHistogram::velocityHistogram* velocityHistogram = nullptr;
+    velocityHistogram::velocityHistogram3D* velocityHistogram = nullptr;
 
     // GMM
     string GMMSubDomainOutputPath;
@@ -71,7 +71,7 @@ public:
             velocitySoACUDA = new velocitySoA();
 
             HistogramSubDomainOutputPath = HISTOGRAM_OUTPUT_DIR + "subDomain" + std::to_string(KCode.myrank) + "_";
-            velocityHistogram = new velocityHistogram::velocityHistogram(VELOCITY_HISTOGRAM_RES*VELOCITY_HISTOGRAM_RES);
+            velocityHistogram = new velocityHistogram::velocityHistogram3D(VELOCITY_HISTOGRAM3D_SIZE);
 
             if constexpr (GMM_ENABLE) { // GMM
                 GMMSubDomainOutputPath = GMM_OUTPUT_DIR + "subDomain" + std::to_string(KCode.myrank) + "_";
@@ -106,225 +106,225 @@ private:
 
 
 
-/**
- * @brief analysis function for each species, uv, uw, vw
- * @details It launches 3 threads for uv uw vw analysis in parallel
- * 
- */
-int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int species, const std::string outputPath){
+// /**
+//  * @brief analysis function for each species, uv, uw, vw
+//  * @details It launches 3 threads for uv uw vw analysis in parallel
+//  * 
+//  */
+// int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int species, const std::string outputPath){
 
-    using weightType = cudaTypeSingle;
+//     using weightType = cudaTypeSingle;
 
-    std::future<int> future[3];
+//     std::future<int> future[3];
 
-    auto GMMLambda = [=](int i) mutable {
+//     auto GMMLambda = [=](int i) mutable {
 
-        using namespace cudaGMMWeight;
+//         using namespace cudaGMMWeight;
 
-        cudaErrChk(cudaSetDevice(deviceOnNode));
+//         cudaErrChk(cudaSetDevice(deviceOnNode));
 
-        // GMM config
+//         // GMM config
 
-        // set the random number generator to sample velocity from circle of radius max velocity
-        std::random_device rd;  // True random seed
-        std::mt19937 gen(rd()); // Mersenne Twister PRN
-        std::uniform_real_distribution<GMMType>  unif01(0.0, 1.0);
-        std::uniform_real_distribution<GMMType> distTheta(0, 2*M_PI);
+//         // set the random number generator to sample velocity from circle of radius max velocity
+//         std::random_device rd;  // True random seed
+//         std::mt19937 gen(rd()); // Mersenne Twister PRN
+//         std::uniform_real_distribution<GMMType>  unif01(0.0, 1.0);
+//         std::uniform_real_distribution<GMMType> distTheta(0, 2*M_PI);
 
-        const GMMType maxVelocity = (species == 0 || species == 2) ? MAX_VELOCITY_HIST_E : MAX_VELOCITY_HIST_I;
-        // it is assumed that DATA_DIM_GMM == 2 and that the velocity range is homogenues in all dimensions
-        const GMMType maxVelocityArray[DATA_DIM_GMM] = {maxVelocity,maxVelocity};
-        // right now it is not used (fixed to zero) --> mean is not subtracted to data, but it might be useful for future developments
-        const GMMType meanArray[DATA_DIM_GMM] = {0.0,0.0};
+//         const GMMType maxVelocity = (species == 0 || species == 2) ? MAX_VELOCITY_HIST_E : MAX_VELOCITY_HIST_I;
+//         // it is assumed that DATA_DIM_GMM == 2 and that the velocity range is homogenues in all dimensions
+//         const GMMType maxVelocityArray[DATA_DIM_GMM] = {maxVelocity,maxVelocity};
+//         // right now it is not used (fixed to zero) --> mean is not subtracted to data, but it might be useful for future developments
+//         const GMMType meanArray[DATA_DIM_GMM] = {0.0,0.0};
 
-        const GMMType uth = species == 0 || species == 2 ? 0.045 : 0.0126;
-        const GMMType vth = species == 0 || species == 2 ? 0.045 : 0.0126;
-        const GMMType wth = species == 0 || species == 2 ? 0.045 : 0.0126;
+//         const GMMType uth = species == 0 || species == 2 ? 0.045 : 0.0126;
+//         const GMMType vth = species == 0 || species == 2 ? 0.045 : 0.0126;
+//         const GMMType wth = species == 0 || species == 2 ? 0.045 : 0.0126;
         
-        GMMType var1 = 0.01;
-        GMMType var2 = 0.01; 
+//         GMMType var1 = 0.01;
+//         GMMType var2 = 0.01; 
 
-        GMMType weightVector[NUM_COMPONENT_GMM];
-        GMMType meanVector[NUM_COMPONENT_GMM * DATA_DIM_GMM];
-        GMMType coVarianceMatrix[NUM_COMPONENT_GMM * DATA_DIM_GMM * DATA_DIM_GMM ];
+//         GMMType weightVector[NUM_COMPONENT_GMM];
+//         GMMType meanVector[NUM_COMPONENT_GMM * DATA_DIM_GMM];
+//         GMMType coVarianceMatrix[NUM_COMPONENT_GMM * DATA_DIM_GMM * DATA_DIM_GMM ];
         
-        if (i==0){
-            var1 = uth*uth; 
-            var2 = vth*vth;
-        }
-        else if(i==1){
-            var1 = vth*vth;
-            var2 = wth*wth;
-        }
-        else if(i==2){
-            var1 = uth*uth;
-            var2 = wth*wth;
-        }
+//         if (i==0){
+//             var1 = uth*uth; 
+//             var2 = vth*vth;
+//         }
+//         else if(i==1){
+//             var1 = vth*vth;
+//             var2 = wth*wth;
+//         }
+//         else if(i==2){
+//             var1 = uth*uth;
+//             var2 = wth*wth;
+//         }
         
-        // normalize initial parameters if NORMALIZE_DATA_FOR_GMM==true
-        GMMType normalization = 1.0; 
-        if constexpr(NORMALIZE_DATA_FOR_GMM) normalization = maxVelocity;
+//         // normalize initial parameters if NORMALIZE_DATA_FOR_GMM==true
+//         GMMType normalization = 1.0; 
+//         if constexpr(NORMALIZE_DATA_FOR_GMM) normalization = maxVelocity;
 
-        if constexpr (START_WITH_LAST_PARAMETERS_GMM) // start GMM with output GMM parameters from last cycle as initial parameters
-        {
-            // if first time initialize GMM with the usual fixed parameters
-            if(gmmResults[species][i].size() == 0)
-            {                
-                for(int j = 0; j < NUM_COMPONENT_GMM; j++){
-                    weightVector[j] = 1.0/NUM_COMPONENT_GMM;
-                    GMMType radius = maxVelocity * sqrt(unif01(gen));
-                    GMMType theta = distTheta(gen);
-                    meanVector[j * 2] =  radius*cos(theta);
-                    meanVector[j * 2 + 1] = radius*sin(theta);
-                    coVarianceMatrix[j * 4] = var1;
-                    coVarianceMatrix[j * 4 + 1] = 0.0;
-                    coVarianceMatrix[j * 4 + 2] = 0.0;
-                    coVarianceMatrix[j * 4 + 3] = var2;
-                }
-            }
-            else // Initialize GMM with previous output parameters
-            {   
-                auto& lastResult = gmmResults[species][i].back();
+//         if constexpr (START_WITH_LAST_PARAMETERS_GMM) // start GMM with output GMM parameters from last cycle as initial parameters
+//         {
+//             // if first time initialize GMM with the usual fixed parameters
+//             if(gmmResults[species][i].size() == 0)
+//             {                
+//                 for(int j = 0; j < NUM_COMPONENT_GMM; j++){
+//                     weightVector[j] = 1.0/NUM_COMPONENT_GMM;
+//                     GMMType radius = maxVelocity * sqrt(unif01(gen));
+//                     GMMType theta = distTheta(gen);
+//                     meanVector[j * 2] =  radius*cos(theta);
+//                     meanVector[j * 2 + 1] = radius*sin(theta);
+//                     coVarianceMatrix[j * 4] = var1;
+//                     coVarianceMatrix[j * 4 + 1] = 0.0;
+//                     coVarianceMatrix[j * 4 + 2] = 0.0;
+//                     coVarianceMatrix[j * 4 + 3] = var2;
+//                 }
+//             }
+//             else // Initialize GMM with previous output parameters
+//             {   
+//                 auto& lastResult = gmmResults[species][i].back();
 
-                bool reset = false;
+//                 bool reset = false;
                 
-                // safety checks on components weights and mean since after pruning some components have zero weight
-                // check if meanVector is NaN or component weight is too small
-                // if meanVector is NaN sample new mean vector
-                for(int j = 0; j < NUM_COMPONENT_GMM; j++){ 
-                    if( std::isnan(lastResult.mean[j * 2]) || std::isnan(lastResult.mean[j * 2 + 1]) || 
-                        std::isinf(lastResult.mean[j * 2]) || std::isinf(lastResult.mean[j * 2 + 1]) ){
-                        reset = true;
-                        GMMType radius = maxVelocity * sqrt(unif01(gen));
-                        GMMType theta = distTheta(gen);
-                        meanVector[j * 2] =  radius*cos(theta) / normalization;
-                        meanVector[j * 2 + 1] = radius*sin(theta) / normalization;
-                    }
-                    else{
-                        meanVector[j * 2] = lastResult.mean[j * 2] / normalization;
-                        meanVector[j * 2 + 1] = lastResult.mean[j * 2 + 1] / normalization;
-                    }
+//                 // safety checks on components weights and mean since after pruning some components have zero weight
+//                 // check if meanVector is NaN or component weight is too small
+//                 // if meanVector is NaN sample new mean vector
+//                 for(int j = 0; j < NUM_COMPONENT_GMM; j++){ 
+//                     if( std::isnan(lastResult.mean[j * 2]) || std::isnan(lastResult.mean[j * 2 + 1]) || 
+//                         std::isinf(lastResult.mean[j * 2]) || std::isinf(lastResult.mean[j * 2 + 1]) ){
+//                         reset = true;
+//                         GMMType radius = maxVelocity * sqrt(unif01(gen));
+//                         GMMType theta = distTheta(gen);
+//                         meanVector[j * 2] =  radius*cos(theta) / normalization;
+//                         meanVector[j * 2 + 1] = radius*sin(theta) / normalization;
+//                     }
+//                     else{
+//                         meanVector[j * 2] = lastResult.mean[j * 2] / normalization;
+//                         meanVector[j * 2 + 1] = lastResult.mean[j * 2 + 1] / normalization;
+//                     }
 
-                    if( lastResult.weight[j] < PRUNE_THRESHOLD_GMM*10 ) reset = true;
-                }
+//                     if( lastResult.weight[j] < PRUNE_THRESHOLD_GMM*10 ) reset = true;
+//                 }
 
-                // if meanVector is NaN or weigth is too small reset components weights
-                // adjust cov if it is too small
-                for(int j = 0; j < NUM_COMPONENT_GMM; j++){
-                    if(reset){
-                        weightVector[j] = 1.0/NUM_COMPONENT_GMM;
-                    }
-                    else{
-                        weightVector[j] = lastResult.weight[j];
-                    }
+//                 // if meanVector is NaN or weigth is too small reset components weights
+//                 // adjust cov if it is too small
+//                 for(int j = 0; j < NUM_COMPONENT_GMM; j++){
+//                     if(reset){
+//                         weightVector[j] = 1.0/NUM_COMPONENT_GMM;
+//                     }
+//                     else{
+//                         weightVector[j] = lastResult.weight[j];
+//                     }
 
-                    coVarianceMatrix[j * 4] = lastResult.coVariance[j * 4] > (10 * EPS_COVMATRIX_GMM * (normalization*normalization)) ? 
-                                                lastResult.coVariance[j * 4] : var1;
-                    coVarianceMatrix[j * 4] /= (normalization*normalization);                               
-                    coVarianceMatrix[j * 4 + 1] = 0.0;
-                    coVarianceMatrix[j * 4 + 2] = 0.0;
-                    coVarianceMatrix[j * 4 + 3] = lastResult.coVariance[j * 4 + 3] > (10 * EPS_COVMATRIX_GMM * (normalization*normalization)) ? 
-                                                    lastResult.coVariance[j * 4 + 3] : var2;
-                    coVarianceMatrix[j * 4 + 3] /= (normalization*normalization);
-                }
-            }
-        }
-        else // start GMM with fixed initial parameters at any cycle
-        {
-            for(int j = 0; j < NUM_COMPONENT_GMM; j++){
-                weightVector[j] = 1.0/NUM_COMPONENT_GMM;
-                GMMType radius = maxVelocity * sqrt(unif01(gen));
-                GMMType theta = distTheta(gen);
-                meanVector[j * 2] =  radius*cos(theta) / normalization;
-                meanVector[j * 2 + 1] = radius*sin(theta) / normalization;
-                coVarianceMatrix[j * 4] = var1 / (normalization*normalization);
-                coVarianceMatrix[j * 4 + 1] = 0.0;
-                coVarianceMatrix[j * 4 + 2] = 0.0;
-                coVarianceMatrix[j * 4 + 3] = var2 / (normalization*normalization);
-            }
-        }
+//                     coVarianceMatrix[j * 4] = lastResult.coVariance[j * 4] > (10 * EPS_COVMATRIX_GMM * (normalization*normalization)) ? 
+//                                                 lastResult.coVariance[j * 4] : var1;
+//                     coVarianceMatrix[j * 4] /= (normalization*normalization);                               
+//                     coVarianceMatrix[j * 4 + 1] = 0.0;
+//                     coVarianceMatrix[j * 4 + 2] = 0.0;
+//                     coVarianceMatrix[j * 4 + 3] = lastResult.coVariance[j * 4 + 3] > (10 * EPS_COVMATRIX_GMM * (normalization*normalization)) ? 
+//                                                     lastResult.coVariance[j * 4 + 3] : var2;
+//                     coVarianceMatrix[j * 4 + 3] /= (normalization*normalization);
+//                 }
+//             }
+//         }
+//         else // start GMM with fixed initial parameters at any cycle
+//         {
+//             for(int j = 0; j < NUM_COMPONENT_GMM; j++){
+//                 weightVector[j] = 1.0/NUM_COMPONENT_GMM;
+//                 GMMType radius = maxVelocity * sqrt(unif01(gen));
+//                 GMMType theta = distTheta(gen);
+//                 meanVector[j * 2] =  radius*cos(theta) / normalization;
+//                 meanVector[j * 2 + 1] = radius*sin(theta) / normalization;
+//                 coVarianceMatrix[j * 4] = var1 / (normalization*normalization);
+//                 coVarianceMatrix[j * 4 + 1] = 0.0;
+//                 coVarianceMatrix[j * 4 + 2] = 0.0;
+//                 coVarianceMatrix[j * 4 + 3] = var2 / (normalization*normalization);
+//             }
+//         }
 
-        GMMParam_t<GMMType> GMMParam = {
-            .numComponents = NUM_COMPONENT_GMM,
-            .maxIteration = MAX_ITERATION_GMM,
-            .threshold = THRESHOLD_CONVERGENCE_GMM,
-            .weightInit = weightVector,
-            .meanInit = meanVector,
-            .coVarianceInit = coVarianceMatrix
-        };  
+//         GMMParam_t<GMMType> GMMParam = {
+//             .numComponents = NUM_COMPONENT_GMM,
+//             .maxIteration = MAX_ITERATION_GMM,
+//             .threshold = THRESHOLD_CONVERGENCE_GMM,
+//             .weightInit = weightVector,
+//             .meanInit = meanVector,
+//             .coVarianceInit = coVarianceMatrix
+//         };  
 
 
-        // data
-        GMMDataMultiDim<GMMType, DATA_DIM_GMM, weightType> GMMData
-            (VELOCITY_HISTOGRAM_RES*VELOCITY_HISTOGRAM_RES, velocityHistogram->getHistogramScaleMark(i), velocityHistogram->getVelocityHistogramCUDAArray(i), 
-            {maxVelocityArray[0], maxVelocityArray[1]});
+//         // data
+//         GMMDataMultiDim<GMMType, DATA_DIM_GMM, weightType> GMMData
+//             (VELOCITY_HISTOGRAM_RES*VELOCITY_HISTOGRAM_RES, velocityHistogram->getHistogramScaleMark(i), velocityHistogram->getVelocityHistogramCUDAArray(i), 
+//             {maxVelocityArray[0], maxVelocityArray[1]});
 
-        cudaErrChk(cudaHostRegister(&GMMData, sizeof(GMMData), cudaHostRegisterDefault));
+//         cudaErrChk(cudaHostRegister(&GMMData, sizeof(GMMData), cudaHostRegisterDefault));
         
-        // generate exact output file path        
-        auto& gmm = gmmArray[i];
-        gmm.config(&GMMParam, &GMMData);
-        // preprocess the data --> normalize data
-        gmm.preProcessDataGMM(meanArray);
-        // run GMM
-        auto convergStep = gmm.initGMM(); // the exact output file name
-        // postporcess data --> normalize data back
-        gmm.postProcessDataGMM();
-        // move GMM output to host
-        gmmResults[species][i].push_back(gmm.getGMMResult(cycle, convergStep));
+//         // generate exact output file path        
+//         auto& gmm = gmmArray[i];
+//         gmm.config(&GMMParam, &GMMData);
+//         // preprocess the data --> normalize data
+//         gmm.preProcessDataGMM(meanArray);
+//         // run GMM
+//         auto convergStep = gmm.initGMM(); // the exact output file name
+//         // postporcess data --> normalize data back
+//         gmm.postProcessDataGMM();
+//         // move GMM output to host
+//         gmmResults[species][i].push_back(gmm.getGMMResult(cycle, convergStep));
 
-        cudaErrChk(cudaHostUnregister(&GMMData));
+//         cudaErrChk(cudaHostUnregister(&GMMData));
 
-        return 0;
-    };
+//         return 0;
+//     };
 
-    for(int i = 0; i < 3; i++){
-        future[i] = DAthreadPool->enqueue(GMMLambda, i); 
-    }
+//     for(int i = 0; i < 3; i++){
+//         future[i] = DAthreadPool->enqueue(GMMLambda, i); 
+//     }
 
-    for(int i = 0; i < 3; i++){
-        future[i].wait();
-    }
+//     for(int i = 0; i < 3; i++){
+//         future[i].wait();
+//     }
 
-    // GMM result output, in the gmmResult
-    if constexpr (GMM_OUTPUT) {
-        auto& uvw = DA_2D_PLANE_NAME;
+//     // GMM result output, in the gmmResult
+//     if constexpr (GMM_OUTPUT) {
+//         auto& uvw = DA_2D_PLANE_NAME;
 
-        if (!std::filesystem::exists(outputPath)){ 
-            std::ofstream output(outputPath);
-            if(output.is_open()){
-                output.close();
-            } else {
-                throw std::runtime_error("[!]Error: Can not open output file for velocity GMM species");
-            }
-        }
+//         if (!std::filesystem::exists(outputPath)){ 
+//             std::ofstream output(outputPath);
+//             if(output.is_open()){
+//                 output.close();
+//             } else {
+//                 throw std::runtime_error("[!]Error: Can not open output file for velocity GMM species");
+//             }
+//         }
 
-        std::fstream output(outputPath, std::ios::in | std::ios::out | std::ios::ate);
-        if(output.is_open()){
-            std::ostringstream buffer;
+//         std::fstream output(outputPath, std::ios::in | std::ios::out | std::ios::ate);
+//         if(output.is_open()){
+//             std::ostringstream buffer;
 
-            if(output.tellg() == 0) buffer << "{\n"; 
-            else { 
-                output.seekp(-2, std::ios_base::end);
-                buffer << ",\n";
-            }
+//             if(output.tellg() == 0) buffer << "{\n"; 
+//             else { 
+//                 output.seekp(-2, std::ios_base::end);
+//                 buffer << ",\n";
+//             }
 
-            buffer << "\"" << std::to_string(cycle) << "\": {\n";
-            buffer << "\"" << uvw[0] << "\": " << gmmResults[species][0].back().outputString() << ",\n";
-            buffer << "\"" << uvw[1] << "\": " << gmmResults[species][1].back().outputString() << ",\n";
-            buffer << "\"" << uvw[2] << "\": " << gmmResults[species][2].back().outputString() << "\n";
-            buffer << "}\n}";
+//             buffer << "\"" << std::to_string(cycle) << "\": {\n";
+//             buffer << "\"" << uvw[0] << "\": " << gmmResults[species][0].back().outputString() << ",\n";
+//             buffer << "\"" << uvw[1] << "\": " << gmmResults[species][1].back().outputString() << ",\n";
+//             buffer << "\"" << uvw[2] << "\": " << gmmResults[species][2].back().outputString() << "\n";
+//             buffer << "}\n}";
             
-            output << buffer.str();
-            output.close();
-        } else {
-            throw std::runtime_error("[!]Error: Can not open output file for velocity GMM species");
-        }
+//             output << buffer.str();
+//             output.close();
+//         } else {
+//             throw std::runtime_error("[!]Error: Can not open output file for velocity GMM species");
+//         }
 
-    }
+//     }
 
-    return 0;
-}
+//     return 0;
+// }
 
 /**
  * @brief analysis function, called by startAnalysis
@@ -343,15 +343,15 @@ int dataAnalysisPipelineImpl::analysisEntre(int cycle){
 
             // histogram
             auto histogramSpeciesOutputPath = HistogramSubDomainOutputPath + "species" + std::to_string(i) + "_";
-            velocityHistogram->init(velocitySoACUDA, cycle, i, streams[i]);
+            velocityHistogram->init(velocitySoACUDA, i, streams[i]);
             if constexpr (HISTOGRAM_OUTPUT)
-            velocityHistogram->writeToFile(histogramSpeciesOutputPath, streams[i]); 
+            velocityHistogram->writeToFile(histogramSpeciesOutputPath, cycle, streams[i]); 
             else cudaErrChk(cudaStreamSynchronize(streams[i]));
 
-            if constexpr (GMM_ENABLE) { // GMM
-                auto GMMSpeciesOutputPath = GMMSubDomainOutputPath + "species" + std::to_string(i) + ".json";
-                GMMAnalysisSpecies(cycle, i, GMMSpeciesOutputPath);
-            }
+            // if constexpr (GMM_ENABLE) { // GMM
+            //     auto GMMSpeciesOutputPath = GMMSubDomainOutputPath + "species" + std::to_string(i) + ".json";
+            //     GMMAnalysisSpecies(cycle, i, GMMSpeciesOutputPath);
+            // }
         }
     }
 
