@@ -6,6 +6,8 @@
 #include "cudaGMMkernel.cuh"
 #include "cudaReduction.cuh"
 
+#include "dataAnalysisConfig.cuh"
+
 #include <stdio.h>
 #include <string>
 #include <fstream>
@@ -16,6 +18,8 @@
 
 namespace cudaGMMWeight
 {
+
+using namespace DAConfig; 
 
 template <typename T, int dataDim, typename U = int>
 class GMM{
@@ -153,7 +157,7 @@ public:
             weight[i] = log(weight[i]);
             flagActiveComponents[i] = true;
         }
-        flagActiveComponents[NUM_COMPONENT_GMM] = false;
+        flagActiveComponents[GMMParam->numComponents] = false;
         numActiveComponents = GMMParam->numComponents;
 
         // copy to device
@@ -191,17 +195,17 @@ public:
     }
 
 
-    __host__ void preProcessDataGMM(const T* meanArray){
+    __host__ void preProcessDataGMM(const T* meanArray, const T* maxVelocityArray){
         
         memcpy(meanDataInit, meanArray, sizeof(T)*dataDim);
         cudaErrChk(cudaMemcpyAsync(meanDataInitCUDA, meanDataInit, sizeof(T)*dataDim, cudaMemcpyHostToDevice, GMMStream));
         cudaErrChk(cudaStreamSynchronize(GMMStream));
 
-        if constexpr(NORMALIZE_DATA_FOR_GMM) normalizePoints();
+        if constexpr(NORMALIZE_DATA_FOR_GMM) normalizePoints(maxVelocityArray);
     }
 
 
-    __host__ int initGMM(const std::string& outputPath){
+    __host__ int initGMM(){
         // do the GMR
         int step = 0;
         bool pruned = false;
@@ -238,7 +242,7 @@ public:
                 step++;
             }
             if constexpr (PRUNE_COMPONENTS_GMM){
-                pruned = pruneOneComponent(step, outputPath);
+                pruned = pruneOneComponent(step);
             }
             if(thresholdLH && !pruned)break;
         }
@@ -260,36 +264,11 @@ public:
     }
 
 
-    __host__ void postProcessDataGMM(){
+    __host__ void postProcessDataGMM(const T* maxVelocityArray){
         
-        if constexpr(NORMALIZE_DATA_FOR_GMM) normalizeDataBack();        
+        if constexpr(NORMALIZE_DATA_FOR_GMM) normalizeDataBack(maxVelocityArray);        
     }
     
-
-    // copy the results to host
-    __host__ int moveBackToHostGMM(GMMParam_output_store<T>& paramHost_last){
-        
-        auto numComponents = paramHostPtr->numComponents;
-        auto numData = dataHostPtr->getNumData();
-        cudaErrChk(cudaMemcpyAsync(weight, weightCUDA, sizeof(T)*numComponents, cudaMemcpyDefault, GMMStream));
-        cudaErrChk(cudaMemcpyAsync(mean, meanCUDA, sizeof(T)*numComponents*dataDim, cudaMemcpyDefault, GMMStream));
-        cudaErrChk(cudaMemcpyAsync(coVariance, coVarianceCUDA, sizeof(T)*numComponents*dataDim*dataDim, cudaMemcpyDefault, GMMStream));
-        cudaErrChk(cudaMemcpyAsync(coVarianceDecomposed, coVarianceDecomposedCUDA, sizeof(T)*numComponents*dataDim*dataDim, cudaMemcpyDefault, GMMStream));
-        cudaErrChk(cudaMemcpyAsync(normalizer, normalizerCUDA, sizeof(T)*numComponents, cudaMemcpyDefault, GMMStream));
-
-        cudaErrChk(cudaStreamSynchronize(GMMStream));
-
-        for(int i = 0; i < numComponents; i++){
-            weight[i] = exp(weight[i]);
-        }
-        
-        // copy results in the structure paramHost_last to be used as initial paramters in the next GMM cycle
-        std::copy(weight, weight +  numComponents, paramHost_last.weightVector);
-        std::copy(mean, mean + numComponents * dataDim, paramHost_last.meanVector);
-        std::copy(coVariance, coVariance + numComponents * dataDim * dataDim, paramHost_last.coVarianceMatrix);
-        
-        return 0;
-    }
 
 
     __host__ GMMResult<T, dataDim> getGMMResult(int simuStep, int convergeStep){
@@ -316,75 +295,6 @@ public:
         return result;
     }
 
-
-    // post process results and dump to disk
-    __host__ int outputGMM(int convergeStep, std::string outputPath, const int moveBackToHost){
-
-        // check if data have been copied back to host
-        if(moveBackToHost != 0)
-        {
-            std::cerr << "[!]GMM output data are not available on the Host - path " << outputPath << std::endl;
-            return 1;
-        }
-
-        auto numComponents = paramHostPtr->numComponents;
-        auto numData = dataHostPtr->getNumData();
-
-        {  // output the GMM to json
-            std::ofstream file(outputPath);
-            if (!file.is_open()) {
-                std::cerr << "[!]Could not open file " << outputPath << std::endl;
-                return -1;
-            }
-
-            if (std::isnan(logLikelihood))
-                std::cerr << "[!]LogLikelihood " <<outputPath<< " is NaN!" << " GMM step: "<< convergeStep << std::endl;
-
-
-            file << "{\n";
-            file << "\"convergeStep\": " << convergeStep << ",\n";
-            file << "\"logLikelyHood\": " << logLikelihood << ",\n";
-            file << "\"model\": {\n";
-            file << "\"dataDim\": " << dataDim << ",\n";
-            file << "\"numComponent\": " << numComponents << ",\n";
-            file << "\"numActiveComponent\": " << numActiveComponents << ",\n";
-            file << "\"components\": [\n";
-
-            for (size_t k = 0; k < numComponents; ++k) {
-                file << "{\n";
-                file << "\"weight\": " << weight[k] << ",\n";
-
-                file << "\"mean\": [ ";
-                for (size_t dim = 0; dim < dataDim; ++dim) {
-                    file << mean[k * dataDim + dim];
-                    if (dim + 1 < dataDim) {
-                        file << ", ";
-                    }
-                }
-                file << " ],\n";
-
-                file << "\"coVariance\": [ ";
-                for (size_t dim = 0; dim < dataDim * dataDim; ++dim) {
-                    file << coVariance[k * dataDim * dataDim + dim];
-                    if (dim + 1 < dataDim * dataDim) {
-                        file << ", ";
-                    }
-                }
-                file << " ]\n";
-                file << "}";
-
-                if (k + 1 < numComponents) {
-                    file << ", ";
-                }
-            }
-
-            file << "]\n";
-            file << "}\n";
-            file << "}\n";
-        }
-
-        return 0;
-    }
 
 
     __host__ ~GMM(){
@@ -445,23 +355,23 @@ private:
         return blockNum;
     }
 
-    void normalizePoints(){
+    void normalizePoints(T* maxVelocityArray){
         
         // normalize data such that velocities are in range -1;1
         // launch kernel
         cudaGMMWeightKernel::normalizePointsKernel<T,dataDim,U,false><<<getGridSize(dataHostPtr->getNumData(), 256), 256, 0, GMMStream>>>
-                                (dataDevicePtr,meanDataInitCUDA, dataHostPtr->maxVelocityArray);
+                                (dataDevicePtr,meanDataInitCUDA, maxVelocityArray);
     }
 
-    void normalizeDataBack(){
+    void normalizeDataBack(T* maxVelocityArray){
         
         // normalize data back to the original data range
         // launch kernel
         cudaGMMWeightKernel::normalizePointsKernel<T,dataDim,U,true><<<getGridSize(dataHostPtr->getNumData(), 256), 256, 0, GMMStream>>>
-                                (dataDevicePtr, meanDataInitCUDA, dataHostPtr->maxVelocityArray );
+                                (dataDevicePtr, meanDataInitCUDA, maxVelocityArray );
 
         cudaGMMWeightKernel::normalizeMeanAndCovBack<T, dataDim><<<1, paramHostPtr->numComponents, 0, GMMStream>>>
-                            (meanCUDA, coVarianceCUDA, meanDataInitCUDA, dataHostPtr->maxVelocityArray, paramHostPtr->numComponents, flagActiveComponentsCUDA);
+                            (meanCUDA, coVarianceCUDA, meanDataInitCUDA, maxVelocityArray, paramHostPtr->numComponents, flagActiveComponentsCUDA);
     }
     
     void calcPxAtMeanAndCoVariance(){
@@ -608,7 +518,7 @@ private:
 
     
     // prune 1 GMM component if its weight is below a threshold, reset the other low weight components
-    bool pruneOneComponent(const int step, const std::string& outputPath){
+    bool pruneOneComponent(const int step){
 
         bool pruned = false;
         // set low weight component to inactive and update the other component weights
@@ -634,7 +544,7 @@ private:
             this->logLikelihoodOld = -INFINITY;
             numActiveComponents -= 1;
             if (numActiveComponents < 1){
-                std::cerr << "[!]Error PruneComponents " <<outputPath<< " numActiveComponents < 1 " << numActiveComponents <<" - " << " GMM step: "<< step << std::endl; 
+                std::cerr << "[!]Error PruneComponents " << " numActiveComponents < 1 " << numActiveComponents <<" - " << " GMM step: "<< step << std::endl; 
             }
         }
         return pruned;

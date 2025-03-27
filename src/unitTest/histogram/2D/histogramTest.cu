@@ -13,6 +13,8 @@
 using namespace velocityHistogram;
 using SoAElements = particleArraySoA::particleArraySoAElement;
 
+using namespace DAConfig;
+
 constexpr int nop = 5000000;
 
 
@@ -75,7 +77,7 @@ int main(){
             int binV = static_cast<int>((vVal - minVal) / resolution);
             if(binV >= VELOCITY_HISTOGRAM_RES) binV = VELOCITY_HISTOGRAM_RES - 1;
             int index = binV * VELOCITY_HISTOGRAM_RES + binU;
-            cpuHistUV[index] += std::fabs(qCPU[i] * 1e6);
+            cpuHistUV[index] += std::fabs(qCPU[i] * 1e6); // 10e5 in the 2D kernel
         }
 
         cudaCommonType wVal = wCPU[i];

@@ -2,6 +2,7 @@
 #define _CUDA_GMM_KERNEL_H_
 
 #include <assert.h>
+#include "dataAnalysisConfig.cuh"
 
 namespace cudaGMMWeight
 {
@@ -11,6 +12,8 @@ namespace cudaGMMWeight
 
 namespace cudaGMMWeightKernel
 {
+
+using namespace DAConfig;
 
 
 /**
@@ -305,36 +308,18 @@ __global__ void checkAdjustCoVarianceKernel(T* coVariance, const int numComponen
         }
     }
 
-    // from here on it works only if dataDim == 2
-    if constexpr(dataDim == 2)
-    {
-        // ensure symmetry in the cov-matrix 
-        coVarianceComponent[1] = coVarianceComponent[2];
+    // // from here on it works only if dataDim == 2
 
-        // ensure determinant > 0
-        if(coVarianceComponent[0]*coVarianceComponent[3] - coVarianceComponent[2]*coVarianceComponent[2] - TOL_COVMATRIX_GMM <=0){
-            const T k = coVarianceComponent[3] / coVarianceComponent[0]; 
-            coVarianceComponent[0] = sqrt( (coVarianceComponent[2]*coVarianceComponent[2] + TOL_COVMATRIX_GMM) / k  ) + sqrt(TOL_COVMATRIX_GMM);
-            coVarianceComponent[3] = coVarianceComponent[0] * k;
-        }
-    }
-    else if constexpr(dataDim == 3)
-    {
-        for(int i = 0; i<dataDim; i++){
-            for(int j = 0; j<=i; j++){
-                coVarianceComponent[i * dataDim + j] = coVarianceComponent[j * dataDim + i];
-            }
-        }
+    // // ensure symmetry in the cov-matrix 
+    // coVarianceComponent[1] = coVarianceComponent[2];
 
-        const T d0 = coVarianceComponent[4] * coVarianceComponent[8] - coVarianceComponent[5] * coVarianceComponent[7];
-        const T d1 = coVarianceComponent[3] * coVarianceComponent[8] - coVarianceComponent[5] * coVarianceComponent[6];
-        const T d2 = coVarianceComponent[3] * coVarianceComponent[7] - coVarianceComponent[4] * coVarianceComponent[6];
-        const T determinant =  coVarianceComponent[0] * d0 - coVarianceComponent[1] * d1 + coVarianceComponent[2] * d2;
+    // // ensure determinant > 0
+    // if(coVarianceComponent[0]*coVarianceComponent[3] - coVarianceComponent[2]*coVarianceComponent[2] - TOL_COVMATRIX_GMM <=0){
+    //     const T k = coVarianceComponent[3] / coVarianceComponent[0]; 
+    //     coVarianceComponent[0] = sqrt( (coVarianceComponent[2]*coVarianceComponent[2] + TOL_COVMATRIX_GMM) / k  ) + sqrt(TOL_COVMATRIX_GMM);
+    //     coVarianceComponent[3] = coVarianceComponent[0] * k;
+    // }
 
-        if(determinant - TOL_COVMATRIX_GMM <= 0){
-
-        }
-    }
 }
 
 
