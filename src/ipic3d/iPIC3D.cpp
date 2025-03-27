@@ -24,6 +24,7 @@
 #include "debug.h"
 #include "TimeTasks.h"
 #include <stdio.h>
+#include <chrono>
 
 #include "dataAnalysis.cuh"
 
@@ -45,7 +46,8 @@ int main(int argc, char **argv) {
 
     if (KCode.get_myrank() == 0)
       printf(" ======= Cycle %d ======= \n",i);
-
+    
+    auto start = std::chrono::high_resolution_clock::now();
     timeTasks.resetCycle();
 
     KCode.writeParticleNum(i);
@@ -63,8 +65,11 @@ int main(int argc, char **argv) {
     KCode.MomentsAwait(); 
 
     KCode.outputCopyAsync(i); // copy output data to host, for next output
-    
-    
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> elapsed = end - start;
+    if (KCode.get_myrank() == 0)
+      std::cout<< "Execution time cycle: "<< elapsed.count() << " ms" <<std::endl;
+
 #ifdef LOG_TASKS_TOTAL_TIME
     timeTasks.print_cycle_times(i); // print out total time for all tasks
 #endif

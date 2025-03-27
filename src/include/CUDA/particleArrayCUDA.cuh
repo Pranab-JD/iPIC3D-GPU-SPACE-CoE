@@ -12,6 +12,7 @@ class particleArrayCUDA : public arrayCUDA<SpeciesParticle, 32>
 {
 private:
     ParticleType::Type type;
+    uint32_t initialNOP;
 
 public:
     /**
@@ -34,6 +35,8 @@ public:
 
 
     __host__ __device__ uint32_t getNOP(){ return getNOE(); }
+    __host__ __device__ void setInitialNOP(uint32_t numberPcl){ this->initialNOP = numberPcl; }
+    __host__ __device__ uint32_t getInitialNOP(){ return initialNOP; }
     __host__ __device__ SpeciesParticle* getpcls(){ return getArray(); }
     __host__ __device__ SpeciesParticle* getpcl(uint32_t index){ return getElement(index); }
 

@@ -361,8 +361,8 @@ int c_Solver::initCUDA(){
 	// init the streams according to the species
   streams = new cudaStream_t[ns*2]; stayedParticle = new int[ns]; exitingResults = new std::future<int>[ns];
   for(int i=0; i<ns; i++){ cudaErrChk(cudaStreamCreate(streams+i)); cudaErrChk(cudaStreamCreate(streams+i+ns)); stayedParticle[i] = 0; }
-
-	{// init arrays on device, pointers are device pointer, copied
+	{ 
+    // init arrays on device, pointers are device pointer, copied
     pclsArrayHostPtr = new particleArrayCUDA*[ns];
     pclsArrayCUDAPtr = new particleArrayCUDA*[ns];
     departureArrayHostPtr = new departureArrayType*[ns];
@@ -378,6 +378,7 @@ int c_Solver::initCUDA(){
     for(int i=0; i<ns; i++){
       // the constructor will copy particles from host to device
       pclsArrayHostPtr[i] = newHostPinnedObject<particleArrayCUDA>(outputPart+i, 1.4, streams[i]); // use the oputputPart as the initial pcls
+      pclsArrayHostPtr[i]->setInitialNOP(pclsArrayHostPtr[i]->getNOP());
       pclsArrayCUDAPtr[i] = pclsArrayHostPtr[i]->copyToDevice();
 
       // clear the host pclArray
@@ -646,9 +647,42 @@ int c_Solver::cudaLauncherAsync(const int species){
   cudaErrChk(cudaEventCreateWithFlags(&event2, cudaEventDisableTiming));
   auto gridSize = grid->getNXN() * grid->getNYN() * grid->getNZN();
 
-  // Mover
-  cudaErrChk(cudaStreamWaitEvent(streams[species], event0, 0));
   
+  // particle number control 
+  // splitting
+  //std::cout << "myrank: "<<MPIdata::get_rank() <<" pclsArrayHostPtr[species]->getInitialNOP(): " << pclsArrayHostPtr[species]->getInitialNOP() <<
+  //          " pclsArrayHostPtr[species]->getNOP() " << pclsArrayHostPtr[species]->getNOP() << std::endl;
+  constexpr bool PARTICLE_SPLITTING = true;
+  if constexpr(PARTICLE_SPLITTING)
+  {
+    if(pclsArrayHostPtr[species]->getNOP() < 0.95 * pclsArrayHostPtr[species]->getInitialNOP()){
+      const uint32_t deltaPcl = pclsArrayHostPtr[species]->getInitialNOP() - pclsArrayHostPtr[species]->getNOP();
+      if(deltaPcl < pclsArrayHostPtr[species]->getNOP()){
+        std::cout << "Particle splitting basicKernel myrank:"<< MPIdata::get_rank() << " number particles: " << pclsArrayHostPtr[species]->getNOP() <<
+                  " delta: " << deltaPcl <<std::endl;
+        particleSplittingKernel<false><<<getGridSize((int)deltaPcl, 256), 256, 0, streams[species]>>>(moverParamCUDAPtr[species], grid3DCUDACUDAPtr);
+        pclsArrayHostPtr[species]->setNOE(pclsArrayHostPtr[species]->getInitialNOP());
+        cudaErrChk(cudaMemcpyAsync(pclsArrayCUDAPtr[species], pclsArrayHostPtr[species], sizeof(particleArrayCUDA), cudaMemcpyDefault, streams[species]));
+        //cudaErrChk(cudaStreamSynchronize(streams[species+ns]));
+      }
+      else{ 
+        // in this case the final number of particles will be < pclsArrayHostPtr[species]->getInitialNOP() 
+        // worst case scenario will be pclsArrayHostPtr[species]->getInitialNOP() - (pclsArrayHostPtr[species]->getNOP() - 1)
+        const int splittingTimes = deltaPcl / pclsArrayHostPtr[species]->getNOP();
+        std::cout << "Particle splitting multipleTimesKernel myrank:"<< MPIdata::get_rank() << " number particles: " << pclsArrayHostPtr[species]->getNOP() <<
+                  " delta: " << deltaPcl <<std::endl;
+        particleSplittingKernel<true><<<getGridSize((int)pclsArrayHostPtr[species]->getNOP(), 256), 256, 0, streams[species]>>>(moverParamCUDAPtr[species], grid3DCUDACUDAPtr);
+        pclsArrayHostPtr[species]->setNOE( (splittingTimes + 1) * pclsArrayHostPtr[species]->getNOP());
+        cudaErrChk(cudaMemcpyAsync(pclsArrayCUDAPtr[species], pclsArrayHostPtr[species], sizeof(particleArrayCUDA), cudaMemcpyDefault, streams[species]));
+        
+        //std::cerr << "Particle control multiple time splitting not yet implemented "<<std::endl;
+      } 
+    }
+  }
+  
+  // Mover
+  // wait to field values copied to device
+  cudaErrChk(cudaStreamWaitEvent(streams[species], event0, 0));
   if (col->getCase()=="Dipole" || col->getCase()=="Dipole2D")
     moverSubcyclesKernel<<<getGridSize((int)pclsArrayHostPtr[species]->getNOP(), 256), 256, 0, streams[species]>>>(moverParamCUDAPtr[species], fieldForPclCUDAPtr, grid3DCUDACUDAPtr);
   else
