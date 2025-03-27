@@ -38,8 +38,8 @@ inline constexpr cudaCommonType MAX_VELOCITY_HIST_I = 0.09;
 
 inline constexpr bool GMM_OUTPUT = GMM_ENABLE && true;
 inline const std::string GMM_OUTPUT_DIR = DATA_ANALYSIS_OUTPUT_DIR + "velocityGMM/";
-inline constexpr int DATA_DIM_GMM = 2; // only works with DATA_DIM = 2 now
-inline constexpr int NUM_COMPONENT_GMM = 12; // number of components used in GMM - array with length NUM_ANALYSIS_GMM
+inline constexpr int DATA_DIM_GMM = 3; // only works with DATA_DIM = 2 now
+inline constexpr int NUM_COMPONENT_GMM = 3; // number of components used in GMM - array with length NUM_ANALYSIS_GMM
 inline constexpr int MAX_ITERATION_GMM = 50;
 inline constexpr cudaCommonType  THRESHOLD_CONVERGENCE_GMM = 1e-6;
 inline constexpr bool START_WITH_LAST_PARAMETERS_GMM = true; // start GMM iteration with output paramters of last GMM step as initial parameters

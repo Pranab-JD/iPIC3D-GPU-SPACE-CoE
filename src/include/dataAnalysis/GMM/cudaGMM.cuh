@@ -157,7 +157,7 @@ public:
             weight[i] = log(weight[i]);
             flagActiveComponents[i] = true;
         }
-        flagActiveComponents[NUM_COMPONENT_GMM] = false;
+        flagActiveComponents[GMMParam->numComponents] = false;
         numActiveComponents = GMMParam->numComponents;
 
         // copy to device
@@ -195,13 +195,13 @@ public:
     }
 
 
-    __host__ void preProcessDataGMM(const T* meanArray){
+    __host__ void preProcessDataGMM(const T* meanArray, const T* maxVelocityArray){
         
         memcpy(meanDataInit, meanArray, sizeof(T)*dataDim);
         cudaErrChk(cudaMemcpyAsync(meanDataInitCUDA, meanDataInit, sizeof(T)*dataDim, cudaMemcpyHostToDevice, GMMStream));
         cudaErrChk(cudaStreamSynchronize(GMMStream));
 
-        if constexpr(NORMALIZE_DATA_FOR_GMM) normalizePoints();
+        if constexpr(NORMALIZE_DATA_FOR_GMM) normalizePoints(maxVelocityArray);
     }
 
 
@@ -264,9 +264,9 @@ public:
     }
 
 
-    __host__ void postProcessDataGMM(){
+    __host__ void postProcessDataGMM(const T* maxVelocityArray){
         
-        if constexpr(NORMALIZE_DATA_FOR_GMM) normalizeDataBack();        
+        if constexpr(NORMALIZE_DATA_FOR_GMM) normalizeDataBack(maxVelocityArray);        
     }
     
 
@@ -355,23 +355,23 @@ private:
         return blockNum;
     }
 
-    void normalizePoints(){
+    void normalizePoints(T* maxVelocityArray){
         
         // normalize data such that velocities are in range -1;1
         // launch kernel
         cudaGMMWeightKernel::normalizePointsKernel<T,dataDim,U,false><<<getGridSize(dataHostPtr->getNumData(), 256), 256, 0, GMMStream>>>
-                                (dataDevicePtr,meanDataInitCUDA, dataHostPtr->maxVelocityArray);
+                                (dataDevicePtr,meanDataInitCUDA, maxVelocityArray);
     }
 
-    void normalizeDataBack(){
+    void normalizeDataBack(T* maxVelocityArray){
         
         // normalize data back to the original data range
         // launch kernel
         cudaGMMWeightKernel::normalizePointsKernel<T,dataDim,U,true><<<getGridSize(dataHostPtr->getNumData(), 256), 256, 0, GMMStream>>>
-                                (dataDevicePtr, meanDataInitCUDA, dataHostPtr->maxVelocityArray );
+                                (dataDevicePtr, meanDataInitCUDA, maxVelocityArray );
 
         cudaGMMWeightKernel::normalizeMeanAndCovBack<T, dataDim><<<1, paramHostPtr->numComponents, 0, GMMStream>>>
-                            (meanCUDA, coVarianceCUDA, meanDataInitCUDA, dataHostPtr->maxVelocityArray, paramHostPtr->numComponents, flagActiveComponentsCUDA);
+                            (meanCUDA, coVarianceCUDA, meanDataInitCUDA, maxVelocityArray, paramHostPtr->numComponents, flagActiveComponentsCUDA);
     }
     
     void calcPxAtMeanAndCoVariance(){

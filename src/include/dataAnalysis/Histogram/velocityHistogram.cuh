@@ -25,7 +25,7 @@ private:
     T* hostPtr;
     T* cudaPtr;
 
-    // U* scaleMark[dim];
+    U* scaleMark[dim];
 
     int bufferSize; // the physical size of current buffer, in elements
 public:
@@ -89,6 +89,10 @@ public:
 
     __host__ __device__ T* getHistogramCUDA(){
         return cudaPtr;
+    }
+
+    __host__ U** getScaleMarkCUDAPtrs(){
+        return scaleMark;
     }
 
     __host__ __device__ int getLogicSize(){
@@ -169,12 +173,28 @@ public:
         return index;
     }
 
+    /**
+    * @brief get the center of the bin, for the scale mark, for GMM
+    * @param index the index of the bin, in the buffer
+    */
+    __device__ void centerOfBin(int index){
+        int tmp = index;
+        for(int i=0; i<dim; i++){
+            scaleMark[i][index] = min[i] + (tmp % size[i] + 0.5) * resolution[i];
+            tmp /= size[i];
+        }
+    }
+
 
 private:
 
     __host__ void allocate(){
         cudaErrChk(cudaMallocHost((void**)&hostPtr, bufferSize * sizeof(T)));
         cudaErrChk(cudaMalloc((void**)&cudaPtr, bufferSize * sizeof(T)));
+
+        for(int i=0; i<dim; i++){
+            cudaErrChk(cudaMalloc((void**)&scaleMark[i], bufferSize * sizeof(U)));
+        }
     }
 
 
@@ -183,6 +203,10 @@ public:
     __host__ ~histogramCUDA(){
         cudaErrChk(cudaFreeHost(hostPtr));
         cudaErrChk(cudaFree(cudaPtr));
+
+        for(int i=0; i<dim; i++){
+            cudaErrChk(cudaFree(scaleMark[i]));
+        }
     }
 
 };
@@ -354,6 +378,10 @@ public:
 
     histogramTypeOut* getVelocityHistogramCUDAArray(){
         return histogramHostPtr->getHistogramCUDA();
+    }
+
+    histogramTypeIn** getHistogramScaleMark(){
+        return histogramHostPtr->getScaleMarkCUDAPtrs();
     }
 
 

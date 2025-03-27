@@ -83,6 +83,7 @@ __global__ void resetBin(velocityHistogramCUDA3D* histogramCUDAPtr){
 
     for (int i = idx; i < histogramSize; i += gridSize){
         histogram[i] = 0.0;
+        histogramCUDAPtr->centerOfBin(i);
     }
     
 }

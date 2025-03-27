@@ -308,17 +308,17 @@ __global__ void checkAdjustCoVarianceKernel(T* coVariance, const int numComponen
         }
     }
 
-    // from here on it works only if dataDim == 2
+    // // from here on it works only if dataDim == 2
 
-    // ensure symmetry in the cov-matrix 
-    coVarianceComponent[1] = coVarianceComponent[2];
+    // // ensure symmetry in the cov-matrix 
+    // coVarianceComponent[1] = coVarianceComponent[2];
 
-    // ensure determinant > 0
-    if(coVarianceComponent[0]*coVarianceComponent[3] - coVarianceComponent[2]*coVarianceComponent[2] - TOL_COVMATRIX_GMM <=0){
-        const T k = coVarianceComponent[3] / coVarianceComponent[0]; 
-        coVarianceComponent[0] = sqrt( (coVarianceComponent[2]*coVarianceComponent[2] + TOL_COVMATRIX_GMM) / k  ) + sqrt(TOL_COVMATRIX_GMM);
-        coVarianceComponent[3] = coVarianceComponent[0] * k;
-    }
+    // // ensure determinant > 0
+    // if(coVarianceComponent[0]*coVarianceComponent[3] - coVarianceComponent[2]*coVarianceComponent[2] - TOL_COVMATRIX_GMM <=0){
+    //     const T k = coVarianceComponent[3] / coVarianceComponent[0]; 
+    //     coVarianceComponent[0] = sqrt( (coVarianceComponent[2]*coVarianceComponent[2] + TOL_COVMATRIX_GMM) / k  ) + sqrt(TOL_COVMATRIX_GMM);
+    //     coVarianceComponent[3] = coVarianceComponent[0] * k;
+    // }
 
 }
 

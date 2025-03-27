@@ -28,24 +28,20 @@ private:
     U* weight;
 public:
 
-    T maxVelocityArray[dataDim]; // the range of the data points
-
     // all dim in one array
-    __host__ GMMDataMultiDim(int numData, T* data, U* weight, std::initializer_list<T> maxVelocityArray){ 
+    __host__ GMMDataMultiDim(int numData, T* data, U* weight){ 
         this->numData = numData;
         for(int i = 0; i < dataDim; i++){
             this->data[i] = data + i*numData;
-            this->maxVelocityArray[i] = *(maxVelocityArray.begin() + i);
         }
         this->weight = weight;
     }
 
     // all dim in separate arrays
-    __host__ GMMDataMultiDim(int numData, T** data, U* weight, std::initializer_list<T> maxVelocityArray){
+    __host__ GMMDataMultiDim(int numData, T** data, U* weight){
         this->numData = numData;
         for(int i = 0; i < dataDim; i++){
             this->data[i] = data[i];
-            this->maxVelocityArray[i] = *(maxVelocityArray.begin() + i);
         }
         this->weight = weight;
     }
