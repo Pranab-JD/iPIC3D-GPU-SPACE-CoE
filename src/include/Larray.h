@@ -40,8 +40,8 @@
 template<class type>
 class Larray
 {
+ protected: // members
   static const int num_elem_in_block = 8;
- private: // members
   type* list;
   int _size; // number of particles in list
   int _capacity; // maximum number of particles
@@ -171,7 +171,7 @@ class Larray
   //
   // to bring this into conformity with std::vector, this should
   // be change so as never to shrink the capacity.
-  void reserve(int newcapacity)
+  virtual void reserve(int newcapacity)
   {
     // ignore request if requested size is too small
     if(_size > newcapacity) return;
@@ -205,6 +205,31 @@ class Larray
       reserve(proposed_size);
     }
   }
+};
+
+
+template<class type>
+class LarrayRegistered : public Larray<type> {
+
+public:
+
+    void reserve(int newcapacity) override 
+    {
+      if(this->_size > newcapacity) return;
+  
+      newcapacity = ((newcapacity-1)/this->num_elem_in_block+1)*this->num_elem_in_block;
+      if(newcapacity != this->_capacity)
+      {
+        this->_capacity = newcapacity;
+        type* oldList = this->list;
+        this->list = AlignedAllocPinned(type,this->_capacity);
+        memcpy(this->list,oldList,sizeof(type)*this->_size);
+        AlignedFreePinned(oldList);
+      }
+    }
+
+
+
 };
 
 #endif

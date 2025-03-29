@@ -32,6 +32,7 @@
 #include "Larray.h"
 // using declaration macro confuses ctags
 #define aligned_vector(type) Larray<type>
+#define aligned_vector_registered(type) LarrayRegistered<type>
 
 // canonical workaround for lack of support in C++ for templated typedef
 //template <typename T>
@@ -47,4 +48,6 @@
 class SpeciesParticle;
 typedef aligned_vector(SpeciesParticle) vector_SpeciesParticle;
 typedef aligned_vector(double) vector_double;
+
+typedef aligned_vector_registered(SpeciesParticle) vector_SpeciesParticle_registered;
 

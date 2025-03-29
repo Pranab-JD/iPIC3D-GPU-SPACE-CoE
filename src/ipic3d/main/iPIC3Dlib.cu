@@ -381,15 +381,6 @@ int c_Solver::initCUDA(){
       pclsArrayHostPtr[i]->setInitialNOP(pclsArrayHostPtr[i]->getNOP());
       pclsArrayCUDAPtr[i] = pclsArrayHostPtr[i]->copyToDevice();
 
-      // clear the host pclArray
-      // part[i].get_pcl_array().clear(); // 0
-      // part[i].get_pcl_array().reserve(pclsArrayHostPtr[i]->getNOP() * 0.1); // reserve the size
-
-      // register the exchange pcl array to pinned memory
-      // cudaErrChk(cudaHostRegister(part[i].get_pcl_array().getList(), part[i].get_pcl_array().capacity() * sizeof(SpeciesParticle), cudaHostRegisterDefault));
-      // register the output pcl array to pinned memory, for async copy
-      cudaErrChk(cudaHostRegister(outputPart[i].get_pcl_array().getList(), outputPart[i].get_pcl_array().capacity() * sizeof(SpeciesParticle), cudaHostRegisterDefault));
-
       departureArrayHostPtr[i] = newHostPinnedObject<departureArrayType>(pclsArrayHostPtr[i]->getSize()); // same length
       departureArrayCUDAPtr[i] = departureArrayHostPtr[i]->copyToDevice();
       cudaErrChk(cudaMemsetAsync(departureArrayHostPtr[i]->getArray(), 0, departureArrayHostPtr[i]->getSize() * sizeof(departureArrayElementType), streams[i]));
@@ -575,8 +566,6 @@ int c_Solver::deInitCUDA(){
 
   { // unregister the pinned mem
     for (int i = 0; i < ns; i++) {
-      // cudaErrChk(cudaHostUnregister(part[i].get_pcl_array().getList()));
-      cudaErrChk(cudaHostUnregister(outputPart[i].get_pcl_array().getList()));
 
       cudaErrChk(cudaHostUnregister((void*)&(EMf->getRHOns().get(i,0,0,0))));
       cudaErrChk(cudaHostUnregister((void*)&(EMf->getJxs().get(i,0,0,0))));
@@ -734,13 +723,9 @@ int c_Solver::cudaLauncherAsync(const int species){
   }
 
   if(x > part[species].get_pcl_list().capacity()){
-    // unregister the list
-    // cudaErrChk(cudaHostUnregister(part[species].get_pcl_array().getList()));
     // expand the host array
     auto pclArray = part[species].get_pcl_arrayPtr();
     pclArray->reserve(x * 1.5);
-    // register the list
-    cudaErrChk(cudaHostRegister(pclArray->getList(), pclArray->capacity() * sizeof(SpeciesParticle), cudaHostRegisterDefault));
   }
 
   exitingKernel<<<getGridSize((int)pclsArrayHostPtr[species]->getNOP(), 256), 256, 0, streams[species+ns]>>>(pclsArrayCUDAPtr[species], 
@@ -1071,13 +1056,9 @@ void c_Solver::outputCopyAsync(int cycle){ // -1 to enable
   if (ifNextCycleRestart || ifNextCycleParticle){ // for next cycle
     for(int i=0; i<ns; i++){
       if(outputPart[i].get_pcl_array().capacity() < pclsArrayHostPtr[i]->getNOP()){
-        // unregister the list
-        cudaErrChk(cudaHostUnregister(outputPart[i].get_pcl_array().getList()));
         // expand the host array
         auto pclArray = outputPart[i].get_pcl_arrayPtr();
         pclArray->reserve(pclsArrayHostPtr[i]->getNOP() * 1.2);
-        // register the list
-        cudaErrChk(cudaHostRegister(pclArray->getList(), pclArray->capacity() * sizeof(SpeciesParticle), cudaHostRegisterDefault));
       }
       cudaErrChk(cudaMemcpyAsync(outputPart[i].get_pcl_array().getList(), pclsArrayHostPtr[i]->getpcls(), 
                                 pclsArrayHostPtr[i]->getNOP()*sizeof(SpeciesParticle), cudaMemcpyDefault, streams[0]));

@@ -302,7 +302,7 @@ protected:
   // AoS representation
   //
   //Larray<SpeciesParticle> _pcls;
-  vector_SpeciesParticle _pcls;
+  vector_SpeciesParticle_registered _pcls;
   //
   // particles data
   //

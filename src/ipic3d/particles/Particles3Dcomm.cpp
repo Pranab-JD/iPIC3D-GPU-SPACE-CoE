@@ -1649,6 +1649,7 @@ void Particles3Dcomm::sort_particles_serial()
 {
   switch(particleType)
   {
+    case ParticleType::synched: [[fallthrough]];
     case ParticleType::AoS:
       sort_particles_serial_AoS();
       break;
