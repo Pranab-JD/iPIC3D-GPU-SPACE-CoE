@@ -135,8 +135,8 @@ public:
   //void sort_particles_serial_SoA_by_xavg();
   void sort_particles_serial();
   void sort_particles_serial_AoS();
-  void sort_particles_parallel();
-  void sort_particles_parallel_AoS();
+  void sort_particles_parallel(int* cellCount, int* cellOffset);
+  void sort_particles_parallel_AoS(int* globalCount, int* bucketOffset);
   //void sort_particles_serial_SoA();
 
   // get accessors for optional arrays

@@ -83,10 +83,9 @@ __global__ void reduceMaxWarp(T* g_idata, T* g_odata, unsigned int n) {
         maxValue = max(maxValue, g_idata[i]);
     }
 
-    constexpr unsigned int fullMask = 0xffffffff; // HIP requires uint64 mask
     // warp reduction
     for(int offset = WARP_SIZE / 2; offset > 0; offset /= 2){
-        const T tempValue = __shfl_down_sync(fullMask, maxValue, offset);
+        const T tempValue = __shfl_down_sync(WARP_FULL_MASK, maxValue, offset);
         maxValue = max(maxValue, tempValue);
     }
 
@@ -149,10 +148,9 @@ __global__ void reduceMinWarp(T* g_idata, T* g_odata, unsigned int n) {
         minValue = min(minValue, g_idata[i]);
     }
 
-    constexpr unsigned int fullMask = 0xffffffff;
     // warp reduction
     for(int offset = WARP_SIZE / 2; offset > 0; offset /= 2){
-        const T tempValue = __shfl_down_sync(fullMask, minValue, offset);
+        const T tempValue = __shfl_down_sync(WARP_FULL_MASK, minValue, offset);
         minValue = min(minValue, tempValue);
     }
 
@@ -232,10 +230,9 @@ __global__ void reduceSumWarp(T* g_idata, T* g_odata, unsigned int n) {
         sumValue += g_idata[i];
     }
 
-    constexpr unsigned int fullMask = 0xffffffff;
     // warp reduction
     for(int offset = WARP_SIZE / 2; offset > 0; offset /= 2){
-        sumValue += __shfl_down_sync(fullMask, sumValue, offset);
+        sumValue += __shfl_down_sync(WARP_FULL_MASK, sumValue, offset);
     }
 
     if(tid == 0) g_odata[0] = sumValue;
@@ -339,10 +336,9 @@ __global__ void reduceSumWarpPostProcess(T* g_idata, T* g_odata, unsigned int n,
         sumValue += g_idata[i];
     }
 
-    constexpr unsigned int fullMask = 0xffffffff;
     // warp reduction
     for(int offset = WARP_SIZE / 2; offset > 0; offset /= 2){
-        sumValue += __shfl_down_sync(fullMask, sumValue, offset);
+        sumValue += __shfl_down_sync(WARP_FULL_MASK, sumValue, offset);
     }
 
     if(tid == 0) g_odata[0] = postProcess<T, postProc, U>(sumValue, postProcOprand);

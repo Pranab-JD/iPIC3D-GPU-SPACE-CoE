@@ -51,8 +51,8 @@ class SpeciesParticle
   cudaParticleType x[3];
   cudaParticleType t;
  public:
-  SpeciesParticle(){}
-  SpeciesParticle(
+  __host__ __device__ SpeciesParticle(){}
+  __host__ __device__ SpeciesParticle(
     cudaParticleType u_,
     cudaParticleType v_,
     cudaParticleType w_,

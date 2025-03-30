@@ -55,6 +55,12 @@ __global__ void moverKernel(moverParameter *moverParam,
     // copy the particle
     SpeciesParticle *pcl = pclsArray->getpcls() + pidx;
 
+    if(moverParam->departureArray->getArray()[pidx].dest != 0){ // deleted during the merging
+        prepareDepartureArray(pcl, moverParam, moverParam->departureArray, grid, moverParam->hashedSumArray, pidx);
+        return;
+    }
+
+
     const commonType xorig = pcl->get_x();
     const commonType yorig = pcl->get_y();
     const commonType zorig = pcl->get_z();
@@ -197,6 +203,12 @@ __global__ void moverSubcyclesKernel(moverParameter *moverParam,
 
     // copy the particle
     SpeciesParticle *pcl = pclsArray->getpcls() + pidx;
+
+    if(moverParam->departureArray->getArray()[pidx].dest != 0){ // deleted during the merging
+        prepareDepartureArray(pcl, moverParam, moverParam->departureArray, grid, moverParam->hashedSumArray, pidx);
+        return;
+    }
+
 
     // first step: evaluate local B magnitude
 
@@ -518,6 +530,11 @@ __device__ uint32_t deleteInsideSphere(SpeciesParticle* pcl, moverParameter *mov
 
 __device__ void prepareDepartureArray(SpeciesParticle* pcl, moverParameter *moverParam, departureArrayType* departureArray, grid3DCUDA* grid, hashedSum* hashedSumArray, uint32_t pidx){
 
+    if(departureArray->getArray()[pidx].dest != 0) {
+        departureArray->getArray()[pidx].hashedId = 
+            hashedSumArray[departureArray->getArray()[pidx].dest - 1].add(pidx);
+    }
+    
     departureArrayElementType element;
 
     do {

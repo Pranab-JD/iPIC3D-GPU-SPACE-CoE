@@ -56,6 +56,7 @@
 #include "dataAnalysis.cuh"
 #include "thread"
 #include "future"
+#include "mergingKernel.cuh"
 
 
 #ifdef USE_CATALYST
@@ -484,6 +485,14 @@ int c_Solver::initCUDA(){
   cudaErrChk(cudaEventCreateWithFlags(&event0, cudaEventDisableTiming));
   cudaErrChk(cudaEventCreateWithFlags(&eventOutputCopy, cudaEventDisableTiming|cudaEventBlockingSync));
 
+  // merging
+
+  cudaErrChk(cudaHostAlloc(&cellCountHostPtr, sizeof(int) * grid->getNXC() * grid->getNYC() * grid->getNZC(), cudaHostAllocDefault));
+  cudaErrChk(cudaHostAlloc(&cellOffsetHostPtr, sizeof(int) * grid->getNXC() * grid->getNYC() * grid->getNZC(), cudaHostAllocDefault));
+
+  cudaErrChk(cudaMalloc(&cellCountCUDAPtr, sizeof(int) * grid->getNXC() * grid->getNYC() * grid->getNZC()));
+  cudaErrChk(cudaMalloc(&cellOffsetCUDAPtr, sizeof(int) * grid->getNXC() * grid->getNYC() * grid->getNZC()));
+
 
   dataAnalysis::dataAnalysisPipeline::createOutputDirectory(myrank, ns, vct);
 
@@ -738,6 +747,7 @@ int c_Solver::cudaLauncherAsync(const int species){
 
   // Sorting, the first cycle, x might be 0
   cudaErrChk(cudaStreamWaitEvent(streams[species], event2, 0));
+  if (hole > 0) 
   sortingKernel1<<<getGridSize(hole, 128), 128, 0, streams[species]>>>(pclsArrayCUDAPtr[species], departureArrayCUDAPtr[species], 
                                                           fillerBufferArrayCUDAPtr[species], hashedSumArrayCUDAPtr[species]+departureArrayElementType::FILLER_HASHEDSUM_INDEX, hole);
   sortingKernel2<<<getGridSize((int)(pclsArrayHostPtr[species]->getNOP()-hole), 256), 256, 0, streams[species]>>>(pclsArrayCUDAPtr[species], departureArrayCUDAPtr[species], 
@@ -765,11 +775,34 @@ bool c_Solver::ParticlesMoverMomentAsync()
   cudaErrChk(cudaEventRecord(event0, streams[0]));
 
 
-
   for(int i=0; i<ns; i++){
+    if (i != toBeMerged)
     exitingResults[i] = threadPoolPtr->enqueue(&c_Solver::cudaLauncherAsync, this, i);
   }
-  
+
+
+  if (toBeMerged >= 0 && toBeMerged < ns) 
+  {
+    const auto& i = toBeMerged;
+    cudaErrChk(cudaStreamSynchronize(streams[i])); // wait for the copy
+    // sort
+    outputPart[i].sort_particles_parallel(cellCountHostPtr, cellOffsetHostPtr);
+
+    const int totalCells = grid->getNXC() * grid->getNYC() * grid->getNZC();
+    cudaErrChk(cudaMemcpyAsync(cellCountCUDAPtr, cellCountHostPtr, totalCells*sizeof(int), cudaMemcpyDefault, streams[i]));
+    cudaErrChk(cudaMemcpyAsync(cellOffsetCUDAPtr, cellOffsetHostPtr, totalCells*sizeof(int), cudaMemcpyDefault, streams[i]));
+
+    cudaErrChk(cudaMemcpyAsync(pclsArrayHostPtr[i]->getpcls(), outputPart[i].get_pcl_array().getList(), 
+                              pclsArrayHostPtr[i]->getNOP()*sizeof(SpeciesParticle), cudaMemcpyDefault, streams[i]));
+
+    // merge
+    mergingKernel<<<getGridSize(totalCells * 32, 256), 256, 0, streams[i]>>>(cellOffsetCUDAPtr, cellCountCUDAPtr, totalCells, 
+        grid3DCUDACUDAPtr, pclsArrayCUDAPtr[i], departureArrayCUDAPtr[i]);
+
+    exitingResults[i] = threadPoolPtr->enqueue(&c_Solver::cudaLauncherAsync, this, i);
+
+    toBeMerged = -1; // merged
+  }
 
   return (false);
 }
@@ -817,6 +850,7 @@ bool c_Solver::MoverAwaitAndPclExchange()
     pclsArrayHostPtr[i]->setNOE(newPclNum); 
     cudaErrChk(cudaMemcpyAsync(pclsArrayCUDAPtr[i], pclsArrayHostPtr[i], sizeof(particleArrayCUDA), cudaMemcpyDefault, streams[i]));    
     // moment for new particles, incoming, repopulate
+    if(pclsArrayHostPtr[i]->getNOP() - stayedParticle[i] > 0)
     momentKernelNew<<<getGridSize(pclsArrayHostPtr[i]->getNOP() - stayedParticle[i], 128u), 128, 0, streams[i] >>>
                       (momentParamCUDAPtr[i], grid3DCUDACUDAPtr, momentsCUDAPtr[i], stayedParticle[i]);
 
@@ -859,36 +893,31 @@ void c_Solver::MomentsAwait() {
   // synchronize
   cudaErrChk(cudaDeviceSynchronize());
 
-
-  {
-    auto start = std::chrono::high_resolution_clock::now();
-    // copy back to host
-    for (int i = 0; i < ns; i++)
-    {
-      if(outputPart[i].get_pcl_array().capacity() < pclsArrayHostPtr[i]->getNOP()){
-        auto pclArray = outputPart[i].get_pcl_arrayPtr();
-        pclArray->reserve(pclsArrayHostPtr[i]->getNOP() * 1.2);
-      }
-      cudaErrChk(cudaMemcpy(outputPart[i].get_pcl_array().getList(), pclsArrayHostPtr[i]->getpcls(), 
-                                pclsArrayHostPtr[i]->getNOP()*sizeof(SpeciesParticle), cudaMemcpyDefault));
-      outputPart[i].get_pcl_array().setSize(pclsArrayHostPtr[i]->getNOP()); 
+  // check which one to merge
+  for (int i = 0; i < ns; i++) {
+    if(pclsArrayHostPtr[i]->getNOP() > 1.2 * pclsArrayHostPtr[i]->getInitialNOP()) {
+      toBeMerged = i;
+      break;
     }
-
-    auto copyTime = std::chrono::high_resolution_clock::now();
-
-    // sort
-
-    for (int i = 0; i < ns; i++)
-    {
-      outputPart[i].sort_particles_parallel();
-    }
-
-    auto sortTime = std::chrono::high_resolution_clock::now();
-
-    std::cout << "copy time: " << std::chrono::duration_cast<std::chrono::milliseconds>(copyTime - start).count() << "ms" << std::endl;
-    std::cout << "sort time: " << std::chrono::duration_cast<std::chrono::milliseconds>(sortTime - copyTime).count() << "ms" << std::endl;
-
   }
+  if (toBeMerged >= 0)
+  {
+    
+    const auto& i = toBeMerged; 
+
+    if(outputPart[i].get_pcl_array().capacity() < pclsArrayHostPtr[i]->getNOP()){
+      auto pclArray = outputPart[i].get_pcl_arrayPtr();
+      pclArray->reserve(pclsArrayHostPtr[i]->getNOP() * 1.2);
+    }
+    cudaErrChk(cudaMemcpyAsync(outputPart[i].get_pcl_array().getList(), pclsArrayHostPtr[i]->getpcls(), 
+                              pclsArrayHostPtr[i]->getNOP()*sizeof(SpeciesParticle), cudaMemcpyDefault, streams[i]));
+    outputPart[i].get_pcl_array().setSize(pclsArrayHostPtr[i]->getNOP()); 
+
+    // reset departureArray
+    for(int i=0; i < ns; i++)
+    cudaErrChk(cudaMemsetAsync(departureArrayHostPtr[i]->getArray(), 0, departureArrayHostPtr[i]->getSize() * sizeof(departureArrayElementType), streams[i]));
+  }
+
 
   for (int i = 0; i < ns; i++)
   {
@@ -929,6 +958,7 @@ void c_Solver::WriteOutput(int cycle) {
 
   WriteConserved(cycle);
   WriteRestart(cycle);
+
 
   if(!Parameters::get_doWriteOutput())  return;
 

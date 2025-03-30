@@ -5,11 +5,13 @@
 #include <cuda.h>
 #include "cuda_fp16.h"
 #define WARP_SIZE (32)
+inline constexpr uint32_t WARP_FULL_MASK = 0xFFFFFFFF;
 #else
 #include <hip/hip_runtime.h>
 #include <hip/hip_fp16.h>
 #include "hipifly.hpp"
 #define WARP_SIZE (64)
+inline constexpr uint64_t WARP_FULL_MASK = 0xFFFFFFFFFFFFFFFF;
 #endif
 
 #include <iostream>

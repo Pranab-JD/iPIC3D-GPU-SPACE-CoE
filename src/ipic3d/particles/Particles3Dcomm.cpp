@@ -1744,17 +1744,17 @@ void Particles3Dcomm::sort_particles_serial_AoS()
 }
 
 
-void Particles3Dcomm::sort_particles_parallel()
+void Particles3Dcomm::sort_particles_parallel(int* cellCount, int* cellOffset)
 {
   switch(particleType)
   {
     case ParticleType::synched: [[fallthrough]];
     case ParticleType::AoS:
-      sort_particles_parallel_AoS();
+      sort_particles_parallel_AoS(cellCount, cellOffset);
       break;
     case ParticleType::SoA:
       convertParticlesToAoS();
-      sort_particles_parallel_AoS();
+      sort_particles_parallel_AoS(cellCount, cellOffset);
       convertParticlesToSynched();
       break;
     default:
@@ -1763,19 +1763,22 @@ void Particles3Dcomm::sort_particles_parallel()
 }
 
 
-void Particles3Dcomm::sort_particles_parallel_AoS() {
+void Particles3Dcomm::sort_particles_parallel_AoS(int* globalCount, 
+                                                  int* bucketOffset) {
 
     const int N = getNOP();
     _pclstmp.reserve(N);
 
-    const int totalCells = nxc * nyc * nzc;
+    const int totalCells = nxc * nyc * nzc; // contains ghost cells
     const int numThreads = omp_get_max_threads();
 
     // Local counts for each thread
     std::vector<std::vector<int>> threadLocalCounts(numThreads, std::vector<int>(totalCells, 0));
-    std::vector<int> globalCount(totalCells, 0); // incremental
-    std::vector<int> bucketOffset(totalCells, 0); // absolute
     std::vector<std::vector<int>> threadLocalOffsets(numThreads, std::vector<int>(totalCells, 0));
+
+    // set buffer to 0
+    std::fill(globalCount, globalCount + totalCells, 0);
+    std::fill(bucketOffset, bucketOffset + totalCells, 0);
 
     // stage1: local count
     #pragma omp parallel

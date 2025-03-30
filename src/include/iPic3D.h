@@ -165,6 +165,9 @@ namespace iPic3D {
     grid3DCUDA* 		      grid3DCUDAHostPtr;      // one grid, used in all specieses
     moverParameter**      moverParamHostPtr;		  // for every species
     momentParameter**     momentParamHostPtr;		  // for every species
+
+    int* cellCountHostPtr;
+    int* cellOffsetHostPtr;
     
 	//! CUDA pointers of objects, have been copied to device
     particleArrayCUDA**   pclsArrayCUDAPtr;           // array of pointer, point to pclsArray on device
@@ -175,6 +178,9 @@ namespace iPic3D {
     grid3DCUDA* 		      grid3DCUDACUDAPtr;    	    // one grid, used in all specieses
     moverParameter**      moverParamCUDAPtr;		      // for every species
     momentParameter**     momentParamCUDAPtr;		      // for every species
+
+    int* cellCountCUDAPtr;
+    int* cellOffsetCUDAPtr;
 
 	//! simple device buffers
     // [10][nxn][nyn][nzn], a piece of cuda memory to hold the moment
@@ -219,6 +225,7 @@ namespace iPic3D {
     double Benergy;
     double TOTenergy;
     double TOTmomentum;
+    int toBeMerged = -1;
 
     //the below used for IO
     MPI_Request *headerReq;
