@@ -213,22 +213,29 @@ class LarrayRegistered : public Larray<type> {
 
 public:
 
-    void reserve(int newcapacity) override 
-    {
-      if(this->_size > newcapacity) return;
-  
-      newcapacity = ((newcapacity-1)/this->num_elem_in_block+1)*this->num_elem_in_block;
-      if(newcapacity != this->_capacity)
-      {
-        this->_capacity = newcapacity;
-        type* oldList = this->list;
-        this->list = AlignedAllocPinned(type,this->_capacity);
-        memcpy(this->list,oldList,sizeof(type)*this->_size);
-        AlignedFreePinned(oldList);
-      }
+  ~LarrayRegistered()
+  {
+    if(this->list){
+      AlignedFreePinned(this->list);
+      this->list = nullptr;
     }
 
+  }
 
+  void reserve(int newcapacity) override 
+  {
+    if(this->_size > newcapacity) return;
+
+    newcapacity = ((newcapacity-1)/this->num_elem_in_block+1)*this->num_elem_in_block;
+    if(newcapacity != this->_capacity)
+    {
+      this->_capacity = newcapacity;
+      type* oldList = this->list;
+      this->list = AlignedAllocPinned(type,this->_capacity);
+      memcpy(this->list,oldList,sizeof(type)*this->_size);
+      AlignedFreePinned(oldList);
+    }
+  }
 
 };
 
