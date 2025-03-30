@@ -1743,6 +1743,115 @@ void Particles3Dcomm::sort_particles_serial_AoS()
   particleType = ParticleType::AoS;
 }
 
+
+void Particles3Dcomm::sort_particles_parallel()
+{
+  switch(particleType)
+  {
+    case ParticleType::synched: [[fallthrough]];
+    case ParticleType::AoS:
+      sort_particles_parallel_AoS();
+      break;
+    case ParticleType::SoA:
+      convertParticlesToAoS();
+      sort_particles_parallel_AoS();
+      convertParticlesToSynched();
+      break;
+    default:
+      unsupported_value_error(particleType);
+  }
+}
+
+
+void Particles3Dcomm::sort_particles_parallel_AoS() {
+
+    const int N = getNOP();
+    _pclstmp.reserve(N);
+
+    const int totalCells = nxc * nyc * nzc;
+    const int numThreads = omp_get_max_threads();
+
+    // Local counts for each thread
+    std::vector<std::vector<int>> threadLocalCounts(numThreads, std::vector<int>(totalCells, 0));
+    std::vector<int> globalCount(totalCells, 0); // incremental
+    std::vector<int> bucketOffset(totalCells, 0); // absolute
+    std::vector<std::vector<int>> threadLocalOffsets(numThreads, std::vector<int>(totalCells, 0));
+
+    // stage1: local count
+    #pragma omp parallel
+    {
+      int tid = omp_get_thread_num();
+      int blockSize = N / numThreads;
+      int remainder = N % numThreads;
+      int start = tid * blockSize + (tid < remainder ? tid : remainder);
+      int end = start + blockSize + (tid < remainder ? 1 : 0);
+
+      for (int pidx = start; pidx < end; pidx++) {
+          const SpeciesParticle& pcl = get_pcl(pidx);
+          int cx, cy, cz;
+          grid->get_safe_cell_coordinates(cx, cy, cz, pcl.get_x(), pcl.get_y(), pcl.get_z());
+          int cellIndex = cx * (nyc * nzc) + cy * nzc + cz;
+          threadLocalCounts[tid][cellIndex]++;
+      }
+      #pragma omp barrier
+      #pragma omp single
+      {
+        // stage2: global count, prefix sum and bucket offset
+        int acc = 0;
+        for (int cell = 0; cell < totalCells; cell++) {
+            int localSum = 0;
+            for (int tid = 0; tid < numThreads; tid++) {
+                threadLocalOffsets[tid][cell] = acc + localSum;
+                localSum += threadLocalCounts[tid][cell];
+            }
+            globalCount[cell] = localSum;
+            bucketOffset[cell] = acc;
+            acc += localSum;
+        }
+        assert(acc == N);
+      }
+      #pragma omp barrier
+      // stage3: sort particles into the temporary array
+      for (int pidx = start; pidx < end; pidx++) {
+          const SpeciesParticle& pcl = get_pcl(pidx);
+          int cx, cy, cz;
+          grid->get_safe_cell_coordinates(cx, cy, cz, pcl.get_x(), pcl.get_y(), pcl.get_z());
+          int cellIndex = cx * (nyc * nzc) + cy * nzc + cz;
+
+          int pos = threadLocalOffsets[tid][cellIndex]++;
+
+          assert(pos >= 0 && pos < N);
+          _pclstmp[pos] = pcl;
+      }
+    }
+    
+    // checking
+    if constexpr (false){
+      int prevCellIndex = -1;
+      for (int i = 0; i < N; i++) {
+          const SpeciesParticle& pcl = _pclstmp[i];
+          int cx, cy, cz;
+          grid->get_safe_cell_coordinates(cx, cy, cz, pcl.get_x(), pcl.get_y(), pcl.get_z());
+          int cellIndex = cx * (nyc * nzc) + cy * nzc + cz;
+          if (i > 0) {
+              if (cellIndex < prevCellIndex) {
+                  std::cerr << "Sorting error at index " << i 
+                            << ": cell index " << cellIndex 
+                            << " is lower than previous " << prevCellIndex << std::endl;
+                  throw std::runtime_error("Sorting error");
+              }
+          }
+          prevCellIndex = cellIndex;
+      }
+    }
+
+
+    _pcls.swap(_pclstmp);
+
+    particleType = ParticleType::AoS;
+}
+
+
 //void Particles3Dcomm::sort_particles_parallel(
 //  double *xpos, double *ypos, double *zpos,
 //  Grid * grid, VirtualTopology3D * vct)

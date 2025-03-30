@@ -135,6 +135,8 @@ public:
   //void sort_particles_serial_SoA_by_xavg();
   void sort_particles_serial();
   void sort_particles_serial_AoS();
+  void sort_particles_parallel();
+  void sort_particles_parallel_AoS();
   //void sort_particles_serial_SoA();
 
   // get accessors for optional arrays
@@ -336,8 +338,7 @@ protected:
   //
   // alternate temporary storage for sorting particles
   //
-  //Larray<SpeciesParticle> _pclstmp;
-  vector_SpeciesParticle _pclstmp;
+  vector_SpeciesParticle_registered _pclstmp;
   //
   // references for buckets for serial sort.
   //

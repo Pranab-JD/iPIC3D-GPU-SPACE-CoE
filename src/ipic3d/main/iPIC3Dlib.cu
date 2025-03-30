@@ -813,10 +813,9 @@ bool c_Solver::MoverAwaitAndPclExchange()
               part[i].getNOP()*sizeof(SpeciesParticle),
               cudaMemcpyDefault, streams[i]));
 
-
+              
     pclsArrayHostPtr[i]->setNOE(newPclNum); 
-    cudaErrChk(cudaMemcpyAsync(pclsArrayCUDAPtr[i], pclsArrayHostPtr[i], sizeof(particleArrayCUDA), cudaMemcpyDefault, streams[i]));
-    
+    cudaErrChk(cudaMemcpyAsync(pclsArrayCUDAPtr[i], pclsArrayHostPtr[i], sizeof(particleArrayCUDA), cudaMemcpyDefault, streams[i]));    
     // moment for new particles, incoming, repopulate
     momentKernelNew<<<getGridSize(pclsArrayHostPtr[i]->getNOP() - stayedParticle[i], 128u), 128, 0, streams[i] >>>
                       (momentParamCUDAPtr[i], grid3DCUDACUDAPtr, momentsCUDAPtr[i], stayedParticle[i]);
@@ -843,41 +842,6 @@ bool c_Solver::MoverAwaitAndPclExchange()
   }
 
 
-  // --------------------------------------- 
-  // Test Particles mover 					 
-  // --------------------------------------- 
-  for (int i = 0; i < nstestpart; i++)  // move each species
-  {
-	switch(Parameters::get_MOVER_TYPE())
-	{
-	  case Parameters::SoA:
-		  testpart[i].mover_PC(EMf);
-		break;
-	  case Parameters::AoS:
-		  testpart[i].mover_PC_AoS(EMf);
-		break;
-	  case Parameters::AoS_Relativistic:
-		  testpart[i].mover_PC_AoS_Relativistic(EMf);
-		break;
-	  case Parameters::AoSintr:
-		  testpart[i].mover_PC_AoS_vec_intr(EMf);
-		break;
-	  case Parameters::AoSvec:
-		  testpart[i].mover_PC_AoS_vec(EMf);
-		break;
-	  default:
-		unsupported_value_error(Parameters::get_MOVER_TYPE());
-	}
-
-	testpart[i].openbc_delete_testparticles();
-	testpart[i].separate_and_send_particles();
-  }
-
-  for (int i = 0; i < nstestpart; i++)
-  {
-	  testpart[i].recommunicate_particles_until_done(1);
-  }
-
   return (false);
 }
 
@@ -894,6 +858,37 @@ void c_Solver::MomentsAwait() {
 
   // synchronize
   cudaErrChk(cudaDeviceSynchronize());
+
+
+  {
+    auto start = std::chrono::high_resolution_clock::now();
+    // copy back to host
+    for (int i = 0; i < ns; i++)
+    {
+      if(outputPart[i].get_pcl_array().capacity() < pclsArrayHostPtr[i]->getNOP()){
+        auto pclArray = outputPart[i].get_pcl_arrayPtr();
+        pclArray->reserve(pclsArrayHostPtr[i]->getNOP() * 1.2);
+      }
+      cudaErrChk(cudaMemcpy(outputPart[i].get_pcl_array().getList(), pclsArrayHostPtr[i]->getpcls(), 
+                                pclsArrayHostPtr[i]->getNOP()*sizeof(SpeciesParticle), cudaMemcpyDefault));
+      outputPart[i].get_pcl_array().setSize(pclsArrayHostPtr[i]->getNOP()); 
+    }
+
+    auto copyTime = std::chrono::high_resolution_clock::now();
+
+    // sort
+
+    for (int i = 0; i < ns; i++)
+    {
+      outputPart[i].sort_particles_parallel();
+    }
+
+    auto sortTime = std::chrono::high_resolution_clock::now();
+
+    std::cout << "copy time: " << std::chrono::duration_cast<std::chrono::milliseconds>(copyTime - start).count() << "ms" << std::endl;
+    std::cout << "sort time: " << std::chrono::duration_cast<std::chrono::milliseconds>(sortTime - copyTime).count() << "ms" << std::endl;
+
+  }
 
   for (int i = 0; i < ns; i++)
   {
