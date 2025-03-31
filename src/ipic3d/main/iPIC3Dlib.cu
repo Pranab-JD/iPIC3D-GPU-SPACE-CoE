@@ -56,7 +56,7 @@
 #include "dataAnalysis.cuh"
 #include "thread"
 #include "future"
-#include "mergingKernel.cuh"
+#include "particleControlKernel.cuh"
 
 
 #ifdef USE_CATALYST
@@ -831,7 +831,7 @@ bool c_Solver::MoverAwaitAndPclExchange()
 
   for(int i=0; i<ns; i++){
 
-  // Copy repopulate particle and the incoming particles to device
+    // Copy repopulate particle and the incoming particles to device
     const auto oldPclNum = pclsArrayHostPtr[i]->getNOP();
     pclsArrayHostPtr[i]->setNOE(stayedParticle[i]); // After the Sorting
     auto newPclNum = stayedParticle[i] + part[i].getNOP();
@@ -859,6 +859,8 @@ bool c_Solver::MoverAwaitAndPclExchange()
     // reset the hashedSum, no need for departureArray it will be cleared in Mover
     for(int j=0; j<departureArrayElementType::HASHED_SUM_NUM; j++)hashedSumArrayHostPtr[i][j].resetBucket();
     cudaErrChk(cudaMemcpyAsync(hashedSumArrayCUDAPtr[i], hashedSumArrayHostPtr[i], (departureArrayElementType::HASHED_SUM_NUM) * sizeof(hashedSum), cudaMemcpyDefault, streams[i]));
+
+    cudaErrChk(cudaMemsetAsync(departureArrayHostPtr[i]->getArray(), 0, departureArrayHostPtr[i]->getSize() * sizeof(departureArrayElementType), streams[i]));
 
   }
 
@@ -917,10 +919,6 @@ void c_Solver::MomentsAwait() {
 
     
   }
-
-  for(int i=0; i < ns; i++)
-  cudaErrChk(cudaMemsetAsync(departureArrayHostPtr[i]->getArray(), 0, departureArrayHostPtr[i]->getSize() * sizeof(departureArrayElementType), streams[i]));
-
 
   for (int i = 0; i < ns; i++)
   {

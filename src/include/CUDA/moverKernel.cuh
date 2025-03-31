@@ -91,8 +91,6 @@ __global__ void moverSubcyclesKernel(moverParameter *moverParam,
                             cudaTypeArray1<cudaFieldType> fieldForPcls,
                             grid3DCUDA *grid);
 
-template <bool MULTIPLE>
-__global__ void particleSplittingKernel(moverParameter* moverParam, grid3DCUDA* grid);
     
 // __global__ void castingField(grid3DCUDA *grid, cudaTypeArray1<cudaCommonType> fieldForPcls);
 
