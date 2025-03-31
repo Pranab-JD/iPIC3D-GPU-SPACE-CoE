@@ -79,6 +79,7 @@
 
 // warp primitive
 #define __shfl_down_sync(x, y, z) __shfl_down(y, z)
+#define __shfl_sync(x, y, z) __shfl(y, z)
 
 
 

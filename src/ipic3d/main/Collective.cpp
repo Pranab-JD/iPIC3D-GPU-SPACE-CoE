@@ -475,7 +475,7 @@ void Collective::ReadInput(string inputfile) {
   bcPfaceZright = config.read < int >("bcPfaceZright",1);
   bcPfaceZleft  = config.read < int >("bcPfaceZleft",1);
 
-#ifndef NO_HDF5 
+#ifdef USE_ADIOS2 
   if (RESTART1) {               // you are restarting 
     RestartDirName = config.read < string > ("RestartDirName","data");
     //ReadRestart(RestartDirName); // not from restart file

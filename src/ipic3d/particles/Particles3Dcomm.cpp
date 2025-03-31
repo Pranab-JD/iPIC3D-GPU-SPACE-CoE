@@ -47,7 +47,7 @@ developers: Stefano Markidis, Giovanni Lapenta.
 #include "Parameters.h"
 
 #include "ipichdf5.h"
-//#include <vector>
+#include <vector>
 //#include <complex>
 #include "debug.h"
 #include "TimeTasks.h"
