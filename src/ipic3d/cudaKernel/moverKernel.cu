@@ -533,6 +533,8 @@ __device__ void prepareDepartureArray(SpeciesParticle* pcl, moverParameter *move
     if(departureArray->getArray()[pidx].dest != 0) {
         departureArray->getArray()[pidx].hashedId = 
             hashedSumArray[departureArray->getArray()[pidx].dest - 1].add(pidx);
+        
+            return;
     }
     
     departureArrayElementType element;

@@ -784,6 +784,8 @@ bool c_Solver::ParticlesMoverMomentAsync()
   if (toBeMerged >= 0 && toBeMerged < ns) 
   {
     const auto& i = toBeMerged;
+    std::cout << "Merging species: " << i << std::endl;
+
     cudaErrChk(cudaStreamSynchronize(streams[i])); // wait for the copy
     // sort
     outputPart[i].sort_particles_parallel(cellCountHostPtr, cellOffsetHostPtr);
@@ -895,7 +897,7 @@ void c_Solver::MomentsAwait() {
 
   // check which one to merge
   for (int i = 0; i < ns; i++) {
-    if(pclsArrayHostPtr[i]->getNOP() > 1.2 * pclsArrayHostPtr[i]->getInitialNOP()) {
+    if(pclsArrayHostPtr[i]->getNOP() > 1.05 * pclsArrayHostPtr[i]->getInitialNOP()) {
       toBeMerged = i;
       break;
     }
@@ -913,10 +915,11 @@ void c_Solver::MomentsAwait() {
                               pclsArrayHostPtr[i]->getNOP()*sizeof(SpeciesParticle), cudaMemcpyDefault, streams[i]));
     outputPart[i].get_pcl_array().setSize(pclsArrayHostPtr[i]->getNOP()); 
 
-    // reset departureArray
-    for(int i=0; i < ns; i++)
-    cudaErrChk(cudaMemsetAsync(departureArrayHostPtr[i]->getArray(), 0, departureArrayHostPtr[i]->getSize() * sizeof(departureArrayElementType), streams[i]));
+    
   }
+
+  for(int i=0; i < ns; i++)
+  cudaErrChk(cudaMemsetAsync(departureArrayHostPtr[i]->getArray(), 0, departureArrayHostPtr[i]->getSize() * sizeof(departureArrayElementType), streams[i]));
 
 
   for (int i = 0; i < ns; i++)
