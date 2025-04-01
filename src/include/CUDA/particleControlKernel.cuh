@@ -15,7 +15,7 @@
 #include "moverKernel.cuh"
 
 
-__global__ void mergingKernel(int* cellOffsetList, int* cellBinCountList, int cellNum, grid3DCUDA* grid, particleArrayCUDA* pclArray, departureArrayType* departureArray);
+__global__ void mergingKernel(int* cellOffsetList, int* cellBinCountList, grid3DCUDA* grid, particleArrayCUDA* pclArray, departureArrayType* departureArray);
 
 template <bool MULTIPLE>
 __global__ void particleSplittingKernel(moverParameter* moverParam, grid3DCUDA* grid);

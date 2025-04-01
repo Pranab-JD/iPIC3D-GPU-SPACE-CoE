@@ -38,14 +38,14 @@ inline constexpr cudaCommonType MAX_VELOCITY_HIST_I = 0.09;
 
 inline constexpr bool GMM_OUTPUT = GMM_ENABLE && true;
 inline const std::string GMM_OUTPUT_DIR = DATA_ANALYSIS_OUTPUT_DIR + "velocityGMM/";
-inline constexpr int DATA_DIM_GMM = 3; // only works with DATA_DIM = 2 now
-inline constexpr int NUM_COMPONENT_GMM = 3; // number of components used in GMM - array with length NUM_ANALYSIS_GMM
-inline constexpr int MAX_ITERATION_GMM = 50;
+inline constexpr int DATA_DIM_GMM = 3; // only works with DATA_DIM = 3 now
+inline constexpr int NUM_COMPONENT_GMM = 10; // number of components used in GMM - array with length NUM_ANALYSIS_GMM
+inline constexpr int MAX_ITERATION_GMM = 100;
 inline constexpr cudaCommonType  THRESHOLD_CONVERGENCE_GMM = 1e-6;
 inline constexpr bool START_WITH_LAST_PARAMETERS_GMM = true; // start GMM iteration with output paramters of last GMM step as initial parameters
 inline constexpr bool NORMALIZE_DATA_FOR_GMM = true;    // normalize data before GMM such that velocities are in range -1;1 --> the original velocity domain is assumed to be symmetric wrt 0
 inline constexpr bool CHECK_COVMATRIX_GMM = true;   // safety check on the cov-matrix --> ensures variances > EPS_COVMATRIX_GMM
-inline constexpr cudaCommonType TOL_COVMATRIX_GMM = 1e-10;  // tol used to ensure cov-matrix determinant > 0
+inline constexpr cudaCommonType TOL_COVMATRIX_GMM = 1e-9;  // tol used to ensure cov-matrix determinant > 0
 inline constexpr cudaCommonType EPS_COVMATRIX_GMM = 1e-4;   // minimum value that elements on the cov-matrix main diagonal can assume (assume data normalized in range -1,1)
 inline constexpr bool PRUNE_COMPONENTS_GMM = true; // remove GMM components with weight < PRUNE_THRESHOLD_GMM --> remove one componet at a time
 inline constexpr cudaCommonType PRUNE_THRESHOLD_GMM = 0.005;

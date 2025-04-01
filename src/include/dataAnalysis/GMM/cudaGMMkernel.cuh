@@ -285,42 +285,69 @@ __global__ void decomposeCoVarianceKernel(const T* coVariance, T* coVarianceDeco
  * @param numComponents number of GMM components
  * @param flagActiveComponents boolean array with flags that indicate which components are active, number of components
  */
-template <typename T, int dataDim>
-__global__ void checkAdjustCoVarianceKernel(T* coVariance, const int numComponents, const bool* flagActiveComponents){
-    const int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if(idx >= numComponents)return;
-    if(!flagActiveComponents[idx])return;
-
-    auto coVarianceComponent = coVariance + idx*dataDim*dataDim;
-
-    // check NaN values or variance values too small
-    // it works for any dataDim
-    for(int i = 0; i<dataDim; i++ ){
-        
-        for(int j = 0; j<dataDim; j++){
-            if(std::isnan(coVarianceComponent[ i*dataDim + j])){
-                coVarianceComponent[ i*dataDim + j] = TOL_COVMATRIX_GMM;
-            }
-        }
-
-        if(coVarianceComponent[ i*dataDim + i] < EPS_COVMATRIX_GMM ){
-            coVarianceComponent[ i*dataDim + i] = EPS_COVMATRIX_GMM;
-        }
-    }
-
-    // // from here on it works only if dataDim == 2
-
-    // // ensure symmetry in the cov-matrix 
-    // coVarianceComponent[1] = coVarianceComponent[2];
-
-    // // ensure determinant > 0
-    // if(coVarianceComponent[0]*coVarianceComponent[3] - coVarianceComponent[2]*coVarianceComponent[2] - TOL_COVMATRIX_GMM <=0){
-    //     const T k = coVarianceComponent[3] / coVarianceComponent[0]; 
-    //     coVarianceComponent[0] = sqrt( (coVarianceComponent[2]*coVarianceComponent[2] + TOL_COVMATRIX_GMM) / k  ) + sqrt(TOL_COVMATRIX_GMM);
-    //     coVarianceComponent[3] = coVarianceComponent[0] * k;
-    // }
-
-}
+ template <typename T, int dataDim>
+ __global__ void checkAdjustCoVarianceKernel(T* coVariance, const int numComponents, const bool* flagActiveComponents){
+     const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+     if(idx >= numComponents)return;
+     if(!flagActiveComponents[idx])return;
+ 
+     auto coVarianceComponent = coVariance + idx*dataDim*dataDim;
+ 
+     // check NaN values or variance values too small
+     // it works for any dataDim
+     for(int i = 0; i<dataDim; i++ ){
+         
+         for(int j = 0; j<dataDim; j++){
+             if(std::isnan(coVarianceComponent[ i*dataDim + j])){
+                 coVarianceComponent[ i*dataDim + j] = TOL_COVMATRIX_GMM;
+             }
+         }
+ 
+         if(coVarianceComponent[ i*dataDim + i] < EPS_COVMATRIX_GMM ){
+             coVarianceComponent[ i*dataDim + i] = EPS_COVMATRIX_GMM;
+         }
+     }
+ 
+     // from here on it works only if dataDim == 2
+     if constexpr(dataDim == 2)
+     {
+         // ensure symmetry in the cov-matrix 
+         coVarianceComponent[1] = coVarianceComponent[2];
+ 
+         // ensure determinant > 0
+         if(coVarianceComponent[0]*coVarianceComponent[3] - coVarianceComponent[2]*coVarianceComponent[2] - TOL_COVMATRIX_GMM <=0){
+             const T k = coVarianceComponent[3] / coVarianceComponent[0]; 
+             coVarianceComponent[0] = sqrt( (coVarianceComponent[2]*coVarianceComponent[2] + TOL_COVMATRIX_GMM) / k  ) + sqrt(TOL_COVMATRIX_GMM);
+             coVarianceComponent[3] = coVarianceComponent[0] * k;
+         }
+     }
+     else if constexpr(dataDim == 3)
+     {
+         for(int i = 0; i<dataDim; i++){
+             for(int j = 0; j<=i; j++){
+                 coVarianceComponent[i * dataDim + j] = coVarianceComponent[j * dataDim + i];
+             }
+         }
+ 
+         T d0 = coVarianceComponent[4] * coVarianceComponent[8] - coVarianceComponent[5] * coVarianceComponent[7];
+         T d1 = coVarianceComponent[3] * coVarianceComponent[8] - coVarianceComponent[5] * coVarianceComponent[6];
+         T d2 = coVarianceComponent[3] * coVarianceComponent[7] - coVarianceComponent[4] * coVarianceComponent[6];
+         T determinant =  coVarianceComponent[0] * d0 - coVarianceComponent[1] * d1 + coVarianceComponent[2] * d2;
+         const T k1 = coVarianceComponent[4] / coVarianceComponent[0];
+         const T k2 = coVarianceComponent[8] / coVarianceComponent[0];
+         for(int j = 0; j < 50; j++)
+         {  
+            if( determinant - TOL_COVMATRIX_GMM > 0 )break;
+            coVarianceComponent[0] += 20*TOL_COVMATRIX_GMM;
+            coVarianceComponent[4] = k1 * coVarianceComponent[0];
+            coVarianceComponent[8] = k2 * coVarianceComponent[0];
+            d0 = coVarianceComponent[4] * coVarianceComponent[8] - coVarianceComponent[5] * coVarianceComponent[7];
+            d1 = coVarianceComponent[3] * coVarianceComponent[8] - coVarianceComponent[5] * coVarianceComponent[6];
+            d2 = coVarianceComponent[3] * coVarianceComponent[7] - coVarianceComponent[4] * coVarianceComponent[6];
+            determinant =  coVarianceComponent[0] * d0 - coVarianceComponent[1] * d1 + coVarianceComponent[2] * d2;
+         }
+     }
+ }
 
 
 
@@ -472,9 +499,13 @@ __global__ void pruneOneComponentKernel(T* logWeightVector, const T weightThresh
  * @param flagActiveComponents boolean array with flags that indicate which components are active, number of components +1
  */
 template <typename T,int dataDim>
-__global__ void checkMeanValueComponents(T* meanVector, const int numComponents, const bool* flagActiveComponents){
+__global__ void checkMeanValueComponents(T* meanVector, const int numComponents, const bool* flagActiveComponents, bool* flagResetMean){
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if(idx >= numComponents)return;
+
+    extern __shared__ char sharedMemory[];
+    bool* sharedFlags = (bool*)&sharedMemory;
+    
     //if(!flagActiveComponents[idx])return;
 
     auto meanComponent = meanVector + idx*dataDim;
@@ -485,6 +516,7 @@ __global__ void checkMeanValueComponents(T* meanVector, const int numComponents,
             break;
         }
     }
+    sharedFlags[idx] = flagNaN;
     // mean value is reset such that each component has a different mean < 1 (it is assumed data range is normalized)
     if(flagNaN){
         for(int i = 0; i < dataDim; i++){
@@ -492,6 +524,16 @@ __global__ void checkMeanValueComponents(T* meanVector, const int numComponents,
         }
     }
 
+    __syncthreads();
+
+    if(idx == 0){
+        for(int i = 0; i < numComponents; i++){
+            if( sharedFlags[i] && flagActiveComponents[i] ){
+                *flagResetMean = true;
+                break;
+            }
+        }
+    }
 }
 
 

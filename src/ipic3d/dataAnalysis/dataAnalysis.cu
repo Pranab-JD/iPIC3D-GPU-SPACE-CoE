@@ -127,120 +127,139 @@ int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int spec
         std::mt19937 gen(rd()); // Mersenne Twister PRN
         std::uniform_real_distribution<GMMType>  unif01(0.0, 1.0);
         std::uniform_real_distribution<GMMType> distTheta(0, 2*M_PI);
+        std::normal_distribution<GMMType> norm_dist(0.0, 1.0); // mean=0, stddev=1
+
 
         const GMMType maxVelocity = (species == 0 || species == 2) ? MAX_VELOCITY_HIST_E : MAX_VELOCITY_HIST_I;
-        // it is assumed that DATA_DIM_GMM == 2 and that the velocity range is homogenues in all dimensions
-        const GMMType maxVelocityArray[DATA_DIM_GMM] = {maxVelocity,maxVelocity};
+        // it is assumed that DATA_DIM_GMM == 3 and that the velocity range is homogenues in all dimensions
+        const GMMType maxVelocityArray[DATA_DIM_GMM] = {maxVelocity,maxVelocity,maxVelocity};
         // right now it is not used (fixed to zero) --> mean is not subtracted to data, but it might be useful for future developments
-        const GMMType meanArray[DATA_DIM_GMM] = {0.0,0.0};
+        const GMMType meanArray[DATA_DIM_GMM] = {0.0,0.0,0.0};
 
         const GMMType uth = species == 0 || species == 2 ? 0.045 : 0.0126;
         const GMMType vth = species == 0 || species == 2 ? 0.045 : 0.0126;
         const GMMType wth = species == 0 || species == 2 ? 0.045 : 0.0126;
-        
-        GMMType var1 = 0.01;
-        GMMType var2 = 0.01; 
-
+        const GMMType varArray[3] = {uth,vth,wth};
+    
         GMMType weightVector[NUM_COMPONENT_GMM];
         GMMType meanVector[NUM_COMPONENT_GMM * DATA_DIM_GMM];
         GMMType coVarianceMatrix[NUM_COMPONENT_GMM * DATA_DIM_GMM * DATA_DIM_GMM ];
         
-        // if (i==0){
-        //     var1 = uth*uth; 
-        //     var2 = vth*vth;
-        // }
-        // else if(i==1){
-        //     var1 = vth*vth;
-        //     var2 = wth*wth;
-        // }
-        // else if(i==2){
-        //     var1 = uth*uth;
-        //     var2 = wth*wth;
-        // }
-        
-        // // normalize initial parameters if NORMALIZE_DATA_FOR_GMM==true
-        // GMMType normalization = 1.0; 
-        // if constexpr(NORMALIZE_DATA_FOR_GMM) normalization = maxVelocity;
+        // normalize initial parameters if NORMALIZE_DATA_FOR_GMM==true
+        GMMType normalization = 1.0; 
+        if constexpr(NORMALIZE_DATA_FOR_GMM) normalization = maxVelocity;
 
-        // if constexpr (START_WITH_LAST_PARAMETERS_GMM) // start GMM with output GMM parameters from last cycle as initial parameters
-        // {
-        //     // if first time initialize GMM with the usual fixed parameters
-        //     if(gmmResults[species].size() == 0)
-        //     {                
-        //         for(int j = 0; j < NUM_COMPONENT_GMM; j++){
-        //             weightVector[j] = 1.0/NUM_COMPONENT_GMM;
-        //             GMMType radius = maxVelocity * sqrt(unif01(gen));
-        //             GMMType theta = distTheta(gen);
-        //             meanVector[j * 2] =  radius*cos(theta);
-        //             meanVector[j * 2 + 1] = radius*sin(theta);
-        //             coVarianceMatrix[j * 4] = var1;
-        //             coVarianceMatrix[j * 4 + 1] = 0.0;
-        //             coVarianceMatrix[j * 4 + 2] = 0.0;
-        //             coVarianceMatrix[j * 4 + 3] = var2;
-        //         }
-        //     }
-        //     else // Initialize GMM with previous output parameters
-        //     {   
-        //         auto& lastResult = gmmResults[species].back();
+        if constexpr (START_WITH_LAST_PARAMETERS_GMM) // start GMM with output GMM parameters from last cycle as initial parameters
+        {
+            // if first time initialize GMM with the usual fixed parameters
+            if(gmmResults[species].size() == 0)
+            {                
+                for(int j = 0; j < NUM_COMPONENT_GMM; j++){
+                    weightVector[j] = 1.0/NUM_COMPONENT_GMM;
+                    const GMMType n1 = norm_dist(gen);
+                    const GMMType n2 = norm_dist(gen);
+                    const GMMType n3 = norm_dist(gen);
+                    const GMMType u = unif01(gen);
+                    const GMMType llsqrt = sqrt( n1*n1 + n2*n2 + n3*n3); 
+                    meanVector[j * DATA_DIM_GMM] = maxVelocity * std::cbrt(u) * n1 / llsqrt / normalization; 
+                    meanVector[j * DATA_DIM_GMM + 1] = maxVelocity * std::cbrt(u) * n2 / llsqrt / normalization;
+                    meanVector[j * DATA_DIM_GMM + 2] = maxVelocity * std::cbrt(u) * n3 / llsqrt / normalization;
+    
+                    for (int k = 0; k < DATA_DIM_GMM * DATA_DIM_GMM; k++){
+                        const int i = k / DATA_DIM_GMM; // row index
+                        const int l = k % DATA_DIM_GMM; // column index
+                        coVarianceMatrix[j * DATA_DIM_GMM * DATA_DIM_GMM + k] = varArray[i] * varArray[l]  / ( normalization * normalization);
+                    }
+                }
+            }
+            else // Initialize GMM with previous output parameters
+            {   
+                auto& lastResult = gmmResults[species].back();
 
-        //         bool reset = false;
+                bool reset = false;
                 
-        //         // safety checks on components weights and mean since after pruning some components have zero weight
-        //         // check if meanVector is NaN or component weight is too small
-        //         // if meanVector is NaN sample new mean vector
-        //         for(int j = 0; j < NUM_COMPONENT_GMM; j++){ 
-        //             if( std::isnan(lastResult.mean[j * 2]) || std::isnan(lastResult.mean[j * 2 + 1]) || 
-        //                 std::isinf(lastResult.mean[j * 2]) || std::isinf(lastResult.mean[j * 2 + 1]) ){
-        //                 reset = true;
-        //                 GMMType radius = maxVelocity * sqrt(unif01(gen));
-        //                 GMMType theta = distTheta(gen);
-        //                 meanVector[j * 2] =  radius*cos(theta) / normalization;
-        //                 meanVector[j * 2 + 1] = radius*sin(theta) / normalization;
-        //             }
-        //             else{
-        //                 meanVector[j * 2] = lastResult.mean[j * 2] / normalization;
-        //                 meanVector[j * 2 + 1] = lastResult.mean[j * 2 + 1] / normalization;
-        //             }
+                // safety checks on components weights and mean since after pruning some components have zero weight
+                // check if meanVector is NaN or component weight is too small
+                // if meanVector is NaN sample new mean vector
+                for(int j = 0; j < NUM_COMPONENT_GMM; j++){ 
+                    if( std::isnan(lastResult.mean[j * DATA_DIM_GMM]) || std::isinf(lastResult.mean[j * DATA_DIM_GMM]) || 
+                        std::isnan(lastResult.mean[j * DATA_DIM_GMM + 1]) || std::isinf(lastResult.mean[j * DATA_DIM_GMM + 1]) ||
+                        std::isnan(lastResult.mean[j * DATA_DIM_GMM + 2]) || std::isinf(lastResult.mean[j * DATA_DIM_GMM + 2]) )
+                    {
+                        reset = true;
+                        const GMMType n1 = norm_dist(gen);
+                        const GMMType n2 = norm_dist(gen);
+                        const GMMType n3 = norm_dist(gen);
+                        const GMMType u = unif01(gen);
+                        const GMMType llsqrt = sqrt( n1*n1 + n2*n2 + n3*n3); 
+                        meanVector[j * DATA_DIM_GMM] = maxVelocity * std::cbrt(u) * n1 / llsqrt / normalization; 
+                        meanVector[j * DATA_DIM_GMM + 1] = maxVelocity * std::cbrt(u) * n2 / llsqrt / normalization;
+                        meanVector[j * DATA_DIM_GMM + 2] = maxVelocity * std::cbrt(u) * n3 / llsqrt / normalization;
+                    }
+                    else{
+                        meanVector[j * DATA_DIM_GMM] = lastResult.mean[j * DATA_DIM_GMM] / normalization;
+                        meanVector[j * DATA_DIM_GMM + 1] = lastResult.mean[j * DATA_DIM_GMM + 1] / normalization;
+                        meanVector[j * DATA_DIM_GMM + 2] =  lastResult.mean[j * DATA_DIM_GMM + 2] / normalization;
+                    }
 
-        //             if( lastResult.weight[j] < PRUNE_THRESHOLD_GMM*10 ) reset = true;
-        //         }
+                    if( lastResult.weight[j] < PRUNE_THRESHOLD_GMM*10 ) reset = true;
+                }
 
-        //         // if meanVector is NaN or weigth is too small reset components weights
-        //         // adjust cov if it is too small
-        //         for(int j = 0; j < NUM_COMPONENT_GMM; j++){
-        //             if(reset){
-        //                 weightVector[j] = 1.0/NUM_COMPONENT_GMM;
-        //             }
-        //             else{
-        //                 weightVector[j] = lastResult.weight[j];
-        //             }
+                // if meanVector is NaN or weigth is too small reset components weights
+                // adjust cov if it is too small
+                for(int j = 0; j < NUM_COMPONENT_GMM; j++){
+                    if(reset){
+                        weightVector[j] = 1.0/NUM_COMPONENT_GMM;
+                    }
+                    else{
+                        weightVector[j] = lastResult.weight[j];
+                    }
 
-        //             coVarianceMatrix[j * 4] = lastResult.coVariance[j * 4] > (10 * EPS_COVMATRIX_GMM * (normalization*normalization)) ? 
-        //                                         lastResult.coVariance[j * 4] : var1;
-        //             coVarianceMatrix[j * 4] /= (normalization*normalization);                               
-        //             coVarianceMatrix[j * 4 + 1] = 0.0;
-        //             coVarianceMatrix[j * 4 + 2] = 0.0;
-        //             coVarianceMatrix[j * 4 + 3] = lastResult.coVariance[j * 4 + 3] > (10 * EPS_COVMATRIX_GMM * (normalization*normalization)) ? 
-        //                                             lastResult.coVariance[j * 4 + 3] : var2;
-        //             coVarianceMatrix[j * 4 + 3] /= (normalization*normalization);
-        //         }
-        //     }
-        // }
-        // else // start GMM with fixed initial parameters at any cycle
-        // {
+                    for (int k = 0; k < DATA_DIM_GMM * DATA_DIM_GMM; k++){
+                        const int i = k / DATA_DIM_GMM; // row index
+                        const int l = k % DATA_DIM_GMM; // column index
+                        if( i == l){
+                            coVarianceMatrix[j * DATA_DIM_GMM * DATA_DIM_GMM + k] = lastResult.coVariance[j * DATA_DIM_GMM * DATA_DIM_GMM + k]  > (10 * EPS_COVMATRIX_GMM * (normalization*normalization)) ? 
+                                                    lastResult.coVariance[j * DATA_DIM_GMM * DATA_DIM_GMM + k] : varArray[i] * varArray[l];
+                            coVarianceMatrix[j * DATA_DIM_GMM * DATA_DIM_GMM + k] /= (normalization * normalization);
+                        }
+                        else
+                        {
+                            coVarianceMatrix[j * DATA_DIM_GMM * DATA_DIM_GMM + k] = varArray[i] * varArray[l]  / ( normalization * normalization);
+                        }   
+                    }
+                }
+            }
+        }
+        else // start GMM with fixed initial parameters at any cycle
+        {
             for(int j = 0; j < NUM_COMPONENT_GMM; j++){
                 weightVector[j] = 1.0/NUM_COMPONENT_GMM;
                 // GMMType radius = maxVelocity * sqrt(unif01(gen));
                 // GMMType theta = distTheta(gen);
-                for (int k = 0; k < DATA_DIM_GMM; k++){
-                    meanVector[j * DATA_DIM_GMM + k] =  0.01 * j + 0.01 * k;
-                }
+                const GMMType n1 = norm_dist(gen);
+                const GMMType n2 = norm_dist(gen);
+                const GMMType n3 = norm_dist(gen);
+                const GMMType u = unif01(gen);
+                const GMMType llsqrt = sqrt( n1*n1 + n2*n2 + n3*n3); 
+                meanVector[j * DATA_DIM_GMM] = maxVelocity * std::cbrt(u) * n1 / llsqrt / normalization; 
+                meanVector[j * DATA_DIM_GMM + 1] = maxVelocity * std::cbrt(u) * n2 / llsqrt / normalization;
+                meanVector[j * DATA_DIM_GMM + 2] = maxVelocity * std::cbrt(u) * n3 / llsqrt / normalization;
 
                 for (int k = 0; k < DATA_DIM_GMM * DATA_DIM_GMM; k++){
-                    coVarianceMatrix[j * DATA_DIM_GMM * DATA_DIM_GMM + k] = (k % (DATA_DIM_GMM + 1)) == 0 ? 0.0001 : 0.0;
+                    const int i = k / DATA_DIM_GMM; // row index
+                    const int l = k % DATA_DIM_GMM; // column index
+                    coVarianceMatrix[j * DATA_DIM_GMM * DATA_DIM_GMM + k] = varArray[i] * varArray[l]  / ( normalization * normalization);
                 }
+                // for (int k = 0; k < DATA_DIM_GMM; k++){
+                //     meanVector[j * DATA_DIM_GMM + k] =  0.01 * j + 0.01 * k;
+                // }
+
+                // for (int k = 0; k < DATA_DIM_GMM * DATA_DIM_GMM; k++){
+                //     coVarianceMatrix[j * DATA_DIM_GMM * DATA_DIM_GMM + k] = (k % (DATA_DIM_GMM + 1)) == 0 ? 0.0001 : 0.0;
+                // }
             }
-        // }
+        }
 
         GMMParam_t<GMMType> GMMParam = {
             .numComponents = NUM_COMPONENT_GMM,
@@ -262,11 +281,11 @@ int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int spec
         auto& gmm = gmmArray[0];
         gmm.config(&GMMParam, &GMMData);
         // preprocess the data --> normalize data
-        // gmm.preProcessDataGMM(meanArray, maxVelocityArray);
+        gmm.preProcessDataGMM(meanArray, maxVelocityArray);
         // run GMM
         auto convergStep = gmm.initGMM(); // the exact output file name
         // postporcess data --> normalize data back
-        // gmm.postProcessDataGMM(maxVelocityArray);
+        gmm.postProcessDataGMM(maxVelocityArray);
         // move GMM output to host
         gmmResults[species].push_back(gmm.getGMMResult(cycle, convergStep));
 
@@ -296,6 +315,9 @@ int dataAnalysisPipelineImpl::GMMAnalysisSpecies(const int cycle, const int spec
                 throw std::runtime_error("[!]Error: Can not open output file for velocity GMM species");
             }
         }
+
+        if (std::isnan(gmmResults[species].back().getlogLikelihoodFinal()))
+        std::cerr << "[!]GMM: LogLikelihood is NaN!" << " path "<< outputPath << " time step " << gmmResults[species].back().simulationStep << std::endl;
 
         std::fstream output(outputPath, std::ios::in | std::ios::out | std::ios::ate);
         if(output.is_open()){

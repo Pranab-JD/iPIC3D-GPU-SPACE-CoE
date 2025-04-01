@@ -39,6 +39,7 @@ private:
 
     // the arrays on device
     bool* flagActiveComponentsCUDA; // array with flags true/false to identify active components, last element is a flag that specify if at that cycle one component has been pruned, numComponents + 1 
+    bool* flagResetMeanCUDA; 
     T* meanDataInitCUDA;            // initial mean of the data, used to normalize data - size dataDim --> right now is unused (=0) but it might be useful in the future, dataDim
     T* weightCUDA;                  // numComponents, it will be log(weight) during the iteration
     T* meanCUDA;                    // numComponents * dataDim
@@ -56,6 +57,7 @@ private:
 
     // the arrays on host, results and init values
     bool* flagActiveComponents; // array with flags true/false to identify active components, numComponents
+    bool* flagResetMean;
     T* meanDataInit;            // dataDim
     T* weight;                  // numComponents
     T* mean;                    // numComponents * dataDim
@@ -85,6 +87,7 @@ public:
             if(oldSizeComponents > 0){
                 // device
                 cudaErrChk(cudaFree(flagActiveComponentsCUDA));
+                cudaErrChk(cudaFree(flagResetMeanCUDA));
                 cudaErrChk(cudaFree(weightCUDA));
                 cudaErrChk(cudaFree(meanCUDA));
                 cudaErrChk(cudaFree(meanDataInitCUDA));
@@ -94,6 +97,8 @@ public:
                 cudaErrChk(cudaFree(PosteriorCUDA));
 
                 // host
+                cudaErrChk(cudaFreeHost(flagActiveComponents));
+                cudaErrChk(cudaFreeHost(flagResetMean));
                 cudaErrChk(cudaFreeHost(meanDataInit));
                 cudaErrChk(cudaFreeHost(weight));
                 cudaErrChk(cudaFreeHost(mean));
@@ -108,6 +113,7 @@ public:
 
             // allocate the new arrays
             cudaErrChk(cudaMalloc(&flagActiveComponentsCUDA, sizeof(bool)*(numCompo + 1)));
+            cudaErrChk(cudaMalloc(&flagResetMeanCUDA, sizeof(bool)));
             cudaErrChk(cudaMalloc(&weightCUDA, sizeof(T)*numCompo));
             cudaErrChk(cudaMalloc(&meanCUDA, sizeof(T)*numCompo*dataDim));
             cudaErrChk(cudaMalloc(&meanDataInitCUDA, sizeof(T)*dataDim));
@@ -117,6 +123,7 @@ public:
             cudaErrChk(cudaMalloc(&PosteriorCUDA, sizeof(T)*numCompo));
             
             cudaErrChk(cudaMallocHost(&flagActiveComponents, sizeof(bool)*(numCompo + 1)));
+            cudaErrChk(cudaMallocHost(&flagResetMean, sizeof(bool)));
             cudaErrChk(cudaMallocHost(&meanDataInit, sizeof(T)*dataDim));
             cudaErrChk(cudaMallocHost(&weight, sizeof(T)*numCompo));
             cudaErrChk(cudaMallocHost(&mean, sizeof(T)*numCompo*dataDim));
@@ -159,9 +166,11 @@ public:
         }
         flagActiveComponents[GMMParam->numComponents] = false;
         numActiveComponents = GMMParam->numComponents;
+        *flagResetMean = false;
 
         // copy to device
         cudaErrChk(cudaMemcpyAsync(flagActiveComponentsCUDA, flagActiveComponents, sizeof(bool)*(GMMParam->numComponents + 1), cudaMemcpyHostToDevice, GMMStream));
+        cudaErrChk(cudaMemcpyAsync(flagResetMeanCUDA, flagResetMean, sizeof(bool), cudaMemcpyHostToDevice, GMMStream));
         cudaErrChk(cudaMemcpyAsync(weightCUDA, weight, sizeof(T)*GMMParam->numComponents, cudaMemcpyHostToDevice, GMMStream));
         cudaErrChk(cudaMemcpyAsync(meanCUDA, mean, sizeof(T)*GMMParam->numComponents*dataDim, cudaMemcpyHostToDevice, GMMStream));
         cudaErrChk(cudaMemcpyAsync(coVarianceCUDA, coVariance, sizeof(T)*GMMParam->numComponents*dataDim*dataDim, cudaMemcpyHostToDevice, GMMStream));
@@ -355,7 +364,7 @@ private:
         return blockNum;
     }
 
-    void normalizePoints(T* maxVelocityArray){
+    void normalizePoints(const T* maxVelocityArray){
         
         // normalize data such that velocities are in range -1;1
         // launch kernel
@@ -363,7 +372,7 @@ private:
                                 (dataDevicePtr,meanDataInitCUDA, maxVelocityArray);
     }
 
-    void normalizeDataBack(T* maxVelocityArray){
+    void normalizeDataBack(const T* maxVelocityArray){
         
         // normalize data back to the original data range
         // launch kernel
@@ -521,6 +530,7 @@ private:
     bool pruneOneComponent(const int step){
 
         bool pruned = false;
+        *flagResetMean = false;
         // set low weight component to inactive and update the other component weights
         // launch kernel
         cudaGMMWeightKernel::pruneOneComponentKernel
@@ -532,9 +542,10 @@ private:
         // check if any GMM component has NaN mean --> reset mean
         // launch kernel
         cudaGMMWeightKernel::checkMeanValueComponents<T, dataDim>
-                <<<1, paramHostPtr->numComponents, 0, GMMStream>>>
-                (meanCUDA, paramHostPtr->numComponents, flagActiveComponentsCUDA);
+                <<<1, paramHostPtr->numComponents, paramHostPtr->numComponents * sizeof(bool), GMMStream>>>
+                (meanCUDA, paramHostPtr->numComponents, flagActiveComponentsCUDA, flagResetMeanCUDA );
 
+        cudaErrChk(cudaMemcpyAsync(flagResetMean,flagResetMeanCUDA, sizeof(bool), cudaMemcpyDefault, GMMStream));
         cudaErrChk(cudaStreamSynchronize(GMMStream));
 
         pruned = flagActiveComponents[paramHostPtr->numComponents];
@@ -547,6 +558,12 @@ private:
                 std::cerr << "[!]Error PruneComponents " << " numActiveComponents < 1 " << numActiveComponents <<" - " << " GMM step: "<< step << std::endl; 
             }
         }
+        else if(*flagResetMean)
+        {
+            this->logLikelihoodOld = -INFINITY;
+            pruned = true;
+        }
+
         return pruned;
     }
     
