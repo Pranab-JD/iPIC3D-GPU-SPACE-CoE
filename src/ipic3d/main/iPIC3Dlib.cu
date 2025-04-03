@@ -486,6 +486,11 @@ int c_Solver::initCUDA(){
   cudaErrChk(cudaEventCreateWithFlags(&eventOutputCopy, cudaEventDisableTiming|cudaEventBlockingSync));
 
   // merging
+  toBeMerged = new int[2 * ns];
+  for(int i=0;i<2*ns;i++){
+    toBeMerged[i] = 0;
+  }
+  //memset(toBeMerged, 0, 2 * ns * sizeof(int));
 
   cudaErrChk(cudaHostAlloc(&cellCountHostPtr, sizeof(int) * grid->getNXC() * grid->getNYC() * grid->getNZC(), cudaHostAllocDefault));
   cudaErrChk(cudaHostAlloc(&cellOffsetHostPtr, sizeof(int) * grid->getNXC() * grid->getNYC() * grid->getNZC(), cudaHostAllocDefault));
@@ -565,6 +570,7 @@ int c_Solver::deInitCUDA(){
   delete[] momentParamHostPtr;
   delete[] momentParamCUDAPtr;
   delete[] momentsCUDAPtr;
+  delete[] toBeMerged;
 
 
   // delete streams
@@ -656,7 +662,7 @@ int c_Solver::cudaLauncherAsync(const int species){
     if(pclsArrayHostPtr[species]->getNOP() < 0.95 * pclsArrayHostPtr[species]->getInitialNOP()){
       const uint32_t deltaPcl = pclsArrayHostPtr[species]->getInitialNOP() - pclsArrayHostPtr[species]->getNOP();
       if(deltaPcl < pclsArrayHostPtr[species]->getNOP()){
-        std::cout << "Particle splitting basicKernel myrank:"<< MPIdata::get_rank() << " number particles: " << pclsArrayHostPtr[species]->getNOP() <<
+        std::cout << "Particle splitting basic myrank: "<< MPIdata::get_rank() << " species " << species <<" number particles: " << pclsArrayHostPtr[species]->getNOP() <<
                   " delta: " << deltaPcl <<std::endl;
         particleSplittingKernel<false><<<getGridSize((int)deltaPcl, 256), 256, 0, streams[species]>>>(moverParamCUDAPtr[species], grid3DCUDACUDAPtr);
         pclsArrayHostPtr[species]->setNOE(pclsArrayHostPtr[species]->getInitialNOP());
@@ -667,7 +673,7 @@ int c_Solver::cudaLauncherAsync(const int species){
         // in this case the final number of particles will be < pclsArrayHostPtr[species]->getInitialNOP() 
         // worst case scenario will be pclsArrayHostPtr[species]->getInitialNOP() - (pclsArrayHostPtr[species]->getNOP() - 1)
         const int splittingTimes = deltaPcl / pclsArrayHostPtr[species]->getNOP();
-        std::cout << "Particle splitting multipleTimesKernel myrank:"<< MPIdata::get_rank() << " number particles: " << pclsArrayHostPtr[species]->getNOP() <<
+        std::cout << "Particle splitting multipleTimesKernel myrank: "<< MPIdata::get_rank() << " species " << species <<" number particles: " << pclsArrayHostPtr[species]->getNOP() <<
                   " delta: " << deltaPcl <<std::endl;
         particleSplittingKernel<true><<<getGridSize((int)pclsArrayHostPtr[species]->getNOP(), 256), 256, 0, streams[species]>>>(moverParamCUDAPtr[species], grid3DCUDACUDAPtr);
         pclsArrayHostPtr[species]->setNOE( (splittingTimes + 1) * pclsArrayHostPtr[species]->getNOP());
@@ -712,11 +718,14 @@ int c_Solver::cudaLauncherAsync(const int species){
 
   // After Mover
   cudaErrChk(cudaStreamSynchronize(streams[species+ns]));
+  //cudaErrChk(cudaStreamSynchronize(streams[species]));
   int x = 0; // exiting particle number
   for(int i=0; i<departureArrayElementType::DELETE_HASHEDSUM_INDEX; i++)x += hashedSumArrayHostPtr[species][i].getSum();
   const int y = hashedSumArrayHostPtr[species][departureArrayElementType::DELETE_HASHEDSUM_INDEX].getSum(); // deleted particle number
   const int hole = x + y;
-
+  //if (y > 0){
+  //  std::cout << " Particle holes myrank: "<< MPIdata::get_rank() << " species: " << species<< " hole: " << hole << " deleted: "<< y << std::endl;
+  //}
   if(x > exitingArrayHostPtr[species]->getSize()){ 
     // prepare the exitingArray
     exitingArrayHostPtr[species]->expand(x * 1.5, streams[species+ns]);
@@ -774,17 +783,17 @@ bool c_Solver::ParticlesMoverMomentAsync()
     // castingField<<<gridSize/256 + 1, 256, 0, streams[0]>>>(grid3DCUDACUDAPtr, fieldForPclCUDAPtr);
   cudaErrChk(cudaEventRecord(event0, streams[0]));
 
-
   for(int i=0; i<ns; i++){
-    if (i != toBeMerged)
-    exitingResults[i] = threadPoolPtr->enqueue(&c_Solver::cudaLauncherAsync, this, i);
+    if (i != mergeIdx){
+      exitingResults[i] = threadPoolPtr->enqueue(&c_Solver::cudaLauncherAsync, this, i);
+      toBeMerged[2 * i + 1] +=1;
+    }
   }
 
-
-  if (toBeMerged >= 0 && toBeMerged < ns) 
+  if (mergeIdx >= 0 && mergeIdx < ns) 
   {
-    const auto& i = toBeMerged;
-    std::cout << "Merging species: " << i << std::endl;
+    const auto& i = mergeIdx;
+    std::cout << " Particle merging myrank: "<< MPIdata::get_rank() << " species: " << i << std::endl;
 
     cudaErrChk(cudaStreamSynchronize(streams[i])); // wait for the copy
     // sort
@@ -798,12 +807,13 @@ bool c_Solver::ParticlesMoverMomentAsync()
                               pclsArrayHostPtr[i]->getNOP()*sizeof(SpeciesParticle), cudaMemcpyDefault, streams[i]));
 
     // merge
-    mergingKernel<<<getGridSize(totalCells * 32, 256), 256, 0, streams[i]>>>(cellOffsetCUDAPtr, cellCountCUDAPtr, totalCells, 
+    mergingKernel<<<getGridSize(totalCells * WARP_SIZE, 256), 256, 0, streams[i]>>>(cellOffsetCUDAPtr, cellCountCUDAPtr, 
         grid3DCUDACUDAPtr, pclsArrayCUDAPtr[i], departureArrayCUDAPtr[i]);
 
     exitingResults[i] = threadPoolPtr->enqueue(&c_Solver::cudaLauncherAsync, this, i);
 
-    toBeMerged = -1; // merged
+    toBeMerged[2 * i + 1] = 0;
+    mergeIdx = -1; // merged
   }
 
   return (false);
@@ -897,27 +907,43 @@ void c_Solver::MomentsAwait() {
   // synchronize
   cudaErrChk(cudaDeviceSynchronize());
 
-  // check which one to merge
-  for (int i = 0; i < ns; i++) {
-    if(pclsArrayHostPtr[i]->getNOP() > 1.05 * pclsArrayHostPtr[i]->getInitialNOP()) {
-      toBeMerged = i;
-      break;
+  constexpr bool PARTICLE_MERGING = true;
+  if constexpr(PARTICLE_MERGING)
+  {
+    // check which one to merge
+    for(int i = 0; i < ns; i++) {
+      if(pclsArrayHostPtr[i]->getNOP() > 1.05 * pclsArrayHostPtr[i]->getInitialNOP()) {
+        toBeMerged[2 * i] = 1;
+      }
+      else{
+        toBeMerged[2 * i] = 0;
+      }
+    }
+    // select spcecies to merge: the one that has not been merged for most cycles among the species that require merging
+    mergeIdx = -1;
+    int mergeCountFromLast = -1;
+    for(int i=0;i<ns;i++){
+        if( (toBeMerged[2 * i] == 1) && (toBeMerged[2 * i + 1] > mergeCountFromLast) ){
+          mergeIdx = i;
+          mergeCountFromLast = toBeMerged[2 * i + 1];
+        }
+    }
+
+    if (mergeIdx >= 0 && mergeIdx < ns){
+      const auto& i = mergeIdx; 
+
+      if(outputPart[i].get_pcl_array().capacity() < pclsArrayHostPtr[i]->getNOP()){
+        auto pclArray = outputPart[i].get_pcl_arrayPtr();
+        pclArray->reserve(pclsArrayHostPtr[i]->getNOP() * 1.2);
+      }
+      cudaErrChk(cudaMemcpyAsync(outputPart[i].get_pcl_array().getList(), pclsArrayHostPtr[i]->getpcls(), 
+                                pclsArrayHostPtr[i]->getNOP()*sizeof(SpeciesParticle), cudaMemcpyDefault, streams[i]));
+      outputPart[i].get_pcl_array().setSize(pclsArrayHostPtr[i]->getNOP()); 
     }
   }
-  if (toBeMerged >= 0)
+  else
   {
-    
-    const auto& i = toBeMerged; 
-
-    if(outputPart[i].get_pcl_array().capacity() < pclsArrayHostPtr[i]->getNOP()){
-      auto pclArray = outputPart[i].get_pcl_arrayPtr();
-      pclArray->reserve(pclsArrayHostPtr[i]->getNOP() * 1.2);
-    }
-    cudaErrChk(cudaMemcpyAsync(outputPart[i].get_pcl_array().getList(), pclsArrayHostPtr[i]->getpcls(), 
-                              pclsArrayHostPtr[i]->getNOP()*sizeof(SpeciesParticle), cudaMemcpyDefault, streams[i]));
-    outputPart[i].get_pcl_array().setSize(pclsArrayHostPtr[i]->getNOP()); 
-
-    
+    mergeIdx = -1; 
   }
 
   for (int i = 0; i < ns; i++)

@@ -18,7 +18,7 @@
 * @param departureArray Pointer to the departure array, for delete mark
 * @details one warp for each cell
 */
-__global__ void mergingKernel(int* cellOffsetList, int* cellBinCountList, int cellNum, grid3DCUDA* grid, particleArrayCUDA* pclArray, departureArrayType* departureArray) {
+__global__ void mergingKernel(int* cellOffsetList, int* cellBinCountList, grid3DCUDA* grid, particleArrayCUDA* pclArray, departureArrayType* departureArray) {
 
     const uint pid = blockIdx.x * blockDim.x + threadIdx.x;
     const uint warpId = pid / WARP_SIZE; const auto& cellId = warpId;
@@ -28,7 +28,7 @@ __global__ void mergingKernel(int* cellOffsetList, int* cellBinCountList, int ce
     const int nop = pclArray->getNOP();
     auto pcl = pclArray->getpcls();
     auto dArray = departureArray->getArray();
-
+    const uint cellNum = ((grid->nxc) * (grid->nyc) * (grid->nzc));
     if (cellId >= cellNum) return;
 
     // cell offset for this warp
@@ -46,7 +46,7 @@ __global__ void mergingKernel(int* cellOffsetList, int* cellBinCountList, int ce
     for(int p=0; p<numPIC; p++) {
         const int mainPId = cellOffset + p;
 
-        constexpr cudaParticleType threshold = 0.01; // threshold for merging, percentage of the velocity of the main particle
+        constexpr cudaParticleType threshold = 0.009; // threshold for merging, percentage of the velocity of the main particle
         cudaParticleType minNorm = 1e10; // minimum norm
         int minPId = -1; // minimum particle id
 
@@ -100,7 +100,8 @@ __global__ void mergingKernel(int* cellOffsetList, int* cellBinCountList, int ce
             const auto& v1 = p1.get_v();
             const auto& w1 = p1.get_w();
 
-            if (localNorm < (threshold * threshold * (u1*u1 + v1*v1 + w1*w1))) { // merge!
+            if (localNorm < (threshold * (u1*u1 + v1*v1 + w1*w1))) { // merge!
+            //if (true) { // merge!
                 dArray[localPId].dest = departureArrayElementType::DELETE;
 
                 SpeciesParticle mergedParticle;
@@ -136,14 +137,10 @@ __global__ void mergingKernel(int* cellOffsetList, int* cellBinCountList, int ce
 
             }
         }
-
-        // return this warp if reaches the initial number of particles
+        // return this warp if reaches the initial number of particles 
         cellMergeCount = __shfl_sync(WARP_FULL_MASK, cellMergeCount, 0); 
-        if ((numPIC-cellMergeCount) == initialPIC) return; 
-            
+        if ((numPIC-cellMergeCount) <= initialPIC) return; 
     }
-
-
 
 }
 

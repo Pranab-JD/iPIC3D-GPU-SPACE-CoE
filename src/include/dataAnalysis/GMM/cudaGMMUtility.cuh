@@ -197,6 +197,12 @@ public:
 
     }
 
+
+    T getlogLikelihoodFinal() const
+    {
+        return logLikelihoodFinal;
+    }
+
     ~GMMResult() = default;
 
 };

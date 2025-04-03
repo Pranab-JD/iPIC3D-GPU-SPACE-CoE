@@ -225,7 +225,8 @@ namespace iPic3D {
     double Benergy;
     double TOTenergy;
     double TOTmomentum;
-    int toBeMerged = -1;
+    int mergeIdx = -1;
+    int* toBeMerged;
 
     //the below used for IO
     MPI_Request *headerReq;
