@@ -41,7 +41,6 @@ include("${CMAKE_SOURCE_DIR}/cmake/sites/${SITE}.cmake")
 option(BUILD_SHARED_LIBS "Use shared libraries if ON, static if OFF" ON)
 option(USE_CATALYST "Use Catalyst adaptor" OFF)
 option(USE_BATSRUS "Use BATSRUS flag" OFF)
-option(USE_HDF5 "Use HDF5 library" ON)
 option(USE_ADIOS2 "Use ADIOS2 library" ON)
 
 option(HIP_ON "Use HIP" OFF) # Set it to OFF if you want to use CUDA, ON for HIP
@@ -77,37 +76,6 @@ if(USE_CATALYST)
     target_include_directories(iPICAdaptor INTERFACE ${CMAKE_SOURCE_DIR}/${SOURCE_CODE_DIR}/catalyst)
     target_compile_definitions(iPICAdaptor INTERFACE USE_CATALYST)
 
-  endif()
-endif()
-
-# Find HDF5
-if (USE_HDF5)
-  if(BUILD_SHARED_LIBS)
-    set(HDF5_USE_STATIC_LIBRARIES OFF)
-  else()
-    set(HDF5_USE_STATIC_LIBRARIES ON)
-  endif()
-  find_package(HDF5 COMPONENTS C HL REQUIRED)
-
-
-  if (NOT DEFINED HDF5_C_TARGET)
-    message(STATUS "Creating a proper target for HDF5")
-    #add_library(hdf5::hdf5 INTERFACE IMPORTED)
-    set_target_properties(hdf5::hdf5 PROPERTIES
-      INTERFACE_COMPILE_DEFINITIONS "${HDF5_C_DEFINITIONS}"
-      INTERFACE_INCLUDE_DIRECTORIES "${HDF5_C_INCLUDE_DIRS}"
-      INTERFACE_LINK_LIBRARIES "${HDF5_C_LIBRARIES}"
-      )
-    set(HDF5_C_TARGET hdf5::hdf5)
-  endif()
-
-  if (NOT DEFINED HDF5_C_HL_TARGET)
-    message(STATUS "Creating a proper target for HDF5 HL")
-    #add_library(hdf5::hdf5_hl INTERFACE IMPORTED)
-    set_target_properties(hdf5::hdf5_hl PROPERTIES
-      INTERFACE_LINK_LIBRARIES "hdf5::hdf5;${HDF5_C_HL_LIBRARIES}"
-      )
-    set(HDF5_C_HL_TARGET hdf5::hdf5_hl)
   endif()
 endif()
 
@@ -201,7 +169,6 @@ target_include_directories(
 #
 # Link external libraries
 #
-set(linkLibraries MPI::MPI_CXX ${HDF5_C_HL_TARGET})
 
 if(USE_OPENMP)
     list(APPEND linkLibraries OpenMP::OpenMP_CXX)
@@ -230,10 +197,6 @@ if(USE_BATSRUS)
   message(" WARNING: BATSRUS flag is active.")
 else()
   message(" INFO: BATSRUS is not active.")
-endif()
-
-if(NOT USE_HDF5)
-  target_compile_definitions(iPIC3Dlib PUBLIC NO_HDF5)
 endif()
 
 if (BUILD_SHARED_LIBS)
@@ -318,9 +281,6 @@ message("CMAKE_SYSTEM_PROCESSOR is ${CMAKE_SYSTEM_PROCESSOR}")
 message("Compiler & compiler flags:")
 message("CMAKE_CXX_COMPILER is ${CMAKE_CXX_COMPILER}")
 message("CMAKE_CXX_FLAGS is ${CMAKE_CXX_FLAGS}")
-message("HDF5_INCLUDE_DIRS is ${HDF5_INCLUDE_DIRS}")
-message("HDF5_LIBRARIES   is ${HDF5_LIBRARIES}")
-message("HDF5_HL_LIBRARIES is ${HDF5_HL_LIBRARIES}")
 message("MPI_LIBRARIES is ${MPI_LIBRARIES}")
 if(HIP_ON)
   message("Compiling with HIP")

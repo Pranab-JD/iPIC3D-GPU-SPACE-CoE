@@ -73,7 +73,7 @@
 // * what kind of support is provided by scientific databases
 //   for integer versus double-precision keys?
 // * use of double means that there is no need for a separate
-//   HDF5 method to save the ID field.
+//   method to save the ID field.
 
 void doubleIDgenerator::reserve_particles_in_range(double lowest, double highest)
 {

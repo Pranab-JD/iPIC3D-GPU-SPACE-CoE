@@ -36,10 +36,6 @@
 #include "ParallelIO.h"
 #include "outputPrepare.h"
 //
-#ifndef NO_HDF5
-#include "WriteOutputParallel.h"
-#include "OutputWrapperFPP.h"
-#endif
 
 #include <iostream>
 #include <fstream>
@@ -74,9 +70,6 @@ c_Solver::~c_Solver()
   delete vct; // process topology
   delete grid; // grid
   delete EMf; // field
-#ifndef NO_HDF5
-  delete outputWrapperFPP;
-#endif
 
 #ifdef USE_ADIOS2
   delete adiosManager;
@@ -260,16 +253,6 @@ int c_Solver::Init(int argc, char **argv) {
   }
 
   if ( Parameters::get_doWriteOutput()){
-		#ifndef NO_HDF5
-	  	if(col->getWriteMethod() == "shdf5" || col->getCallFinalize() || restart_cycle>0 ||
-			  (col->getWriteMethod()=="pvtk" && !col->particle_output_is_off()) )
-		{
-			  outputWrapperFPP = new OutputWrapperFPP;
-#ifndef USE_ADIOS2
-			  fetch_outputWrapperFPP().init_output_files(col,vct,grid,EMf,outputPart,ns,testpart,nstestpart);
-#endif
-		}
-		#endif
 	  if(!col->field_output_is_off()){
 		  if(col->getWriteMethod()=="pvtk"){
 			  if(!(col->getFieldOutputTag()).empty())
@@ -989,8 +972,6 @@ void c_Solver::WriteOutput(int cycle) {
 
   if(!Parameters::get_doWriteOutput())  return;
 
-  // TODO later add adios2 as a method
-
   if (col->getWriteMethod() == "nbcvtk"){//Non-blocking collective MPI-IO
 
 	  if(!col->field_output_is_off() && (cycle%(col->getFieldOutputCycle()) == 0 || cycle == first_cycle) ){
@@ -1036,9 +1017,7 @@ void c_Solver::WriteOutput(int cycle) {
 		  }
 	  }
 
-	  //Particle information is still in hdf5
 	  	WriteParticles(cycle);
-	  //Test Particle information is still in hdf5
 	    WriteTestParticles(cycle);
 
   }else if (col->getWriteMethod() == "pvtk"){//Blocking collective MPI-IO
@@ -1052,54 +1031,12 @@ void c_Solver::WriteOutput(int cycle) {
 		  }
 	  }
 
-	  //Particle information is still in hdf5
       WriteParticles(cycle);
-	  //Test Particle information is still in hdf5
 	    WriteTestParticles(cycle);
 
-  } else if (col->getWriteMethod() == "adios2"){
-
-
-
-  }else{
-
-		#ifdef NO_HDF5
-			eprintf("The selected output option must be compiled with HDF5");
-
-		#else
-			if (col->getWriteMethod() == "H5hut"){
-
-			  if (!col->field_output_is_off() && cycle%(col->getFieldOutputCycle())==0)
-				WriteFieldsH5hut(ns, grid, EMf, col, vct, cycle);
-			  if (!col->particle_output_is_off() && cycle%(col->getParticlesOutputCycle())==0)
-				WritePartclH5hut(ns, grid, outputPart, col, vct, cycle);
-
-			}else if (col->getWriteMethod() == "phdf5"){
-
-			  if (!col->field_output_is_off() && cycle%(col->getFieldOutputCycle())==0)
-				WriteOutputParallel(grid, EMf, outputPart, col, vct, cycle);
-
-			  if (!col->particle_output_is_off() && cycle%(col->getParticlesOutputCycle())==0)
-			  {
-				if(MPIdata::get_rank()==0)
-				  warning_printf("WriteParticlesParallel() is not yet implemented.");
-			  }
-
-			}else if (col->getWriteMethod() == "shdf5"){
-
-					WriteFields(cycle);
-
-					WriteParticles(cycle);
-
-					WriteTestParticles(cycle);
-
-			}else{
-			  warning_printf(
-				"Invalid output option. Options are: H5hut, phdf5, shdf5, pvtk");
-			  invalid_value_error(col->getWriteMethod().c_str());
-			}
-		#endif
-  	  }
+  } else{
+    throw std::runtime_error("Unknown output method: " + col->getWriteMethod());
+  }
 }
 
 void c_Solver::outputCopyAsync(int cycle){ // -1 to enable
@@ -1122,7 +1059,6 @@ void c_Solver::outputCopyAsync(int cycle){ // -1 to enable
 
 void c_Solver::WriteRestart(int cycle)
 {
-#ifndef NO_HDF5
   if (restart_cycle>0 && cycle%restart_cycle==0){
 
     cudaErrChk(cudaEventSynchronize(eventOutputCopy));
@@ -1131,11 +1067,8 @@ void c_Solver::WriteRestart(int cycle)
 
 #ifdef USE_ADIOS2
     adiosManager->appendRestartOutput(cycle);
-#else
-	  fetch_outputWrapperFPP().append_restart(cycle);
 #endif
   }
-#endif
 }
 
 // write the conserved quantities
@@ -1249,24 +1182,10 @@ void c_Solver::WriteVirtualSatelliteTraces()
   my_file.close();
 }
 
-void c_Solver::WriteFields(int cycle) {
-
-#ifndef NO_HDF5
-  if(col->field_output_is_off())   return;
-
-  if(cycle % (col->getFieldOutputCycle()) == 0 || cycle == first_cycle)
-  {
-	  if(!(col->getFieldOutputTag()).empty())
-		  	  fetch_outputWrapperFPP().append_output((col->getFieldOutputTag()).c_str(), cycle);//E+B+Js
-	  if(!(col->getMomentsOutputTag()).empty())
-		  	  fetch_outputWrapperFPP().append_output((col->getMomentsOutputTag()).c_str(), cycle);//rhos+pressure
-  }
-#endif
-}
+void c_Solver::WriteFields(int cycle) = delete;
 
 void c_Solver::WriteParticles(int cycle)
 {
-#ifndef NO_HDF5
   if(col->particle_output_is_off() || cycle%(col->getParticlesOutputCycle())!=0) return;
 
   cudaErrChk(cudaEventSynchronize(eventOutputCopy));
@@ -1279,27 +1198,11 @@ void c_Solver::WriteParticles(int cycle)
 
 #ifdef USE_ADIOS2
   adiosManager->appendParticleOutput(cycle);
-#else
-  fetch_outputWrapperFPP().append_output((col->getPclOutputTag()).c_str(), cycle, 0);//"position + velocity + q "
 #endif
 
-#endif
 }
 
-void c_Solver::WriteTestParticles(int cycle)
-{
-#ifndef NO_HDF5
-  if(nstestpart == 0 || col->testparticle_output_is_off() || cycle%(col->getTestParticlesOutputCycle())!=0) return;
-
-  // this is a hack
-  for (int i = 0; i < nstestpart; i++){
-    testpart[i].set_particleType(ParticleType::Type::AoS); // this is a even more hack
-    testpart[i].convertParticlesToSynched();
-  }
-
-  fetch_outputWrapperFPP().append_output("testpartpos + testpartvel+ testparttag", cycle, 0); // + testpartcharge
-#endif
-}
+void c_Solver::WriteTestParticles(int cycle) = delete;
 
 // This needs to be separated into methods that save particles
 // and methods that save field data
@@ -1310,17 +1213,13 @@ void c_Solver::Finalize() {
   
   if (col->getCallFinalize() && Parameters::get_doWriteOutput() && col->getRestartOutputCycle() > 0)
   {
-    #ifndef NO_HDF5
     outputCopyAsync(-1);
     cudaErrChk(cudaEventSynchronize(eventOutputCopy));
 
     convertOutputParticlesToSynched();
 #ifdef USE_ADIOS2
     adiosManager->appendRestartOutput((col->getNcycles() + first_cycle) - 1);
-#else
-    fetch_outputWrapperFPP().append_restart((col->getNcycles() + first_cycle) - 1);
 #endif
-    #endif
   }
 
 #ifdef USE_ADIOS2

@@ -46,7 +46,6 @@ developers: Stefano Markidis, Giovanni Lapenta.
 #include "Particles3Dcomm.h"
 #include "Parameters.h"
 
-#include "ipichdf5.h"
 #include <vector>
 //#include <complex>
 #include "debug.h"
@@ -261,29 +260,7 @@ if( !isTestParticle ){
   // initialize particle ID generator based on number of particles
   // that will initially be produced.
   pclIDgenerator.reserve_num_particles(nop);
-  // initialize each process with capacity for some extra particles
-  const int initial_capacity = roundup_to_multiple(nop*1.2,DVECWIDTH);
-  //
-  // SoA particle representation
-  //
 
-  // velocities
-  // u.reserve(initial_capacity);
-  // v.reserve(initial_capacity);
-  // w.reserve(initial_capacity);
-  // // charge
-  // q.reserve(initial_capacity);
-  // // positions
-  // x.reserve(initial_capacity);
-  // y.reserve(initial_capacity);
-  // z.reserve(initial_capacity);
-  // // subcycle time
-  // t.reserve(initial_capacity);
-
-  // //
-  // // AoS particle representation
-  // //
-  // _pcls.reserve(initial_capacity);
   particleType = ParticleType::AoS; // canonical representation
 
   //
@@ -294,21 +271,6 @@ if( !isTestParticle ){
   bucket_offset = new array3_int(nxc,nyc,nzc);
   
   assert_eq(sizeof(SpeciesParticle),(8*sizeof(cudaParticleType)));
-
-  // if RESTART is true initialize the particle in allocate method
-  // restart = col->getRestart_status();
-  // if (restart != 0)
-  // {
-  // #ifdef NO_HDF5
-  //   eprintf("restart is supported only if compiling with HDF5");
-  // #else
-  //   int species_number = get_species_num();
-  //   // prepare arrays to receive particles
-  //   particleType = ParticleType::SoA;
-  //   col->read_particles_restart(vct, species_number,u, v, w, q, x, y, z, t);
-  //   convertParticlesToAoS();
-  // #endif
-  // }
 
   // set_velocity_caps()
   //

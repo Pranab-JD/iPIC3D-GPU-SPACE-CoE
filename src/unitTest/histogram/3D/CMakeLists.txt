@@ -111,7 +111,6 @@ if(HIP_ON)
 target_compile_definitions(histogramTest PUBLIC HIPIFLY)
 endif()
 
-target_compile_definitions(histogramTest PUBLIC NO_HDF5)
 
 
 # TEST

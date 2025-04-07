@@ -19,7 +19,6 @@
  */
 
 #include <mpi.h>
-#include "ipichdf5.h"
 #include "EMfields3D.h"
 #include "Collective.h"
 #include "Basic.h"
@@ -39,8 +38,6 @@
 #include "ipicmath.h" // for roundup_to_multiple
 #include "Alloc.h"
 #include "asserts.h"
-#ifndef NO_HDF5
-#endif
 
 #include "cudaTypeDef.cuh"
 
@@ -3545,54 +3542,52 @@ void EMfields3D::init()
       grid->interpN2C(rhocs, is, rhons);
   }
   else {                        // READING FROM RESTART
-  #ifdef NO_HDF5
-    eprintf("restart requires compiling with HDF5");
-  #else
-    col->read_field_restart(vct,grid,Bxn,Byn,Bzn,Ex,Ey,Ez,&rhons,ns);
 
-    // communicate species densities to ghost nodes
-    for (int is = 0; is < ns; is++) {
-      double ***moment0 = convert_to_arr3(rhons[is]);
-      communicateNode_P(nxn, nyn, nzn, moment0, vct, this);
-    }
+  col->read_field_restart(vct,grid,Bxn,Byn,Bzn,Ex,Ey,Ez,&rhons,ns);
 
-    if (col->getCase()=="Dipole") 
-    {
-      ConstantChargePlanet(col->getL_square(),col->getx_center(),col->gety_center(),col->getz_center());
-    }
-    else if (col->getCase()=="Dipole2D") 
-    {
-      ConstantChargePlanet2DPlaneXZ(col->getL_square(),col->getx_center(),col->getz_center());
-    }
-    // I am not sure what this open BC does, but perhaps it is responsible for energy losses in the restart? Jan 2017, Slavik.
-    else if ((col->getCase().find("TaylorGreen") != std::string::npos) && (col->getCase() != "NullPoints"))
-    {
-      ConstantChargeOpenBC();
-    }
+  // communicate species densities to ghost nodes
+  for (int is = 0; is < ns; is++) {
+    double ***moment0 = convert_to_arr3(rhons[is]);
+    communicateNode_P(nxn, nyn, nzn, moment0, vct, this);
+  }
 
-    // communicate ghost
-    communicateNodeBC(nxn, nyn, nzn, Bxn, col->bcBx[0],col->bcBx[1],col->bcBx[2],col->bcBx[3],col->bcBx[4],col->bcBx[5], vct, this);
-    communicateNodeBC(nxn, nyn, nzn, Byn, col->bcBy[0],col->bcBy[1],col->bcBy[2],col->bcBy[3],col->bcBy[4],col->bcBy[5], vct, this);
-    communicateNodeBC(nxn, nyn, nzn, Bzn, col->bcBz[0],col->bcBz[1],col->bcBz[2],col->bcBz[3],col->bcBz[4],col->bcBz[5], vct, this);
+  if (col->getCase()=="Dipole") 
+  {
+    ConstantChargePlanet(col->getL_square(),col->getx_center(),col->gety_center(),col->getz_center());
+  }
+  else if (col->getCase()=="Dipole2D") 
+  {
+    ConstantChargePlanet2DPlaneXZ(col->getL_square(),col->getx_center(),col->getz_center());
+  }
+  // I am not sure what this open BC does, but perhaps it is responsible for energy losses in the restart? Jan 2017, Slavik.
+  else if ((col->getCase().find("TaylorGreen") != std::string::npos) && (col->getCase() != "NullPoints"))
+  {
+    ConstantChargeOpenBC();
+  }
 
-    // initialize B on centers
-    grid->interpN2C(Bxc, Bxn);
-    grid->interpN2C(Byc, Byn);
-    grid->interpN2C(Bzc, Bzn);
+  // communicate ghost
+  communicateNodeBC(nxn, nyn, nzn, Bxn, col->bcBx[0],col->bcBx[1],col->bcBx[2],col->bcBx[3],col->bcBx[4],col->bcBx[5], vct, this);
+  communicateNodeBC(nxn, nyn, nzn, Byn, col->bcBy[0],col->bcBy[1],col->bcBy[2],col->bcBy[3],col->bcBy[4],col->bcBy[5], vct, this);
+  communicateNodeBC(nxn, nyn, nzn, Bzn, col->bcBz[0],col->bcBz[1],col->bcBz[2],col->bcBz[3],col->bcBz[4],col->bcBz[5], vct, this);
 
-    // communicate ghost
-    communicateCenterBC(nxc, nyc, nzc, Bxc, col->bcBx[0],col->bcBx[1],col->bcBx[2],col->bcBx[3],col->bcBx[4],col->bcBx[5], vct,this);
-    communicateCenterBC(nxc, nyc, nzc, Byc, col->bcBy[0],col->bcBy[1],col->bcBy[2],col->bcBy[3],col->bcBy[4],col->bcBy[5], vct,this);
-    communicateCenterBC(nxc, nyc, nzc, Bzc, col->bcBz[0],col->bcBz[1],col->bcBz[2],col->bcBz[3],col->bcBz[4],col->bcBz[5], vct,this);
+  // initialize B on centers
+  grid->interpN2C(Bxc, Bxn);
+  grid->interpN2C(Byc, Byn);
+  grid->interpN2C(Bzc, Bzn);
 
-    // communicate E
-    communicateNodeBC(nxn, nyn, nzn, Ex, col->bcEx[0],col->bcEx[1],col->bcEx[2],col->bcEx[3],col->bcEx[4],col->bcEx[5], vct, this);
-    communicateNodeBC(nxn, nyn, nzn, Ey, col->bcEy[0],col->bcEy[1],col->bcEy[2],col->bcEy[3],col->bcEy[4],col->bcEy[5], vct, this);
-    communicateNodeBC(nxn, nyn, nzn, Ez, col->bcEz[0],col->bcEz[1],col->bcEz[2],col->bcEz[3],col->bcEz[4],col->bcEz[5], vct, this);
+  // communicate ghost
+  communicateCenterBC(nxc, nyc, nzc, Bxc, col->bcBx[0],col->bcBx[1],col->bcBx[2],col->bcBx[3],col->bcBx[4],col->bcBx[5], vct,this);
+  communicateCenterBC(nxc, nyc, nzc, Byc, col->bcBy[0],col->bcBy[1],col->bcBy[2],col->bcBy[3],col->bcBy[4],col->bcBy[5], vct,this);
+  communicateCenterBC(nxc, nyc, nzc, Bzc, col->bcBz[0],col->bcBz[1],col->bcBz[2],col->bcBz[3],col->bcBz[4],col->bcBz[5], vct,this);
 
-    for (int is = 0; is < ns; is++)
-      grid->interpN2C(rhocs, is, rhons);
-  #endif // NO_HDF5
+  // communicate E
+  communicateNodeBC(nxn, nyn, nzn, Ex, col->bcEx[0],col->bcEx[1],col->bcEx[2],col->bcEx[3],col->bcEx[4],col->bcEx[5], vct, this);
+  communicateNodeBC(nxn, nyn, nzn, Ey, col->bcEy[0],col->bcEy[1],col->bcEy[2],col->bcEy[3],col->bcEy[4],col->bcEy[5], vct, this);
+  communicateNodeBC(nxn, nyn, nzn, Ez, col->bcEz[0],col->bcEz[1],col->bcEz[2],col->bcEz[3],col->bcEz[4],col->bcEz[5], vct, this);
+
+  for (int is = 0; is < ns; is++)
+    grid->interpN2C(rhocs, is, rhons);
+
   }
 }
 

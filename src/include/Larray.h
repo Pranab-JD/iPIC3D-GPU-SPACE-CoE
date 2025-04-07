@@ -209,11 +209,11 @@ class Larray
 
 
 template<class type>
-class LarrayRegistered : public Larray<type> {
+class LarrayPinned : public Larray<type> {
 
 public:
 
-  ~LarrayRegistered()
+  ~LarrayPinned()
   {
     if(this->list){
       AlignedFreePinned(this->list);
