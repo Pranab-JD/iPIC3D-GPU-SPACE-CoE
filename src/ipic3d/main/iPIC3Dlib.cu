@@ -1018,7 +1018,7 @@ void c_Solver::WriteOutput(int cycle) {
 	  }
 
 	  	WriteParticles(cycle);
-	    WriteTestParticles(cycle);
+	    // WriteTestParticles(cycle);
 
   }else if (col->getWriteMethod() == "pvtk"){//Blocking collective MPI-IO
 	  if(!col->field_output_is_off() && (cycle%(col->getFieldOutputCycle()) == 0 || cycle == first_cycle) ){
@@ -1032,7 +1032,7 @@ void c_Solver::WriteOutput(int cycle) {
 	  }
 
       WriteParticles(cycle);
-	    WriteTestParticles(cycle);
+	    // WriteTestParticles(cycle);
 
   } else{
     throw std::runtime_error("Unknown output method: " + col->getWriteMethod());
@@ -1182,7 +1182,7 @@ void c_Solver::WriteVirtualSatelliteTraces()
   my_file.close();
 }
 
-void c_Solver::WriteFields(int cycle) = delete;
+// void c_Solver::WriteFields(int cycle) = delete;
 
 void c_Solver::WriteParticles(int cycle)
 {
@@ -1202,7 +1202,7 @@ void c_Solver::WriteParticles(int cycle)
 
 }
 
-void c_Solver::WriteTestParticles(int cycle) = delete;
+// void c_Solver::WriteTestParticles(int cycle) = delete;
 
 // This needs to be separated into methods that save particles
 // and methods that save field data

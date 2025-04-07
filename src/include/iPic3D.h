@@ -109,9 +109,9 @@ namespace iPic3D {
     void WriteConserved(int cycle);
     void WriteVelocityDistribution(int cycle);
     void WriteVirtualSatelliteTraces();
-    void WriteFields(int cycle);
+    void WriteFields(int cycle) = delete;
     void WriteParticles(int cycle);
-    void WriteTestParticles(int cycle);
+    void WriteTestParticles(int cycle) = delete;
     void outputCopyAsync(int cycle);
     void WriteOutput(int cycle);
     void Finalize();

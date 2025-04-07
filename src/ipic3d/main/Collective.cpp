@@ -546,7 +546,7 @@ bool Collective::testparticle_output_is_off()const
  * There are three restart status: restart_status = 0 ---> new inputfile
  * restart_status = 1 ---> RESTART and restart and result directories does not coincide
  * restart_status = 2 ---> RESTART and restart and result directories coincide */
-int Collective::ReadRestart(string inputfile) = delete;
+// int Collective::ReadRestart(string inputfile) = delete;
 
 
 void Collective::read_field_restart(// real field read from restart file
