@@ -6,62 +6,48 @@
 #include "particleExchange.cuh"
 
 
-/**
- * @brief 	Prepare the filler buffer, making it compact. Launch (x) thread.
- * @details The exiting particles have been copied to exitingBuffer, they left the pclArray many holes.
- * 			
- * 			
- * @param fillerBuffer  Used for storing the index of the stayed particles in between (nop-x) to (nop-1)
- * @param hashedSumArray it contains 1 hashedSum instance, prepared in exitingKernel. 
- * 							For the filler particles in rear part.
- */
 __global__ void sortingKernel1(particleArrayCUDA* pclsArray, departureArrayType* departureArray, 
-								fillerBuffer* fillerBuffer, hashedSum* hashedSumArray, int x){
+								fillerBuffer* fillerBuffer, hashedSum* fillerHashedSum, int numberOfHole){
 
 	uint pidx = blockIdx.x * blockDim.x + threadIdx.x;
+	const uint gridSize = blockDim.x * gridDim.x;
 
-    if(pidx >= x)return; 		
-	pidx += (pclsArray->getNOP() - x);			// rear part of pclArray
+	pidx += (pclsArray->getNOP() - numberOfHole);			// rear part of pclArray
 
-	auto departureElement = departureArray->getArray() + pidx;
-    if(departureElement->dest != 0)return; 		// exiting particles, the holes in the rear part
+	for (int i = pidx; i < pclsArray->getNOP(); i += gridSize) {
+		auto departureElement = departureArray->getArray() + i;
+		if(departureElement->dest != 0)continue; 		// exiting particles, the holes in the rear part
 
-	auto pcl = pclsArray->getpcls() + pidx;
+		auto pcl = pclsArray->getpcls() + i;
 
-	auto index = hashedSumArray->getIndex(pidx, departureElement->hashedId); // updated
+		auto index = fillerHashedSum->getIndex(i, departureElement->hashedId); // updated
 
-	fillerBuffer->getArray()[index] = pidx;
-
+		fillerBuffer->getArray()[index] = i;
+	}
 
 }
 
 
 
 
-
-/**
- * @brief 	Fill the many holes in pclArray, making it compact. Launch (nop -x) thread.
- * @details Sorting2 has to be Launched after Moment kernel.
- * 			The indexes of the filler particles have been recorded into the filler buffer in the previous Sorting1Kernel
- * 			
- * @param fillerBuffer  Used for storing the index of the stayed particles in between (nop-x) to (nop-1)
- * @param hashedSumArray it contains 1 hashedSum instance, prepared in exitingKernel. 
- * 							For the exiting particles in front part.
- */
 __global__ void sortingKernel2(particleArrayCUDA* pclsArray, departureArrayType* departureArray, 
-								fillerBuffer* fillerBuffer, hashedSum* hashedSumArray, int stayedParticle){
+								fillerBuffer* fillerBuffer, hashedSum* holeHashedSum, int numberOfHole){
 
 	uint pidx = blockIdx.x * blockDim.x + threadIdx.x;
-    if(pidx >= stayedParticle)return; 		// front part of pclArray
+	const uint gridSize = blockDim.x * gridDim.x;
 
-	auto departureElement = departureArray->getArray() + pidx;
-    if(departureElement->dest == 0)return; 				// exiting particles, the holes
+	for (int i = pidx; i < pclsArray->getNOP() - numberOfHole; i += gridSize) {
 
-	auto pcl = pclsArray->getpcls() + pidx;
+		auto departureElement = departureArray->getArray() + i;
+		if(departureElement->dest == 0)continue; 				// exiting particles, the holes
 
-	auto index = hashedSumArray->getIndex(pidx, departureElement->hashedId); // updated
+		auto pcl = pclsArray->getpcls() + i;
 
-	memcpy(pcl, pclsArray->getpcls() + fillerBuffer->getArray()[index], sizeof(SpeciesParticle));
+		auto index = holeHashedSum->getIndex(i, departureElement->hashedId); // updated
+
+		memcpy(pcl, pclsArray->getpcls() + fillerBuffer->getArray()[index], sizeof(SpeciesParticle));
+
+	}
 
 
 }

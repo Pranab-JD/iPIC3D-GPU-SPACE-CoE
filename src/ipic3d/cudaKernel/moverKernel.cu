@@ -592,3 +592,19 @@ __device__ void prepareDepartureArray(SpeciesParticle* pcl, moverParameter *move
     departureArray->getArray()[pidx] = element;
 }
 
+/**
+ * @brief Update the number of particles after the mover kernel, for OBC. Reset OBC
+ * @details This should be only called after the moverKernel, if OBC is used. Only one thread
+ */
+__global__ void updatePclNumAfterMoverKernel(moverParameter *moverParam) {
+    if (threadIdx.x != 0) return;
+
+    auto pclsArray = moverParam->pclsArray;
+    auto departureArray = moverParam->departureArray;
+
+    // update the number of particles
+    if (moverParam->doOpenBC == true)
+    pclsArray->setNOP(pclsArray->getNOP() + moverParam->appendCountAtomic);
+
+    moverParam->appendCountAtomic = 0;
+}

@@ -30,17 +30,8 @@
 using commonType = cudaTypeDouble; // calculation type
 
 
-/**
- * @brief moment kernel, one particle per thread
- * @details the moment kernel should be launched in species
- *          if these're 4 species, launch 4 times in different streams
- * 
- * @param grid 
- * @param _pcls the particles of a species
- * @param moments array4, [x][y][z][density], 
- *                  here[nxn][nyn][nzn][10], must be 0 before kernel launch
- */
-__global__ void momentKernelStayed(const uint32_t* appendCount, momentParameter* momentParam,
+
+__global__ void momentKernelStayed(momentParameter* momentParam,
                                 grid3DCUDA* grid,
                                 cudaTypeArray1<cudaMomentType> moments)
 {
@@ -48,7 +39,7 @@ __global__ void momentKernelStayed(const uint32_t* appendCount, momentParameter*
     const uint tidx = blockIdx.x * blockDim.x + threadIdx.x;
     const uint gridSize = blockDim.x * gridDim.x;
     auto pclsArray = momentParam->pclsArray;
-    const uint totPcl = pclsArray->getNOP() + *appendCount;
+    const uint totPcl = pclsArray->getNOP();
 
     for(uint pidx = tidx; pidx < totPcl; pidx += gridSize )
     {

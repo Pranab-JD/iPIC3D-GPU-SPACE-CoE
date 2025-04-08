@@ -432,12 +432,9 @@ int c_Solver::initCUDA(){
   }
 
 
-
-  // simple device buffer, allocate one dimension array on device memory
   auto gridSize = grid->getNXN() * grid->getNYN() * grid->getNZN();
-  momentsCUDAPtr = new cudaTypeArray1<cudaMomentType>[ns];
-  //for(int i=0; i<ns; i++)cudaMallocAsync(&(momentsCUDAPtr[i]), gridSize*10*sizeof(cudaMomentType), streams[i]);
-  for(int i=0; i<ns; i++)cudaMalloc(&(momentsCUDAPtr[i]), gridSize*10*sizeof(cudaMomentType));
+  momentsCUDAPtr = new cudaMomentType*[ns];
+  for(int i=0; i<ns; i++)cudaErrChk(cudaMalloc(&(momentsCUDAPtr[i]), gridSize*10*sizeof(cudaMomentType)));
 
   { // register the 10 densities to host pinned memory
     for(int i=0; i<ns; i++){
@@ -455,13 +452,9 @@ int c_Solver::initCUDA(){
 
   }
 
-  // cudaMallocAsync(&fieldForPclCUDAPtr, gridSize*8*sizeof(cudaCommonType), 0);
 
   const int fieldSize = grid->getNZN() * (grid->getNYN() - 1) * (grid->getNXN() - 1);
-
-  //cudaMallocAsync(&fieldForPclCUDAPtr, fieldSize * 24 * sizeof(cudaFieldType), 0);
   cudaMalloc(&fieldForPclCUDAPtr, fieldSize * 24 * sizeof(cudaFieldType));
-
   cudaErrChk(cudaHostAlloc((void**)&fieldForPclHostPtr, fieldSize * 24 * sizeof(cudaFieldType), 0));
 
   threadPoolPtr = new ThreadPool(ns);
@@ -473,7 +466,6 @@ int c_Solver::initCUDA(){
   for(int i=0;i<2*ns;i++){
     toBeMerged[i] = 0;
   }
-  //memset(toBeMerged, 0, 2 * ns * sizeof(int));
 
   cudaErrChk(cudaHostAlloc(&cellCountHostPtr, sizeof(int) * grid->getNXC() * grid->getNYC() * grid->getNZC(), cudaHostAllocDefault));
   cudaErrChk(cudaHostAlloc(&cellOffsetHostPtr, sizeof(int) * grid->getNXC() * grid->getNYC() * grid->getNZC(), cudaHostAllocDefault));
@@ -634,11 +626,7 @@ int c_Solver::cudaLauncherAsync(const int species){
   cudaErrChk(cudaEventCreateWithFlags(&event2, cudaEventDisableTiming));
   auto gridSize = grid->getNXN() * grid->getNYN() * grid->getNZN();
 
-  
-  // particle number control 
   // splitting
-  //std::cout << "myrank: "<<MPIdata::get_rank() <<" pclsArrayHostPtr[species]->getInitialNOP(): " << pclsArrayHostPtr[species]->getInitialNOP() <<
-  //          " pclsArrayHostPtr[species]->getNOP() " << pclsArrayHostPtr[species]->getNOP() << std::endl;
   constexpr bool PARTICLE_SPLITTING = true;
   if constexpr(PARTICLE_SPLITTING)
   {
@@ -667,48 +655,43 @@ int c_Solver::cudaLauncherAsync(const int species){
     }
   }
   
-  // Mover
-  // wait to field values copied to device
-  cudaErrChk(cudaStreamWaitEvent(streams[species], event0, 0));
-  if (col->getCase()=="Dipole" || col->getCase()=="Dipole2D")
-    moverSubcyclesKernel<<<getGridSize((int)pclsArrayHostPtr[species]->getNOP(), 256), 256, 0, streams[species]>>>(moverParamCUDAPtr[species], fieldForPclCUDAPtr, grid3DCUDACUDAPtr);
-  else
-    moverKernel<<<getGridSize((int)pclsArrayHostPtr[species]->getNOP(), 256), 256, 0, streams[species]>>>(moverParamCUDAPtr[species], fieldForPclCUDAPtr, grid3DCUDACUDAPtr);
-  
-  cudaErrChk(cudaEventRecord(event1, streams[species]));
-  // Moment stayed
-  cudaErrChk(cudaMemsetAsync(momentsCUDAPtr[species], 0, gridSize*10*sizeof(cudaMomentType), streams[species]));  // set moments to 0
-  momentKernelStayed<<<getGridSize((int)pclsArrayHostPtr[species]->getNOP(), 256), 256, 0, streams[species] >>>
-                          (&(moverParamCUDAPtr[species]->appendCountAtomic), momentParamCUDAPtr[species], grid3DCUDACUDAPtr, momentsCUDAPtr[species]);
+  const int oldNOP = pclsArrayHostPtr[species]->getNOP();
 
-  // Copy 7 exiting hashedSum to host
+  // Mover
+  cudaErrChk(cudaStreamWaitEvent(streams[species], event0, 0)); // wait for field
+  if (col->getCase()=="Dipole" || col->getCase()=="Dipole2D")
+    moverSubcyclesKernel<<<getGridSize(oldNOP, 256), 256, 0, streams[species]>>>
+      (moverParamCUDAPtr[species], fieldForPclCUDAPtr, grid3DCUDACUDAPtr);
+  else
+    moverKernel<<<getGridSize(oldNOP, 256), 256, 0, streams[species]>>>
+      (moverParamCUDAPtr[species], fieldForPclCUDAPtr, grid3DCUDACUDAPtr);
+  
+  if (moverParamHostPtr[species]->doOpenBC) { // update the particle number, OBC append
+    updatePclNumAfterMoverKernel<<<1, 1, 0, streams[species]>>>(moverParamCUDAPtr[species]);
+  }
+  cudaErrChk(cudaEventRecord(event1, streams[species]));
+
+  // Moment stayed
+  cudaErrChk(cudaMemsetAsync(momentsCUDAPtr[species], 0, gridSize*10*sizeof(cudaMomentType), streams[species+ns]));  // set moments to 0
+  cudaErrChk(cudaEventRecord(event2, streams[species+ns]));
+  cudaErrChk(cudaStreamWaitEvent(streams[species], event2, 0)); 
+  momentKernelStayed<<<getGridSize(oldNOP, 256), 256, 0, streams[species] >>>
+    (momentParamCUDAPtr[species], grid3DCUDACUDAPtr, momentsCUDAPtr[species]);
+
+  // Get the number of exiting, deleted particles
   cudaErrChk(cudaStreamWaitEvent(streams[species+ns], event1, 0));
   cudaErrChk(cudaMemcpyAsync(hashedSumArrayHostPtr[species], hashedSumArrayCUDAPtr[species], 
     departureArrayElementType::DELETE*sizeof(hashedSum), cudaMemcpyDefault, streams[species+ns]));
-
-  // Copy OpenBC appended particle number to host
-  if (moverParamHostPtr[species]->doOpenBC) {
-    cudaErrChk(cudaMemcpyAsync(&moverParamHostPtr[species]->appendCountAtomic, &moverParamCUDAPtr[species]->appendCountAtomic, 
-                                sizeof(uint32_t), cudaMemcpyDefault, streams[species+ns]));
-    cudaErrChk(cudaMemsetAsync(&moverParamCUDAPtr[species]->appendCountAtomic, 0, sizeof(uint32_t), streams[species+ns]));
-    cudaErrChk(cudaStreamSynchronize(streams[species+ns]));
-
-    const uint32_t newPclAfterOBC = pclsArrayHostPtr[species]->getNOP() + moverParamHostPtr[species]->appendCountAtomic;
-    pclsArrayHostPtr[species]->setNOE(newPclAfterOBC);
-    cudaErrChk(cudaMemcpyAsync(pclsArrayCUDAPtr[species], pclsArrayHostPtr[species], sizeof(particleArrayCUDA), cudaMemcpyDefault, streams[species+ns]));
-  }
-
-
-  // After Mover
   cudaErrChk(cudaStreamSynchronize(streams[species+ns]));
-  //cudaErrChk(cudaStreamSynchronize(streams[species]));
+  // sync the nop to host
+  cudaErrChk(cudaMemcpyAsync(pclsArrayHostPtr[species], pclsArrayCUDAPtr[species], sizeof(particleArrayCUDA), cudaMemcpyDefault, streams[species+ns]));
+
+
   int x = 0; // exiting particle number
   for(int i=0; i<departureArrayElementType::DELETE_HASHEDSUM_INDEX; i++)x += hashedSumArrayHostPtr[species][i].getSum();
   const int y = hashedSumArrayHostPtr[species][departureArrayElementType::DELETE_HASHEDSUM_INDEX].getSum(); // deleted particle number
   const int hole = x + y;
-  //if (y > 0){
-  //  std::cout << " Particle holes myrank: "<< MPIdata::get_rank() << " species: " << species<< " hole: " << hole << " deleted: "<< y << std::endl;
-  //}
+
   if(x > exitingArrayHostPtr[species]->getSize()){ 
     // prepare the exitingArray
     exitingArrayHostPtr[species]->expand(x * 1.5, streams[species+ns]);
@@ -729,21 +712,22 @@ int c_Solver::cudaLauncherAsync(const int species){
     pclArray->reserve(x * 1.5);
   }
 
-  exitingKernel<<<getGridSize((int)pclsArrayHostPtr[species]->getNOP(), 256), 256, 0, streams[species+ns]>>>(pclsArrayCUDAPtr[species], 
-                departureArrayCUDAPtr[species], exitingArrayCUDAPtr[species], hashedSumArrayCUDAPtr[species]);
+  exitingKernel<<<getGridSize(oldNOP / 4, 256), 256, 0, streams[species+ns]>>>
+    (pclsArrayCUDAPtr[species], departureArrayCUDAPtr[species], exitingArrayCUDAPtr[species], hashedSumArrayCUDAPtr[species], hole);
   cudaErrChk(cudaEventRecord(event2, streams[species+ns]));
   // Copy exiting particle to host
   cudaErrChk(cudaMemcpyAsync(part[species].get_pcl_array().getList(), exitingArrayHostPtr[species]->getArray(), 
                               x*sizeof(SpeciesParticle), cudaMemcpyDefault, streams[species+ns]));
   part[species].get_pcl_array().setSize(x);
 
-  // Sorting, the first cycle, x might be 0
+  // Sorting
   cudaErrChk(cudaStreamWaitEvent(streams[species], event2, 0));
-  if (hole > 0) 
-  sortingKernel1<<<getGridSize(hole, 128), 128, 0, streams[species]>>>(pclsArrayCUDAPtr[species], departureArrayCUDAPtr[species], 
-                                                          fillerBufferArrayCUDAPtr[species], hashedSumArrayCUDAPtr[species]+departureArrayElementType::FILLER_HASHEDSUM_INDEX, hole);
-  sortingKernel2<<<getGridSize((int)(pclsArrayHostPtr[species]->getNOP()-hole), 256), 256, 0, streams[species]>>>(pclsArrayCUDAPtr[species], departureArrayCUDAPtr[species], 
-                                                          fillerBufferArrayCUDAPtr[species], hashedSumArrayCUDAPtr[species]+departureArrayElementType::HOLE_HASHEDSUM_INDEX, pclsArrayHostPtr[species]->getNOP()-hole);
+  if (hole > 0){
+    sortingKernel1<<<getGridSize(hole, 128), 128, 0, streams[species]>>>(pclsArrayCUDAPtr[species], departureArrayCUDAPtr[species], 
+      fillerBufferArrayCUDAPtr[species], hashedSumArrayCUDAPtr[species]+departureArrayElementType::FILLER_HASHEDSUM_INDEX, hole);
+    sortingKernel2<<<getGridSize((oldNOP-hole)/4, 256), 256, 0, streams[species]>>>(pclsArrayCUDAPtr[species], departureArrayCUDAPtr[species], 
+      fillerBufferArrayCUDAPtr[species], hashedSumArrayCUDAPtr[species]+departureArrayElementType::HOLE_HASHEDSUM_INDEX, hole);
+  }
 
   cudaErrChk(cudaEventDestroy(event1));
   cudaErrChk(cudaEventDestroy(event2));
@@ -756,14 +740,10 @@ bool c_Solver::ParticlesMoverMomentAsync()
   // move all species of particles
   
   timeTasks_set_main_task(TimeTasks::PARTICLES);
-  // Should change this to add background field
-  //EMf->set_fieldForPcls();
   EMf->set_fieldForPclsToCenter(fieldForPclHostPtr);
 
   auto gridSize = grid->getNXN() * grid->getNYN() * grid->getNZN();
-  //! copy fieldForPcls to device, for every species 
   cudaErrChk(cudaMemcpyAsync(fieldForPclCUDAPtr, fieldForPclHostPtr, (grid->getNZN() * (grid->getNYN() - 1) * (grid->getNXN() - 1)) * 24 * sizeof(cudaFieldType), cudaMemcpyDefault, streams[0]));
-    // castingField<<<gridSize/256 + 1, 256, 0, streams[0]>>>(grid3DCUDACUDAPtr, fieldForPclCUDAPtr);
   cudaErrChk(cudaEventRecord(event0, streams[0]));
 
   for(int i=0; i<ns; i++){
@@ -825,7 +805,6 @@ bool c_Solver::MoverAwaitAndPclExchange()
   for(int i=0; i<ns; i++){
 
     // Copy repopulate particle and the incoming particles to device
-    const auto oldPclNum = pclsArrayHostPtr[i]->getNOP();
     pclsArrayHostPtr[i]->setNOE(stayedParticle[i]); // After the Sorting
     auto newPclNum = stayedParticle[i] + part[i].getNOP();
 
@@ -849,7 +828,7 @@ bool c_Solver::MoverAwaitAndPclExchange()
     momentKernelNew<<<getGridSize(pclsArrayHostPtr[i]->getNOP() - stayedParticle[i], 128u), 128, 0, streams[i] >>>
                       (momentParamCUDAPtr[i], grid3DCUDACUDAPtr, momentsCUDAPtr[i], stayedParticle[i]);
 
-    // reset the hashedSum, no need for departureArray it will be cleared in Mover
+    // reset the hashedSum, and the departureArray, which is a must
     for(int j=0; j<departureArrayElementType::HASHED_SUM_NUM; j++)hashedSumArrayHostPtr[i][j].resetBucket();
     cudaErrChk(cudaMemcpyAsync(hashedSumArrayCUDAPtr[i], hashedSumArrayHostPtr[i], (departureArrayElementType::HASHED_SUM_NUM) * sizeof(hashedSum), cudaMemcpyDefault, streams[i]));
 

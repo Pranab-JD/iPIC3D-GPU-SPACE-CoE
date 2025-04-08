@@ -39,36 +39,29 @@ int main(int argc, char **argv) {
   KCode.Init(argc, argv); //! load param from file, init the grid, fields
   dataAnalysis::dataAnalysisPipeline DA(KCode); // has to be created after KCode.Init()
 
-
   timeTasks.resetCycle(); //reset timer
   KCode.CalculateMoments();
+
   for (int i = KCode.FirstCycle(); i < KCode.LastCycle(); i++) {
 
     if (KCode.get_myrank() == 0)
       printf(" ======= Cycle %d ======= \n",i);
     
-    auto start = std::chrono::high_resolution_clock::now();
     timeTasks.resetCycle();
 
     KCode.writeParticleNum(i);
 
     DA.startAnalysis(i);
-    KCode.CalculateField(i); // E field
+    KCode.CalculateField(i); // E field, spare GPU cycles
     DA.waitForAnalysis();
 
     KCode.ParticlesMoverMomentAsync(); // launch Mover and Moment kernels
-    // some spare CPU cycles
-    KCode.WriteOutput(i);
-
+    KCode.WriteOutput(i);    // some spare CPU cycles
     KCode.MoverAwaitAndPclExchange();
-    KCode.CalculateB(); 
+    KCode.CalculateB();     // some spare CPU cycles
     KCode.MomentsAwait(); 
 
     KCode.outputCopyAsync(i); // copy output data to host, for next output
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> elapsed = end - start;
-    if (KCode.get_myrank() == 0)
-      std::cout<< "Execution time cycle: "<< elapsed.count() << " ms" <<std::endl;
 
 #ifdef LOG_TASKS_TOTAL_TIME
     timeTasks.print_cycle_times(i); // print out total time for all tasks

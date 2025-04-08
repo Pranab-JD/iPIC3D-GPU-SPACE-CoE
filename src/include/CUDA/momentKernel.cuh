@@ -28,7 +28,18 @@ public:
 
 };
 
-__global__ void momentKernelStayed(const uint32_t* appendCount, momentParameter* momentParam,
+
+/**
+ * @brief moment kernel, one particle per thread is fine
+ * @details the moment kernel should be launched in species
+ *          if these're 4 species, launch 4 times in different streams
+ * 
+ * @param grid 
+ * @param _pcls the particles of a species
+ * @param moments array4, [x][y][z][density], 
+ *                  here[nxn][nyn][nzn][10], must be 0 before kernel launch
+ */
+__global__ void momentKernelStayed(momentParameter* momentParam,
                                     grid3DCUDA* grid,
                                     cudaTypeArray1<cudaMomentType> moments);
 
