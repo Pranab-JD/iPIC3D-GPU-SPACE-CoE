@@ -50,7 +50,7 @@ __global__ void moverKernel(moverParameter *moverParam,
     if(pidx >= pclsArray->getNOP())return;
     
     const commonType dto2 = .5 * moverParam->dt,
-                     qdto2mc = moverParam->qom * dto2 / moverParam->c;
+        qdto2mc = moverParam->qom * dto2 / moverParam->c;
 
     // copy the particle
     SpeciesParticle *pcl = pclsArray->getpcls() + pidx;
@@ -240,7 +240,7 @@ __global__ void moverSubcyclesKernel(moverParameter *moverParam,
     // evaluate dt_substep and number of sub cycles
 
     const commonType dto2 = .5 * moverParam->dt;
-    const commonType qdto2mc = moverParam->qom * dto2 / moverParam->c;
+    [[maybe_unused]] const commonType qdto2mc = moverParam->qom * dto2 / moverParam->c;
 
     commonType dt_sub = M_PI * moverParam->c / (4 * fabs(moverParam->qom) * B_mag);
     const int sub_cycles = (int)(moverParam->dt / dt_sub) + 1;
@@ -430,7 +430,7 @@ __device__ uint32_t deleteAppendOpenBCOutflow(SpeciesParticle* pcl, moverParamet
                 if (index >= moverParam->pclsArray->getSize()) {
                     printf("Memory overflow in open boundary outflow\n");
                     //__trap();
-                    return -1;
+                    continue;
                 }
                 memcpy(moverParam->pclsArray->getpcls() + index, &newPcl, sizeof(SpeciesParticle));
                 if(newPcl.get_x() < grid->xStart)
@@ -600,11 +600,10 @@ __global__ void updatePclNumAfterMoverKernel(moverParameter *moverParam) {
     if (threadIdx.x != 0) return;
 
     auto pclsArray = moverParam->pclsArray;
-    auto departureArray = moverParam->departureArray;
 
     // update the number of particles
     if (moverParam->doOpenBC == true)
-    pclsArray->setNOP(pclsArray->getNOP() + moverParam->appendCountAtomic);
+    pclsArray->setNOE(pclsArray->getNOP() + moverParam->appendCountAtomic);
 
     moverParam->appendCountAtomic = 0;
 }
