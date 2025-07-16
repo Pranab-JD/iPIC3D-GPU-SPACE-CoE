@@ -58,11 +58,11 @@ int main(int argc, char **argv)
             KCode.writeParticleNum(i);
 
             //? Field Solver --> Compute E field 
-            time_EF.start();
             DA.startAnalysis(i);
+            time_EF.start();
             KCode.CalculateField(i); // E field, spare GPU cycles
-            DA.waitForAnalysis();
             time_EF.stop();
+            DA.waitForAnalysis();
 
             //? Particle Pusher --> Compute new velocities and positions of the particles
             time_PM.start();
@@ -91,10 +91,6 @@ int main(int argc, char **argv)
             KCode.outputCopyAsync(i); // copy output data to host, for next output
             time_CP.stop();
 
-            #ifdef LOG_TASKS_TOTAL_TIME
-                timeTasks.print_cycle_times(i); // print out total time for all tasks
-            #endif
-
             if(MPIdata::get_rank() == 0)
             {
                 std::cout << std::endl << "Runtime of iPIC3D modules " << std::endl;
@@ -112,10 +108,6 @@ int main(int argc, char **argv)
                 std::cout << "Copy data          : " << time_CP.total()   << " s" << std::endl;
             }
         }
-
-        #ifdef LOG_TASKS_TOTAL_TIME
-            timeTasks.print_tasks_total_times();
-        #endif
 
         KCode.Finalize();
     }
