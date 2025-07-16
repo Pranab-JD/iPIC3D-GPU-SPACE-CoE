@@ -27,55 +27,101 @@
 #include <chrono>
 
 #include "dataAnalysis.cuh"
+#include "utility/LeXInt_Timer.hpp"
 
 using namespace iPic3D;
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv) 
+{
+    //* Initialise MPI
 
- MPIdata::init(&argc, &argv);
- {
-
-  iPic3D::c_Solver KCode;
-  KCode.Init(argc, argv); //! load param from file, init the grid, fields
-  dataAnalysis::dataAnalysisPipeline DA(KCode); // has to be created after KCode.Init()
-
-  timeTasks.resetCycle(); //reset timer
-  KCode.CalculateMoments();
-
-  for (int i = KCode.FirstCycle(); i < KCode.LastCycle(); i++) {
-
-    if (KCode.get_myrank() == 0)
-      printf(" ======= Cycle %d ======= \n",i);
+    MPIdata::init(&argc, &argv);
     
-    timeTasks.resetCycle();
+    {
+        iPic3D::c_Solver KCode;
+        KCode.Init(argc, argv); //! load param from file, init the grid, fields
+        dataAnalysis::dataAnalysisPipeline DA(KCode); // has to be created after KCode.Init()
 
-    KCode.writeParticleNum(i);
+        //? LeXInt timer
+        LeXInt::timer time_EF, time_PM, time_MF, time_MG, time_WD, time_EX, time_CP;
 
-    DA.startAnalysis(i);
-    KCode.CalculateField(i); // E field, spare GPU cycles
-    DA.waitForAnalysis();
+        //? Initial moment computation
+        KCode.CalculateMoments();
 
-    KCode.ParticlesMoverMomentAsync(); // launch Mover and Moment kernels
-    KCode.WriteOutput(i);    // some spare CPU cycles
-    KCode.MoverAwaitAndPclExchange();
-    KCode.CalculateB();     // some spare CPU cycles
-    KCode.MomentsAwait(); 
+        for (int i = KCode.FirstCycle(); i < KCode.LastCycle(); i++) 
+        {
+            if (KCode.get_myrank() == 0)
+                std::cout << std::endl << "=================== Cycle " << i << " ===================" << std::endl ;
+            
+            timeTasks.resetCycle();
 
-    KCode.outputCopyAsync(i); // copy output data to host, for next output
+            KCode.writeParticleNum(i);
 
-#ifdef LOG_TASKS_TOTAL_TIME
-    timeTasks.print_cycle_times(i); // print out total time for all tasks
-#endif
-  }
+            //? Field Solver --> Compute E field 
+            time_EF.start();
+            DA.startAnalysis(i);
+            KCode.CalculateField(i); // E field, spare GPU cycles
+            DA.waitForAnalysis();
+            time_EF.stop();
 
-#ifdef LOG_TASKS_TOTAL_TIME
-    timeTasks.print_tasks_total_times();
-#endif
+            //? Particle Pusher --> Compute new velocities and positions of the particles
+            time_PM.start();
+            KCode.ParticlesMoverMomentAsync(); // launch Mover and Moment kernels
+            time_PM.stop();
 
-  KCode.Finalize();
- }
- // close MPI
- MPIdata::instance().finalize_mpi();
+            time_WD.start();
+            // KCode.WriteOutput(i);    // some spare CPU cycles
+            time_WD.stop();
 
- return 0;
+            time_EX.start();
+            KCode.MoverAwaitAndPclExchange();
+            time_EX.stop();
+
+            //? Field Solver --> Compute B fields 
+            time_MF.start();
+            KCode.CalculateB();     // some spare CPU cycles
+            time_MF.stop();
+
+            //? Moment Gatherer --> Compute charge density, current density, and pressure tnesor
+            time_MG.start();
+            KCode.MomentsAwait();
+            time_MG.stop();
+
+            time_CP.start();
+            KCode.outputCopyAsync(i); // copy output data to host, for next output
+            time_CP.stop();
+
+            #ifdef LOG_TASKS_TOTAL_TIME
+                timeTasks.print_cycle_times(i); // print out total time for all tasks
+            #endif
+
+            if(MPIdata::get_rank() == 0)
+            {
+                std::cout << std::endl << "Runtime of iPIC3D modules " << std::endl;
+                std::cout << "Field solver (E)   : " << time_EF.total()   << " s" << std::endl;
+                std::cout << "Field solver (B)   : " << time_MF.total()   << " s" << std::endl;
+                std::cout << "Particle mover     : " << time_PM.total()   << " s" << std::endl;
+                std::cout << "Moment gatherer    : " << time_MG.total()   << " s" << std::endl;
+            }
+
+            if(MPIdata::get_rank() == 0)
+            {
+                std::cout << std::endl << "Runtime of other core functions " << std::endl;
+                std::cout << "Write data         : " << time_WD.total()   << " s" << std::endl;
+                std::cout << "Exchange Particles : " << time_EX.total()   << " s" << std::endl;
+                std::cout << "Copy data          : " << time_CP.total()   << " s" << std::endl;
+            }
+        }
+
+        #ifdef LOG_TASKS_TOTAL_TIME
+            timeTasks.print_tasks_total_times();
+        #endif
+
+        KCode.Finalize();
+    }
+
+    //* Finalise MPI
+    MPIdata::instance().finalize_mpi();
+
+    return 0;
 }
