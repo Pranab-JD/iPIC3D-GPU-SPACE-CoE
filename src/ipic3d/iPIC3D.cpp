@@ -34,7 +34,6 @@ using namespace iPic3D;
 int main(int argc, char **argv) 
 {
     //* Initialise MPI
-
     MPIdata::init(&argc, &argv);
     
     {
