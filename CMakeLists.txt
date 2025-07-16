@@ -126,28 +126,27 @@ add_library( iPIC3Dlib ${src_files} )
 
 
 if(HIP_ON)
-  find_package(HIP REQUIRED)
-  enable_language(HIP)
-  message(STATUS "Using HIP environment.")
-  set(DEVICE_LANGUAGE HIP)
-  set(DEVICE_COMPILER hipcc)
-  target_link_libraries(iPIC3Dlib PRIVATE hip::device)
-  target_link_libraries(iPIC3Dlib PRIVATE hip::host)
+    find_package(HIP REQUIRED)
+    enable_language(HIP)
+    message(STATUS "Using HIP environment.")
+    set(DEVICE_LANGUAGE HIP)
+    set(DEVICE_COMPILER hipcc)
+    target_link_libraries(iPIC3Dlib PRIVATE hip::device)
+    target_link_libraries(iPIC3Dlib PRIVATE hip::host)
 
-  target_compile_options(iPIC3Dlib PUBLIC -fgpu-rdc)
-  target_link_options(iPIC3Dlib PUBLIC  -fgpu-rdc --hip-link)
+    target_compile_options(iPIC3Dlib PUBLIC -fgpu-rdc)
+    target_link_options(iPIC3Dlib PUBLIC  -fgpu-rdc --hip-link)
 
-  set_property(TARGET iPIC3Dlib PROPERTY HIP_ARCHITECTURES gfx90a)
+    set_property(TARGET iPIC3Dlib PROPERTY HIP_ARCHITECTURES gfx90a)
 else()
-  enable_language(CUDA)
-
-  set_target_properties(iPIC3Dlib PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-  set_property(TARGET iPIC3Dlib PROPERTY CUDA_ARCHITECTURES 75) # required for double atomicadd
-  set_property(TARGET iPIC3Dlib PROPERTY CUDA_STANDARD 17)
-  set_property(TARGET iPIC3Dlib PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
-#   set_property(TARGET iPIC3Dlib PROPERTY LINK_OPTIONS -fno-lto)
-
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -lineinfo")
+    # If HIP is OFF, CUDA will be used
+    enable_language(CUDA)
+    set_target_properties(iPIC3Dlib PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+    set_property(TARGET iPIC3Dlib PROPERTY CUDA_ARCHITECTURES 75) # required for double atomicadd
+    set_property(TARGET iPIC3Dlib PROPERTY CUDA_STANDARD 17)
+    set_property(TARGET iPIC3Dlib PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
+    #   set_property(TARGET iPIC3Dlib PROPERTY LINK_OPTIONS -fno-lto)
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -lineinfo")
 endif()
 
 set(include_path ${INCLUDE_CODE_DIR})
