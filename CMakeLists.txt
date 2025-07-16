@@ -12,6 +12,11 @@ macro(DP var)
   message(NOTICE "${var} = '${${var}}'")
 endmacro()
 
+# Suppress all warnings
+add_compile_options(-w)
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -w")
+set(CMAKE_HIP_FLAGS "${CMAKE_HIP_FLAGS} -w")
+
 # First, do the site configuration
 
 # This function globs for the existing configurations.
@@ -36,16 +41,12 @@ set_property(CACHE SITE PROPERTY STRINGS "${KNOWN_SITES}")
 # Include it
 include("${CMAKE_SOURCE_DIR}/cmake/sites/${SITE}.cmake")
 
-# Use CMake default variable for this so add_library will
-# automatically do the right thing.
+# Use CMake default variable for this so add_library will automatically do the right thing.
 option(BUILD_SHARED_LIBS "Use shared libraries if ON, static if OFF" ON)
 option(USE_CATALYST "Use Catalyst adaptor" OFF)
 option(USE_BATSRUS "Use BATSRUS flag" OFF)
-option(USE_ADIOS2 "Use ADIOS2 library" ON)
-
+option(USE_ADIOS2 "Use ADIOS2 library" OFF)
 option(HIP_ON "Use HIP" OFF) # Set it to OFF if you want to use CUDA, ON for HIP
-
-
 option(BENCH_MARK "Print tasks time" OFF)
 option(USE_OPENMP "Use OpenMP in supported loops" ON) # must delete all cmake cache if you change this option
 
@@ -82,7 +83,7 @@ endif()
 # Find MPI and OpenMP
 find_package(MPI REQUIRED COMPONENTS CXX)
 if(USE_OPENMP)
-find_package(OpenMP REQUIRED COMPONENTS CXX)
+    find_package(OpenMP REQUIRED COMPONENTS CXX)
 endif()
 
 if (USE_ADIOS2)
@@ -144,7 +145,7 @@ else()
   set_property(TARGET iPIC3Dlib PROPERTY CUDA_ARCHITECTURES 75) # required for double atomicadd
   set_property(TARGET iPIC3Dlib PROPERTY CUDA_STANDARD 17)
   set_property(TARGET iPIC3Dlib PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
-  set_property(TARGET iPIC3Dlib PROPERTY LINK_OPTIONS -fno-lto)
+#   set_property(TARGET iPIC3Dlib PROPERTY LINK_OPTIONS -fno-lto)
 
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -lineinfo")
 endif()
@@ -185,6 +186,7 @@ endif()
 target_link_libraries(
     iPIC3Dlib
     PUBLIC ${linkLibraries}
+    MPI::MPI_CXX
 )
 
 
@@ -282,6 +284,7 @@ message("Compiler & compiler flags:")
 message("CMAKE_CXX_COMPILER is ${CMAKE_CXX_COMPILER}")
 message("CMAKE_CXX_FLAGS is ${CMAKE_CXX_FLAGS}")
 message("MPI_LIBRARIES is ${MPI_LIBRARIES}")
+
 if(HIP_ON)
   message("Compiling with HIP")
 else()
