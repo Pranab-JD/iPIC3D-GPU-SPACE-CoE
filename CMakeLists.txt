@@ -227,6 +227,7 @@ add_executable(
 target_link_libraries(
   iPIC3D
   iPIC3Dlib
+  stdc++fs
   )
 
 if(NOT CMAKE_BUILD_TYPE)
