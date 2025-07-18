@@ -47,7 +47,7 @@ option(USE_CATALYST "Use Catalyst adaptor" OFF)
 option(USE_BATSRUS "Use BATSRUS flag" OFF)
 option(USE_ADIOS2 "Use ADIOS2 library" OFF)
 option(HIP_ON "Use HIP" OFF) # Set it to OFF if you want to use CUDA, ON for HIP
-option(BENCH_MARK "Print tasks time" OFF)
+# option(BENCH_MARK "Print tasks time" OFF)
 option(USE_OPENMP "Use OpenMP in supported loops" ON) # must delete all cmake cache if you change this option
 
 include(GNUInstallDirs)
@@ -82,48 +82,67 @@ endif()
 
 # Find MPI and OpenMP
 find_package(MPI REQUIRED COMPONENTS CXX)
+
 if(USE_OPENMP)
     find_package(OpenMP REQUIRED COMPONENTS CXX)
 endif()
 
 if (USE_ADIOS2)
-  set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/thirdparty/adios2")
-  find_package(ADIOS2 REQUIRED)
+    set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/thirdparty/adios2")
+    find_package(ADIOS2 REQUIRED)
 endif()
+
 
 #
 # Source file list
 #
 file(
-  GLOB
-  src_files
-  ${SOURCE_CODE_DIR}/ConfigFile/src/*.cpp
-  ${SOURCE_CODE_DIR}/PSKOutput3D/*.cpp
-  ${SOURCE_CODE_DIR}/bc/*.cpp
-  ${SOURCE_CODE_DIR}/communication/*.cpp
-  ${SOURCE_CODE_DIR}/fields/*.cpp
-  ${SOURCE_CODE_DIR}/grids/*.cpp
-  ${SOURCE_CODE_DIR}/inputoutput/*.cpp
-  ${SOURCE_CODE_DIR}/mathlib/*.cpp
-  ${SOURCE_CODE_DIR}/particles/*.cpp
-  ${SOURCE_CODE_DIR}/performances/*.cpp
-  ${SOURCE_CODE_DIR}/solvers/*.cpp
-  ${SOURCE_CODE_DIR}/utility/*.cpp
-  ${SOURCE_CODE_DIR}/main/*.cpp
-  mpidata/*.cpp
-  processtopology/*.cpp
-  )
+    GLOB
+    src_files
+    ${SOURCE_CODE_DIR}/ConfigFile/src/*.cpp
+    ${SOURCE_CODE_DIR}/PSKOutput3D/*.cpp
+    ${SOURCE_CODE_DIR}/bc/*.cpp
+    ${SOURCE_CODE_DIR}/communication/*.cpp
+    ${SOURCE_CODE_DIR}/fields/*.cpp
+    ${SOURCE_CODE_DIR}/grids/*.cpp
+    ${SOURCE_CODE_DIR}/inputoutput/*.cpp
+    ${SOURCE_CODE_DIR}/mathlib/*.cpp
+    ${SOURCE_CODE_DIR}/particles/*.cpp
+    ${SOURCE_CODE_DIR}/performances/*.cpp
+    ${SOURCE_CODE_DIR}/solvers/*.cpp
+    ${SOURCE_CODE_DIR}/utility/*.cpp
+    ${SOURCE_CODE_DIR}/main/*.cpp
+    mpidata/*.cpp
+    processtopology/*.cpp
+)
+
 # CUDA source files
 file(GLOB cuda_src_files ${SOURCE_CODE_DIR}/cudaKernel/*.cu ${SOURCE_CODE_DIR}/main/*.cu ${SOURCE_CODE_DIR}/dataAnalysis/*.cu)
 
 if(HIP_ON)
-  set_source_files_properties(${cuda_src_files} PROPERTIES LANGUAGE HIP)
+    set_source_files_properties(${cuda_src_files} PROPERTIES LANGUAGE HIP)
 endif()
 
 list(APPEND src_files ${cuda_src_files})
 
-add_library( iPIC3Dlib ${src_files} )
+add_library(iPIC3Dlib ${src_files})
 
+# Add MPI include path to HIP device compiler
+if(HIP_ON)
+    execute_process(
+        COMMAND mpicxx -show
+        OUTPUT_VARIABLE MPI_COMPILE_FLAGS
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    string(REGEX MATCHALL "-I[^ ]+" MPI_INCLUDE_FLAGS "${MPI_COMPILE_FLAGS}")
+    set(MPI_INCLUDE_DIRS "")
+    foreach(flag IN LISTS MPI_INCLUDE_FLAGS)
+        string(REPLACE "-I" "" inc "${flag}")
+        list(APPEND MPI_INCLUDE_DIRS "${inc}")
+    endforeach()
+    message(STATUS "MPI include dirs for HIP: ${MPI_INCLUDE_DIRS}")
+    target_include_directories(iPIC3Dlib PUBLIC ${MPI_INCLUDE_DIRS})
+endif()
 
 if(HIP_ON)
     find_package(HIP REQUIRED)
@@ -138,14 +157,17 @@ if(HIP_ON)
     target_link_options(iPIC3Dlib PUBLIC  -fgpu-rdc --hip-link)
 
     set_property(TARGET iPIC3Dlib PROPERTY HIP_ARCHITECTURES gfx90a)
-else()
+
+else()    
     # If HIP is OFF, CUDA will be used
     enable_language(CUDA)
+    
     set_target_properties(iPIC3Dlib PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
     set_property(TARGET iPIC3Dlib PROPERTY CUDA_ARCHITECTURES 75) # required for double atomicadd
     set_property(TARGET iPIC3Dlib PROPERTY CUDA_STANDARD 17)
     set_property(TARGET iPIC3Dlib PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
     #   set_property(TARGET iPIC3Dlib PROPERTY LINK_OPTIONS -fno-lto)
+    
     set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -lineinfo")
 endif()
 
@@ -161,10 +183,7 @@ else()
   list(APPEND include_path ${INCLUDE_CODE_DIR}/hip)
 endif()
 
-target_include_directories(
-  iPIC3Dlib
-  PUBLIC ${include_path}
-  )
+target_include_directories(iPIC3Dlib PUBLIC ${include_path} ${MPI_INCLUDE_DIRS})
 
 #
 # Link external libraries
@@ -238,15 +257,15 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   add_compile_definitions(DEBUG_MODE)
 endif()
 
-if(BENCH_MARK)
-target_compile_definitions(iPIC3Dlib PUBLIC LOG_TASKS_TOTAL_TIME)
-target_compile_definitions(iPIC3D PUBLIC LOG_TASKS_TOTAL_TIME)
-endif()
+# if(BENCH_MARK)
+# target_compile_definitions(iPIC3Dlib PUBLIC LOG_TASKS_TOTAL_TIME)
+# target_compile_definitions(iPIC3D PUBLIC LOG_TASKS_TOTAL_TIME)
+# endif()
 
-if(BENCH_MARK)
-target_compile_definitions(iPIC3Dlib PUBLIC LOG_TASKS_TOTAL_TIME)
-target_compile_definitions(iPIC3D PUBLIC LOG_TASKS_TOTAL_TIME)
-endif()
+# if(BENCH_MARK)
+# target_compile_definitions(iPIC3Dlib PUBLIC LOG_TASKS_TOTAL_TIME)
+# target_compile_definitions(iPIC3D PUBLIC LOG_TASKS_TOTAL_TIME)
+# endif()
 
 ## to save the executable in the folder where the CMakeLists.txt file is, i.e. CMAKE_CURRENT_SOURCE_DIR
 set_target_properties(iPIC3D PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
