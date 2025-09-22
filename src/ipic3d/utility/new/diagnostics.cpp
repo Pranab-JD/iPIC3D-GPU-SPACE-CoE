@@ -119,7 +119,7 @@ void TimeTasks::print_cycle_times()
   if(!get_rank())
   {
     fflush(stdout);
-    fprintf(stdout,"=== timing information for cycle=== \n");
+    // fprintf(stdout,"=== timing information for cycle=== \n");
     fprintf(stdout, TIMING_PREFIX
       "moms flds pcls Bfld cycl\n");
     fprintf(stdout, TIMING_PREFIX

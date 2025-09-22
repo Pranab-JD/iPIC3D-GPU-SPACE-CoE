@@ -47,7 +47,7 @@ option(USE_CATALYST "Use Catalyst adaptor" OFF)
 option(USE_BATSRUS "Use BATSRUS flag" OFF)
 option(USE_ADIOS2 "Use ADIOS2 library" OFF)
 option(HIP_ON "Use HIP" OFF) # Set it to OFF if you want to use CUDA, ON for HIP
-# option(BENCH_MARK "Print tasks time" OFF)
+option(BENCH_MARK "Print tasks time" ON)
 option(USE_OPENMP "Use OpenMP in supported loops" ON) # must delete all cmake cache if you change this option
 
 include(GNUInstallDirs)
@@ -257,15 +257,15 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   add_compile_definitions(DEBUG_MODE)
 endif()
 
-# if(BENCH_MARK)
-# target_compile_definitions(iPIC3Dlib PUBLIC LOG_TASKS_TOTAL_TIME)
-# target_compile_definitions(iPIC3D PUBLIC LOG_TASKS_TOTAL_TIME)
-# endif()
+if(BENCH_MARK)
+    target_compile_definitions(iPIC3Dlib PUBLIC LOG_TASKS_TOTAL_TIME)
+    target_compile_definitions(iPIC3D PUBLIC LOG_TASKS_TOTAL_TIME)
+endif()
 
-# if(BENCH_MARK)
-# target_compile_definitions(iPIC3Dlib PUBLIC LOG_TASKS_TOTAL_TIME)
-# target_compile_definitions(iPIC3D PUBLIC LOG_TASKS_TOTAL_TIME)
-# endif()
+if(BENCH_MARK)
+    target_compile_definitions(iPIC3Dlib PUBLIC LOG_TASKS_TOTAL_TIME)
+    target_compile_definitions(iPIC3D PUBLIC LOG_TASKS_TOTAL_TIME)
+endif()
 
 ## to save the executable in the folder where the CMakeLists.txt file is, i.e. CMAKE_CURRENT_SOURCE_DIR
 set_target_properties(iPIC3D PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
