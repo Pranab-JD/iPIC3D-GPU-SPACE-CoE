@@ -67,316 +67,315 @@ static bool print_pcl_comm_counts = false;
 
 static void print_pcl(SpeciesParticle& pcl, int ns)
 {
-  dprintf("--- pcl spec %d ---", ns);
-  dprintf("u = %+6.4f", pcl.get_u());
-  dprintf("v = %+6.4f", pcl.get_v());
-  dprintf("w = %+6.4f", pcl.get_w());
-  dprintf("q = %+6.4f", pcl.get_q());
-  dprintf("x = %+6.4f", pcl.get_x());
-  dprintf("y = %+6.4f", pcl.get_y());
-  dprintf("z = %+6.4f", pcl.get_z());
-  dprintf("t = %5.0f", pcl.get_t());
+    dprintf("--- pcl spec %d ---", ns);
+    dprintf("u = %+6.4f", pcl.get_u());
+    dprintf("v = %+6.4f", pcl.get_v());
+    dprintf("w = %+6.4f", pcl.get_w());
+    dprintf("q = %+6.4f", pcl.get_q());
+    dprintf("x = %+6.4f", pcl.get_x());
+    dprintf("y = %+6.4f", pcl.get_y());
+    dprintf("z = %+6.4f", pcl.get_z());
+    dprintf("t = %5.0f", pcl.get_t());
 }
 
 static void print_pcls(vector_SpeciesParticle& pcls, int start, int ns)
 {
-  for(int pidx=start; pidx<pcls.size();pidx++)
-  {
-    dprintf("--- particle %d.%d ---", ns,pidx);
-    dprintf("u[%d] = %+6.4f", pidx, pcls[pidx].get_u());
-    dprintf("v[%d] = %+6.4f", pidx, pcls[pidx].get_v());
-    dprintf("w[%d] = %+6.4f", pidx, pcls[pidx].get_w());
-    dprintf("q[%d] = %+6.4f", pidx, pcls[pidx].get_q());
-    dprintf("x[%d] = %+6.4f", pidx, pcls[pidx].get_x());
-    dprintf("y[%d] = %+6.4f", pidx, pcls[pidx].get_y());
-    dprintf("z[%d] = %+6.4f", pidx, pcls[pidx].get_z());
-    dprintf("t[%d] = %5.0f", pidx, pcls[pidx].get_t());
-  }
+    for(int pidx=start; pidx<pcls.size();pidx++)
+    {
+        dprintf("--- particle %d.%d ---", ns,pidx);
+        dprintf("u[%d] = %+6.4f", pidx, pcls[pidx].get_u());
+        dprintf("v[%d] = %+6.4f", pidx, pcls[pidx].get_v());
+        dprintf("w[%d] = %+6.4f", pidx, pcls[pidx].get_w());
+        dprintf("q[%d] = %+6.4f", pidx, pcls[pidx].get_q());
+        dprintf("x[%d] = %+6.4f", pidx, pcls[pidx].get_x());
+        dprintf("y[%d] = %+6.4f", pidx, pcls[pidx].get_y());
+        dprintf("z[%d] = %+6.4f", pidx, pcls[pidx].get_z());
+        dprintf("t[%d] = %5.0f", pidx, pcls[pidx].get_t());
+    }
 }
+
 void print_pcls(vector_SpeciesParticle& pcls, int ns, longid* id_list, int num_ids)
 {
-  dprintf("=== species %d, with %d pcls ===", ns, pcls.size());
-  for(int pidx=0; pidx<pcls.size();pidx++)
-  for(int i=0;i<num_ids;i++)
-  if(pcls[pidx].get_ID()==id_list[i])
-  {
-    dprintf("--- particle %d.%d ---", ns,pidx);
-    dprintf("u[%d] = %+6.4f", pidx, pcls[pidx].get_u());
-    dprintf("v[%d] = %+6.4f", pidx, pcls[pidx].get_v());
-    dprintf("w[%d] = %+6.4f", pidx, pcls[pidx].get_w());
-    dprintf("q[%d] = %+6.4f", pidx, pcls[pidx].get_q());
-    dprintf("x[%d] = %+6.4f", pidx, pcls[pidx].get_x());
-    dprintf("y[%d] = %+6.4f", pidx, pcls[pidx].get_y());
-    dprintf("z[%d] = %+6.4f", pidx, pcls[pidx].get_z());
-    dprintf("t[%d] = %5.0f", pidx, pcls[pidx].get_t());
-  }
+    dprintf("=== species %d, with %d pcls ===", ns, pcls.size());
+    for(int pidx=0; pidx<pcls.size();pidx++)
+        for(int i=0;i<num_ids;i++)
+            if(pcls[pidx].get_ID()==id_list[i])
+            {
+                dprintf("--- particle %d.%d ---", ns,pidx);
+                dprintf("u[%d] = %+6.4f", pidx, pcls[pidx].get_u());
+                dprintf("v[%d] = %+6.4f", pidx, pcls[pidx].get_v());
+                dprintf("w[%d] = %+6.4f", pidx, pcls[pidx].get_w());
+                dprintf("q[%d] = %+6.4f", pidx, pcls[pidx].get_q());
+                dprintf("x[%d] = %+6.4f", pidx, pcls[pidx].get_x());
+                dprintf("y[%d] = %+6.4f", pidx, pcls[pidx].get_y());
+                dprintf("z[%d] = %+6.4f", pidx, pcls[pidx].get_z());
+                dprintf("t[%d] = %5.0f", pidx, pcls[pidx].get_t());
+            }
 }
 
-/** deallocate particles */
-Particles3Dcomm::~Particles3Dcomm() {
-  // extra xavg for sort
-  MPI_Comm_free(&mpi_comm);
-  delete numpcls_in_bucket;
-  delete numpcls_in_bucket_now;
-  delete bucket_offset;
-}
-/** constructor for a single species*/
-// was Particles3Dcomm::allocate()
-Particles3Dcomm::Particles3Dcomm(
-  int species_number,
-  CollectiveIO * col_,
-  VirtualTopology3D * vct_,
-  Grid * grid_)
- :
-  ns(species_number),
-  col(col_),
-  vct(vct_),
-  grid(grid_),
-  pclIDgenerator(),
-  particleType(ParticleType::AoS)
+//! Destructor: deallocate particles !//
+Particles3Dcomm::~Particles3Dcomm() 
 {
-  // communicators for particles
-  //
-  MPI_Comm_dup(vct->getParticleComm(), &mpi_comm);
-  //
-  // define connections
-  using namespace Direction;
-
-  sendXleft.init(Connection::null2self(vct->getXleft_neighbor_P(),XDN,XDN,mpi_comm));
-  sendXrght.init(Connection::null2self(vct->getXright_neighbor_P(),XUP,XUP,mpi_comm));
-  recvXleft.init(Connection::null2self(vct->getXleft_neighbor_P(),XUP,XDN,mpi_comm));
-  recvXrght.init(Connection::null2self(vct->getXright_neighbor_P(),XDN,XUP,mpi_comm));
-
-  sendYleft.init(Connection::null2self(vct->getYleft_neighbor_P(),YDN,YDN,mpi_comm));
-  sendYrght.init(Connection::null2self(vct->getYright_neighbor_P(),YUP,YUP,mpi_comm));
-  recvYleft.init(Connection::null2self(vct->getYleft_neighbor_P(),YUP,YDN,mpi_comm));
-  recvYrght.init(Connection::null2self(vct->getYright_neighbor_P(),YDN,YUP,mpi_comm));
-
-  sendZleft.init(Connection::null2self(vct->getZleft_neighbor_P(),ZDN,ZDN,mpi_comm));
-  sendZrght.init(Connection::null2self(vct->getZright_neighbor_P(),ZUP,ZUP,mpi_comm));
-  recvZleft.init(Connection::null2self(vct->getZleft_neighbor_P(),ZUP,ZDN,mpi_comm));
-  recvZrght.init(Connection::null2self(vct->getZright_neighbor_P(),ZDN,ZUP,mpi_comm));
-
-  recvXleft.post_recvs();
-  recvXrght.post_recvs();
-  recvYleft.post_recvs();
-  recvYrght.post_recvs();
-  recvZleft.post_recvs();
-  recvZrght.post_recvs();
-
-  // info from collectiveIO
-  isTestParticle = (get_species_num()>=col->getNs());
-  npcel  = col->getNpcel(get_species_num());
-  npcelx = col->getNpcelx(get_species_num());
-  npcely = col->getNpcely(get_species_num());
-  npcelz = col->getNpcelz(get_species_num());
-  qom    = col->getQOM(get_species_num());
-
-if( !isTestParticle ){
-  uth = col->getUth(get_species_num());
-  vth = col->getVth(get_species_num());
-  wth = col->getWth(get_species_num());
-  u0 = col->getU0(get_species_num());
-  v0 = col->getV0(get_species_num());
-  w0 = col->getW0(get_species_num());
-  //TrackParticleID = col->getTrackParticleID(get_species_num());
-  Ninj = col->getRHOinject(get_species_num());
-}else{
-	pitch_angle = col->getPitchAngle(get_species_num()-col->getNs());
-	energy = col->getEnergy(get_species_num()-col->getNs());
-	//TrackParticleID = true;
+    MPI_Comm_free(&mpi_comm);
+    delete numpcls_in_bucket;
+    delete numpcls_in_bucket_now;
+    delete bucket_offset;
 }
-  dt = col->getDt();
-  Lx = col->getLx();
-  Ly = col->getLy();
-  Lz = col->getLz();
-  dx = grid->getDX();
-  dy = grid->getDY();
-  dz = grid->getDZ();
-  delta = col->getDelta();
 
-  c = col->getC();
-  // info for mover
-  NiterMover = col->getNiterMover();
-  // velocity of the injection from the wall
-  Vinj = col->getVinj();
+//! Constructor for a single species !//
+//* This was formerly Particles3Dcomm::allocate()
+Particles3Dcomm::Particles3Dcomm(int species_number, CollectiveIO * col_, VirtualTopology3D * vct_, Grid * grid_):
+                                ns(species_number),
+                                col(col_),
+                                vct(vct_),
+                                grid(grid_),
+                                pclIDgenerator(),
+                                particleType(ParticleType::AoS)
+{
+    //* communicators for particles
+    MPI_Comm_dup(vct->getParticleComm(), &mpi_comm);
 
-  //
-  // boundary condition for particles
-  //
-  bcPfaceXright = col->getBcPfaceXright();
-  bcPfaceXleft = col->getBcPfaceXleft();
-  bcPfaceYright = col->getBcPfaceYright();
-  bcPfaceYleft = col->getBcPfaceYleft();
-  bcPfaceZright = col->getBcPfaceZright();
-  bcPfaceZleft = col->getBcPfaceZleft();
+    // define connections
+    using namespace Direction;
 
-  // info from Grid
-  //
-  xstart = grid->getXstart();
-  xend = grid->getXend();
-  ystart = grid->getYstart();
-  yend = grid->getYend();
-  zstart = grid->getZstart();
-  zend = grid->getZend();
-  //
-  dx = grid->getDX();
-  dy = grid->getDY();
-  dz = grid->getDZ();
-  inv_dx = 1/dx;
-  inv_dy = 1/dy;
-  inv_dz = 1/dz;
-  //
-  nxn = grid->getNXN();
-  nyn = grid->getNYN();
-  nzn = grid->getNZN();
-  nxc = grid->getNXC();
-  nyc = grid->getNYC();
-  nzc = grid->getNZC();
-  assert_eq(nxc,nxn-1);
-  assert_eq(nyc,nyn-1);
-  assert_eq(nzc,nzn-1);
-  invVOL = grid->getInvVOL();
+    sendXleft.init(Connection::null2self(vct->getXleft_neighbor_P(),XDN,XDN,mpi_comm));
+    sendXrght.init(Connection::null2self(vct->getXright_neighbor_P(),XUP,XUP,mpi_comm));
+    recvXleft.init(Connection::null2self(vct->getXleft_neighbor_P(),XUP,XDN,mpi_comm));
+    recvXrght.init(Connection::null2self(vct->getXright_neighbor_P(),XDN,XUP,mpi_comm));
 
-  // info from VirtualTopology3D
-  //
-  cVERBOSE = vct->getcVERBOSE();
+    sendYleft.init(Connection::null2self(vct->getYleft_neighbor_P(),YDN,YDN,mpi_comm));
+    sendYrght.init(Connection::null2self(vct->getYright_neighbor_P(),YUP,YUP,mpi_comm));
+    recvYleft.init(Connection::null2self(vct->getYleft_neighbor_P(),YUP,YDN,mpi_comm));
+    recvYrght.init(Connection::null2self(vct->getYright_neighbor_P(),YDN,YUP,mpi_comm));
 
-  /////////////////////////////////
-  // preallocate space in arrays //
-  /////////////////////////////////
-  //
-  // determine number of particles to preallocate for this process.
-  //
-  // determine number of cells in this process
-  //
-  // we calculate in double precision to guard against overflow
-  double dNp = double(grid->get_num_cells_rr())*col->getNpcel(species_number);
-  double dNpmax = dNp * col->getNpMaxNpRatio();
-  // ensure that particle index will not overflow 32-bit
-  // representation as long as dmaxnop is respected.
-  assert_le(dNpmax,double(INT_MAX));
-  const int nop = dNp;
-  // initialize particle ID generator based on number of particles
-  // that will initially be produced.
-  pclIDgenerator.reserve_num_particles(nop);
+    sendZleft.init(Connection::null2self(vct->getZleft_neighbor_P(),ZDN,ZDN,mpi_comm));
+    sendZrght.init(Connection::null2self(vct->getZright_neighbor_P(),ZUP,ZUP,mpi_comm));
+    recvZleft.init(Connection::null2self(vct->getZleft_neighbor_P(),ZUP,ZDN,mpi_comm));
+    recvZrght.init(Connection::null2self(vct->getZright_neighbor_P(),ZDN,ZUP,mpi_comm));
 
-  particleType = ParticleType::AoS; // canonical representation
+    recvXleft.post_recvs();
+    recvXrght.post_recvs();
+    recvYleft.post_recvs();
+    recvYrght.post_recvs();
+    recvZleft.post_recvs();
+    recvZrght.post_recvs();
 
-  //
-  // allocate arrays for sorting particles
-  //
-  numpcls_in_bucket = new array3_int(nxc,nyc,nzc);
-  numpcls_in_bucket_now = new array3_int(nxc,nyc,nzc);
-  bucket_offset = new array3_int(nxc,nyc,nzc);
-  
-  assert_eq(sizeof(SpeciesParticle),(8*sizeof(cudaParticleType)));
+    // info from collectiveIO
+    isTestParticle = (get_species_num()>=col->getNs());
+    npcel  = col->getNpcel(get_species_num());
+    npcelx = col->getNpcelx(get_species_num());
+    npcely = col->getNpcely(get_species_num());
+    npcelz = col->getNpcelz(get_species_num());
+    qom    = col->getQOM(get_species_num());
 
-  // set_velocity_caps()
-  //
-  umax = 0.95*col->getLx()/col->getDt();
-  vmax = 0.95*col->getLy()/col->getDt();
-  wmax = 0.95*col->getLz()/col->getDt();
-  umin = -umax;
-  vmin = -vmax;
-  wmin = -wmax;
-  // show velocity cap that will be applied
-  if(false && is_output_thread())
-  {
-    printf("species %d velocity cap: umax=%g,vmax=%g,wmax=%g\n",
-      ns, umax,vmax,wmax);
-  }
+    if(!isTestParticle)
+    {
+        uth = col->getUth(get_species_num());
+        vth = col->getVth(get_species_num());
+        wth = col->getWth(get_species_num());
+        u0 = col->getU0(get_species_num());
+        v0 = col->getV0(get_species_num());
+        w0 = col->getW0(get_species_num());
+        //TrackParticleID = col->getTrackParticleID(get_species_num());
+        Ninj = col->getRHOinject(get_species_num());
+    }
+    else
+    {
+        pitch_angle = col->getPitchAngle(get_species_num()-col->getNs());
+        energy = col->getEnergy(get_species_num()-col->getNs());
+        //TrackParticleID = true;
+    }
+
+    dt = col->getDt();
+    Lx = col->getLx();
+    Ly = col->getLy();
+    Lz = col->getLz();
+    dx = grid->getDX();
+    dy = grid->getDY();
+    dz = grid->getDZ();
+
+    //! Remove
+    delta = col->getDelta();
+
+    c = col->getC();
+    NiterMover = col->getNiterMover();
+    Vinj = col->getVinj();
+
+    // boundary condition for particles
+    bcPfaceXright = col->getBcPfaceXright();
+    bcPfaceXleft = col->getBcPfaceXleft();
+    bcPfaceYright = col->getBcPfaceYright();
+    bcPfaceYleft = col->getBcPfaceYleft();
+    bcPfaceZright = col->getBcPfaceZright();
+    bcPfaceZleft = col->getBcPfaceZleft();
+
+    // info from Grid
+    xstart = grid->getXstart();
+    xend = grid->getXend();
+    ystart = grid->getYstart();
+    yend = grid->getYend();
+    zstart = grid->getZstart();
+    zend = grid->getZend();
+
+    dx = grid->getDX();
+    dy = grid->getDY();
+    dz = grid->getDZ();
+    inv_dx = 1/dx;
+    inv_dy = 1/dy;
+    inv_dz = 1/dz;
+
+    nxn = grid->getNXN();
+    nyn = grid->getNYN();
+    nzn = grid->getNZN();
+    nxc = grid->getNXC();
+    nyc = grid->getNYC();
+    nzc = grid->getNZC();
+    assert_eq(nxc,nxn-1);
+    assert_eq(nyc,nyn-1);
+    assert_eq(nzc,nzn-1);
+    invVOL = grid->getInvVOL();
+
+    // info from VirtualTopology3D
+    cVERBOSE = vct->getcVERBOSE();
+
+    Relativistic = col->getRelativistic();
+    Relativistic_pusher = col->getRelativisticPusher();
+
+    //? Preallocate space in arrays ?//
+    // determine number of particles to preallocate for this process.
+    // determine number of cells in this process
+    // we calculate in double precision to guard against overflow
+
+    double dNp = double(grid->get_num_cells_rr())*col->getNpcel(species_number);
+    double dNpmax = dNp * col->getNpMaxNpRatio();
+    
+    // ensure that particle index will not overflow 32-bit representation as long as dmaxnop is respected.
+    assert_le(dNpmax,double(INT_MAX));
+    const int nop = dNp;
+
+    // initialize particle ID generator based on number of particles that will initially be produced.
+    pclIDgenerator.reserve_num_particles(nop);
+    particleType = ParticleType::AoS; // canonical representation
+
+    // allocate arrays for sorting particles
+    numpcls_in_bucket = new array3_int(nxc,nyc,nzc);
+    numpcls_in_bucket_now = new array3_int(nxc,nyc,nzc);
+    bucket_offset = new array3_int(nxc,nyc,nzc);
+    
+    assert_eq(sizeof(SpeciesParticle),(8*sizeof(cudaParticleType)));
+
+    //? if RESTART is true, initialize the particle in allocate method
+    int restart_status = col->getRestart_status();
+    if (restart_status == 1 || restart_status == 2)
+    {
+        #ifdef NO_HDF5
+            eprintf("restart is supported only if compiling with HDF5");
+        #else
+            int species_number = get_species_num();
+            // prepare arrays to receive particles
+            particleType = ParticleType::SoA;
+            col->read_particles_restart(vct, species_number,u, v, w, q, x, y, z, t);
+            convertParticlesToAoS();
+        #endif
+
+        if (vct->getCartesian_rank() == 0)
+            cout << "SUCCESSFULLY READ PARTICLE DATA FROM HDF5 FILES FOR RESTART" << endl;
+    }
+
+    //* set_velocity_caps()
+    umax = 0.95*col->getLx()/col->getDt();
+    vmax = 0.95*col->getLy()/col->getDt();
+    wmax = 0.95*col->getLz()/col->getDt();
+    umin = -umax;
+    vmin = -vmax;
+    wmin = -wmax;
+    
+    // show velocity cap that will be applied
+    if(false && is_output_thread())
+        printf("species %d velocity cap: umax=%g,vmax=%g,wmax=%g\n", ns, umax,vmax,wmax);
 }
 
 void Particles3Dcomm::reserveSpace(int nop)
 {
-  // reserve space for particles
-  
-  const int padded_nop = roundup_to_multiple(nop,DVECWIDTH);
-  u.reserve(padded_nop);
-  v.reserve(padded_nop);
-  w.reserve(padded_nop);
-  q.reserve(padded_nop);
-  x.reserve(padded_nop);
-  y.reserve(padded_nop);
-  z.reserve(padded_nop);
-  t.reserve(padded_nop);
+    // reserve space for particles
+    const int padded_nop = roundup_to_multiple(nop,DVECWIDTH);
+    u.reserve(padded_nop);
+    v.reserve(padded_nop);
+    w.reserve(padded_nop);
+    q.reserve(padded_nop);
+    x.reserve(padded_nop);
+    y.reserve(padded_nop);
+    z.reserve(padded_nop);
+    t.reserve(padded_nop);
 
-  // AoS
-  _pcls.reserve(padded_nop);
-
+    // AoS
+    _pcls.reserve(padded_nop);
 }
 
 void Particles3Dcomm::restartLoad()
 {
-  // load particles from restart file
-  particleType = ParticleType::SoA;
-  col->read_particles_restart(vct, ns, u, v, w, q, x, y, z, t);
-  convertParticlesToAoS();
+    // load particles from restart file
+    particleType = ParticleType::SoA;
+    col->read_particles_restart(vct, ns, u, v, w, q, x, y, z, t);
+    convertParticlesToAoS();
 }
 
-// pad capacities so that aligned vectorization
-// does not result in an array overrun.
-//
+// pad capacities so that aligned vectorization does not result in an array overrun.
 // this should usually be cheap (a no-op)
-//
 void Particles3Dcomm::pad_capacities()
 {
- #pragma omp master
- {
-  _pcls.reserve(roundup_to_multiple(_pcls.size(),DVECWIDTH));
-  u.reserve(roundup_to_multiple(u.size(),DVECWIDTH));
-  v.reserve(roundup_to_multiple(v.size(),DVECWIDTH));
-  w.reserve(roundup_to_multiple(w.size(),DVECWIDTH));
-  q.reserve(roundup_to_multiple(q.size(),DVECWIDTH));
-  x.reserve(roundup_to_multiple(x.size(),DVECWIDTH));
-  y.reserve(roundup_to_multiple(y.size(),DVECWIDTH));
-  z.reserve(roundup_to_multiple(z.size(),DVECWIDTH));
-  t.reserve(roundup_to_multiple(t.size(),DVECWIDTH));
- }
+    #pragma omp master
+    {
+        _pcls.reserve(roundup_to_multiple(_pcls.size(),DVECWIDTH));
+        u.reserve(roundup_to_multiple(u.size(),DVECWIDTH));
+        v.reserve(roundup_to_multiple(v.size(),DVECWIDTH));
+        w.reserve(roundup_to_multiple(w.size(),DVECWIDTH));
+        q.reserve(roundup_to_multiple(q.size(),DVECWIDTH));
+        x.reserve(roundup_to_multiple(x.size(),DVECWIDTH));
+        y.reserve(roundup_to_multiple(y.size(),DVECWIDTH));
+        z.reserve(roundup_to_multiple(z.size(),DVECWIDTH));
+        t.reserve(roundup_to_multiple(t.size(),DVECWIDTH));
+    }
 }
 
 void Particles3Dcomm::resize_AoS(int nop)
 {
- #pragma omp master
- {
-  const int padded_nop = roundup_to_multiple(nop,DVECWIDTH);
-  _pcls.reserve(padded_nop);
-  _pcls.resize(nop);
- }
+    #pragma omp master
+    {
+        const int padded_nop = roundup_to_multiple(nop,DVECWIDTH);
+        _pcls.reserve(padded_nop);
+        _pcls.resize(nop);
+    }
 }
 
 void Particles3Dcomm::resize_SoA(int nop)
 {
- #pragma omp master
- {
-  //
-  // allocate space for particles including padding
-  //
-  const int padded_nop = roundup_to_multiple(nop,DVECWIDTH);
-  //if(is_output_thread()) dprintf("allocating to hold %d", padded_nop);
-  u.reserve(padded_nop);
-  v.reserve(padded_nop);
-  w.reserve(padded_nop);
-  q.reserve(padded_nop);
-  x.reserve(padded_nop);
-  y.reserve(padded_nop);
-  z.reserve(padded_nop);
-  t.reserve(padded_nop);
-  //
-  // define size of particle data
-  //
-  u.resize(nop);
-  v.resize(nop);
-  w.resize(nop);
-  q.resize(nop);
-  x.resize(nop);
-  y.resize(nop);
-  z.resize(nop);
-  t.resize(nop);
-  //if(is_output_thread()) dprintf("done resizing to hold %d", nop);
- }
+    #pragma omp master
+    {
+        // allocate space for particles including padding
+        const int padded_nop = roundup_to_multiple(nop,DVECWIDTH);
+
+        u.reserve(padded_nop);
+        v.reserve(padded_nop);
+        w.reserve(padded_nop);
+        q.reserve(padded_nop);
+        x.reserve(padded_nop);
+        y.reserve(padded_nop);
+        z.reserve(padded_nop);
+        t.reserve(padded_nop);
+
+        // define size of particle data
+        u.resize(nop);
+        v.resize(nop);
+        w.resize(nop);
+        q.resize(nop);
+        x.resize(nop);
+        y.resize(nop);
+        z.resize(nop);
+        t.resize(nop);
+    }
 }
+
 // A much faster version of this is at EMfields3D::sumMoments
 //
 //void Particles3Dcomm::interpP2G(Field * EMf)
@@ -478,84 +477,81 @@ void Particles3Dcomm::resize_SoA(int nop)
 //
 // should vectorize this by comparing position vectors
 //
-inline bool Particles3Dcomm::send_pcl_to_appropriate_buffer(
-  SpeciesParticle& pcl, int count[6])
+inline bool Particles3Dcomm::send_pcl_to_appropriate_buffer(SpeciesParticle& pcl, int count[6])
 {
-  int was_sent = true;
-  // put particle in appropriate communication buffer if exiting
-  if(pcl.get_x() < xstart)
-  {
-    sendXleft.send(pcl);
-    count[0]++;
-  }
-  else if(pcl.get_x() > xend)
-  {
-    sendXrght.send(pcl);
-    count[1]++;
-  }
-  else if(pcl.get_y() < ystart)
-  {
-    sendYleft.send(pcl);
-    count[2]++;
-  }
-  else if(pcl.get_y() > yend)
-  {
-    sendYrght.send(pcl);
-    count[3]++;
-  }
-  else if(pcl.get_z() < zstart)
-  {
-    sendZleft.send(pcl);
-    count[4]++;
-  }
-  else if(pcl.get_z() > zend)
-  {
-    sendZrght.send(pcl);
-    count[5]++;
-  }
-  else was_sent = false;
+    int was_sent = true;
+    // put particle in appropriate communication buffer if exiting
+    if(pcl.get_x() < xstart)
+    {
+        sendXleft.send(pcl);
+        count[0]++;
+    }
+    else if(pcl.get_x() > xend)
+    {
+        sendXrght.send(pcl);
+        count[1]++;
+    }
+    else if(pcl.get_y() < ystart)
+    {
+        sendYleft.send(pcl);
+        count[2]++;
+    }
+    else if(pcl.get_y() > yend)
+    {
+        sendYrght.send(pcl);
+        count[3]++;
+    }
+    else if(pcl.get_z() < zstart)
+    {
+        sendZleft.send(pcl);
+        count[4]++;
+    }
+    else if(pcl.get_z() > zend)
+    {
+        sendZrght.send(pcl);
+        count[5]++;
+    }
+    else was_sent = false;
 
-  return was_sent;
+    return was_sent;
 }
 
 // flush sending particles.
-//
 void Particles3Dcomm::flush_send()
 {
-  sendXleft.send_complete();
-  sendXrght.send_complete();
-  sendYleft.send_complete();
-  sendYrght.send_complete();
-  sendZleft.send_complete();
-  sendZrght.send_complete();
+    sendXleft.send_complete();
+    sendXrght.send_complete();
+    sendYleft.send_complete();
+    sendYrght.send_complete();
+    sendZleft.send_complete();
+    sendZrght.send_complete();
 }
 
-void Particles3Dcomm::apply_periodic_BC_global(
-  vector_SpeciesParticle& pcl_list, int pstart)
+void Particles3Dcomm::apply_periodic_BC_global(vector_SpeciesParticle& pcl_list, int pstart)
 {
-  const double Lxinv = 1/Lx;
-  const double Lyinv = 1/Ly;
-  const double Lzinv = 1/Lz;
-  // apply shift to all periodic directions
-  for(int pidx=pstart;pidx<pcl_list.size();pidx++)
-  {
-    SpeciesParticle& pcl = pcl_list[pidx];
-    if(vct->getPERIODICX_P())
+    const double Lxinv = 1/Lx;
+    const double Lyinv = 1/Ly;
+    const double Lzinv = 1/Lz;
+    // apply shift to all periodic directions
+    for(int pidx=pstart;pidx<pcl_list.size();pidx++)
     {
-      cudaParticleType& x = pcl.fetch_x();
-      x = modulo(x, Lx, Lxinv);
+        SpeciesParticle& pcl = pcl_list[pidx];
+        if(vct->getPERIODICX_P())
+        {
+            cudaParticleType& x = pcl.fetch_x();
+            x = modulo(x, Lx, Lxinv);
+        }
+        if(vct->getPERIODICY_P())
+        {
+            cudaParticleType& y = pcl.fetch_y();
+            y = modulo(y, Ly, Lyinv);
+        }
+        if(vct->getPERIODICZ_P())
+        {
+            cudaParticleType& z = pcl.fetch_z();
+            z = modulo(z, Lz, Lzinv);
+        }
     }
-    if(vct->getPERIODICY_P())
-    {
-      cudaParticleType& y = pcl.fetch_y();
-      y = modulo(y, Ly, Lyinv);
-    }
-    if(vct->getPERIODICZ_P())
-    {
-      cudaParticleType& z = pcl.fetch_z();
-      z = modulo(z, Lz, Lzinv);
-    }
-  }
 }
 
 // routines for sorting list of particles
@@ -1481,253 +1477,312 @@ void Particles3Dcomm::recommunicate_particles_until_done(int min_num_iterations)
 //
 void Particles3Dcomm::communicate_particles()
 {
-  timeTasks_set_communicating(); // communicating until end of scope
+    timeTasks_set_communicating(); // communicating until end of scope
 
-  separate_and_send_particles();
+    separate_and_send_particles();
 
-  recommunicate_particles_until_done(1);
+    recommunicate_particles_until_done(1);
 }
 
-/** return the Kinetic energy */
-double Particles3Dcomm::getKe() {
-  double localKe = 0.0;
-  double totalKe = 0.0;
-  for (int i = 0; i < _pcls.size(); i++)
-  {
-    SpeciesParticle& pcl = _pcls[i];
-    const double u = pcl.get_u();
-    const double v = pcl.get_v();
-    const double w = pcl.get_w();
-    const double q = pcl.get_q();
-    localKe += .5*(q/qom)*(u*u + v*v + w*w);
-  }
-  MPI_Allreduce(&localKe, &totalKe, 1, MPI_DOUBLE, MPI_SUM, mpi_comm);
-  return (totalKe);
+int Particles3Dcomm::get_num_particles()
+{
+    long long localN = 0.0;
+    long long totalN = 0.0;
+    
+    localN = _pcls.size();
+    
+    MPI_Allreduce(&localN, &totalN, 1, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+    return (totalN);
 }
 
-/** return the total momentum */
-//
-// This is the sum over all particles of the magnitude of the
-// momentum, which has no physical meaning that I can see.
-// we should be summing each component of the momentum. -eaj
-//
-double Particles3Dcomm::getP() {
-  double localP = 0.0;
-  double totalP = 0.0;
-  for (int i = 0; i < _pcls.size(); i++)
-  {
-    SpeciesParticle& pcl = _pcls[i];
-    const double u = pcl.get_u();
-    const double v = pcl.get_v();
-    const double w = pcl.get_w();
-    const double q = pcl.get_q();
-    localP += (q/qom)*sqrt(u*u + v*v + w*w);
-  }
-  MPI_Allreduce(&localP, &totalP, 1, MPI_DOUBLE, MPI_SUM, mpi_comm);
-  return (totalP);
+//? Kinetic energy of all particles
+double Particles3Dcomm::get_kinetic_energy() 
+{
+    double localKe = 0.0;
+    double totalKe = 0.0;
+    double lorentz_factor = 0.0;
+
+    for (int i = 0; i < _pcls.size(); i++)
+    {
+        SpeciesParticle& pcl = _pcls[i];
+        const double u = pcl.get_u();
+        const double v = pcl.get_v();
+        const double w = pcl.get_w();
+        const double q = pcl.get_q();
+
+        if (Relativistic) 
+		{
+            lorentz_factor = sqrt(1.0 + (u*u + v*v + w*w)/(c*c));
+            localKe += (q/qom) * (lorentz_factor - 1.0) * c*c;
+        }
+        else
+        {
+            localKe += 0.5 * (q/qom) * (u*u + v*v + w*w);
+        }
+    }
+
+    MPI_Allreduce(&localKe, &totalKe, 1, MPI_DOUBLE, MPI_SUM, mpi_comm);
+    return (totalKe);
 }
 
-/** return the highest kinetic energy */
-double Particles3Dcomm::getMaxVelocity() {
-  double localVel = 0.0;
-  double maxVel = 0.0;
-  for (int i = 0; i < _pcls.size(); i++)
-  {
-    SpeciesParticle& pcl = _pcls[i];
-    const double u = pcl.get_u();
-    const double v = pcl.get_v();
-    const double w = pcl.get_w();
-    localVel = std::max(localVel, sqrt(u*u + v*v + w*w));
-  }
-  MPI_Allreduce(&localVel, &maxVel, 1, MPI_DOUBLE, MPI_MAX, mpi_comm);
-  return (maxVel);
+//? Momentum of all particles
+double Particles3Dcomm::get_momentum() 
+{
+    double localP = 0.0;
+    double totalP = 0.0;
+
+    for (int i = 0; i < _pcls.size(); i++)
+    {
+        SpeciesParticle& pcl = _pcls[i];
+        const double u = pcl.get_u();
+        const double v = pcl.get_v();
+        const double w = pcl.get_w();
+        const double q = pcl.get_q();
+        localP += (q/qom)*sqrt(u*u + v*v + w*w);
+    }
+
+    MPI_Allreduce(&localP, &totalP, 1, MPI_DOUBLE, MPI_SUM, mpi_comm);
+    return (totalP);
 }
 
-
-/** get energy spectrum */
-//
-// this ignores the weight of the charges. -eaj
-//
-long long *Particles3Dcomm::getVelocityDistribution(int nBins, double maxVel) {
-  long long *f = new long long[nBins];
-  for (int i = 0; i < nBins; i++)
-    f[i] = 0;
-  double Vel = 0.0;
-  double dv = maxVel / nBins;
-  int bin = 0;
-  for (int i = 0; i < _pcls.size(); i++) {
-    SpeciesParticle& pcl = _pcls[i];
-    const double u = pcl.get_u();
-    const double v = pcl.get_v();
-    const double w = pcl.get_w();
-    Vel = sqrt(u*u + v*v + w*w);
-    bin = int (floor(Vel / dv));
-    if (bin >= nBins)
-      f[nBins - 1] += 1;
-    else
-      f[bin] += 1;
-  }
-  MPI_Allreduce(MPI_IN_PLACE, f, nBins, MPI_LONG_LONG, MPI_SUM, mpi_comm);
-  return f;
+//* Get the maximum particle velocity
+double Particles3Dcomm::getMaxVelocity() 
+{
+    double localVel = 0.0;
+    double maxVel = 0.0;
+    for (int i = 0; i < _pcls.size(); i++)
+    {
+        SpeciesParticle& pcl = _pcls[i];
+        const double u = pcl.get_u();
+        const double v = pcl.get_v();
+        const double w = pcl.get_w();
+        localVel = std::max(localVel, sqrt(u*u + v*v + w*w));
+    }
+    MPI_Allreduce(&localVel, &maxVel, 1, MPI_DOUBLE, MPI_MAX, mpi_comm);
+    return (maxVel);
 }
 
+//* Get particle velocity (energy) spectrum
+double *Particles3Dcomm::getVelocityDistribution(int nBins, double minVel, double maxVel) 
+{
+	double *f = new double[nBins];
+
+	for (int i = 0; i < nBins; i++) 
+		f[i] = 0.0;
+	
+	double Vel = 0.0;
+	int bin = 0;
+	
+	if (!Relativistic)
+	{ 
+		//! Nonrelativistic simulations
+		double dv = maxVel/nBins;
+
+        for (int i = 0; i < _pcls.size(); i++)
+        {
+            SpeciesParticle& pcl = _pcls[i];
+            const double u = pcl.get_u();
+            const double v = pcl.get_v();
+            const double w = pcl.get_w();
+
+            Vel = sqrt(u*u + v*v + w*w);
+            bin = int (floor(Vel / dv));
+            
+            if (bin >= nBins)
+                f[nBins - 1] += 1;
+            else
+                f[bin] += 1;
+        }
+	}
+	else 
+	{ 
+		//! Relativistic simulations: logspace u distribution
+		double *uDist, *du;
+		uDist = new double[nBins];
+		du = new double[nBins-1];
+		
+		for (int iu = 0; iu < nBins; iu++)  
+			uDist[iu] = pow(10.0,double(iu)*1.0/(double(nBins)-1.0)*(log10(maxVel)-log10(minVel))+log10(minVel));
+		
+		for (int iu = 0; iu < nBins-1; iu++)
+			du[iu] = uDist[iu+1] - uDist[iu];
+
+        for (int i = 0; i < _pcls.size(); i++)
+		{
+            SpeciesParticle& pcl = _pcls[i];
+            const double u = pcl.get_u();
+            const double v = pcl.get_v();
+            const double w = pcl.get_w();
+            const double q = pcl.get_q();
+
+            Vel = sqrt(u*u + v*v + w*w);
+			bin = floor((log10(Vel)-log10(minVel))/((log10(maxVel)-log10(minVel))/double(nBins-1)));
+			
+			if (bin >= 0 && bin < nBins-1)
+				f[bin] += fabs(q)/du[bin];
+		}
+	}
+
+	MPI_Allreduce(MPI_IN_PLACE, f, nBins, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+	return f;
+}
 
 /** print particles info */
 void Particles3Dcomm::Print() const
 {
-  cout << endl;
-  cout << "Number of Particles: " << _pcls.size() << endl;
-  cout << "Subgrid (" << vct->getCoordinates(0) << "," << vct->getCoordinates(1) << "," << vct->getCoordinates(2) << ")" << endl;
-  cout << "Xin = " << xstart << "; Xfin = " << xend << endl;
-  cout << "Yin = " << ystart << "; Yfin = " << yend << endl;
-  cout << "Zin = " << zstart << "; Zfin = " << zend << endl;
-  cout << "Number of species = " << get_species_num() << endl;
-  for (int i = 0; i < _pcls.size(); i++)
-  {
-    const SpeciesParticle& pcl = _pcls[i];
-    cout << "Particle #" << i << ":"
-      << " x=" << pcl.get_x()
-      << " y=" << pcl.get_y()
-      << " z=" << pcl.get_z()
-      << " u=" << pcl.get_u()
-      << " v=" << pcl.get_v()
-      << " w=" << pcl.get_w()
-      << endl;
-  }
-  cout << endl;
+    cout << endl;
+    cout << "Number of Particles: " << _pcls.size() << endl;
+    cout << "Subgrid (" << vct->getCoordinates(0) << "," << vct->getCoordinates(1) << "," << vct->getCoordinates(2) << ")" << endl;
+    cout << "Xin = " << xstart << "; Xfin = " << xend << endl;
+    cout << "Yin = " << ystart << "; Yfin = " << yend << endl;
+    cout << "Zin = " << zstart << "; Zfin = " << zend << endl;
+    cout << "Number of species = " << get_species_num() << endl;
+    for (int i = 0; i < _pcls.size(); i++)
+    {
+        const SpeciesParticle& pcl = _pcls[i];
+        cout << "Particle #" << i << ":"
+        << " x=" << pcl.get_x()
+        << " y=" << pcl.get_y()
+        << " z=" << pcl.get_z()
+        << " u=" << pcl.get_u()
+        << " v=" << pcl.get_v()
+        << " w=" << pcl.get_w()
+        << endl;
+    }
+    cout << endl;
 }
 /** print just the number of particles */
 void Particles3Dcomm::PrintNp()  const
 {
-  cout << endl;
-  cout << "Number of Particles of species " << get_species_num() << ": " << getNOP() << endl;
-  cout << "Subgrid (" << vct->getCoordinates(0) << "," << vct->getCoordinates(1) << "," << vct->getCoordinates(2) << ")" << endl;
-  cout << endl;
+    cout << endl;
+    cout << "Number of Particles of species " << get_species_num() << ": " << getNOP() << endl;
+    cout << "Subgrid (" << vct->getCoordinates(0) << "," << vct->getCoordinates(1) << "," << vct->getCoordinates(2) << ")" << endl;
+    cout << endl;
 }
 
 /***** particle sorting routines *****/
 
 void Particles3Dcomm::sort_particles_serial()
 {
-  switch(particleType)
-  {
-    case ParticleType::synched: [[fallthrough]];
-    case ParticleType::AoS:
-      sort_particles_serial_AoS();
-      break;
-    case ParticleType::SoA:
-      convertParticlesToAoS();
-      sort_particles_serial_AoS();
-      convertParticlesToSynched();
-      break;
-    default:
-      unsupported_value_error(particleType);
-  }
+    switch(particleType)
+    {
+        case ParticleType::synched: [[fallthrough]];
+        case ParticleType::AoS:
+        sort_particles_serial_AoS();
+        break;
+        case ParticleType::SoA:
+        convertParticlesToAoS();
+        sort_particles_serial_AoS();
+        convertParticlesToSynched();
+        break;
+        default:
+        unsupported_value_error(particleType);
+    }
 }
 
 // need to sort and communicate particles after each iteration
 void Particles3Dcomm::sort_particles_serial_AoS()
 {
-  convertParticlesToAoS();
+    convertParticlesToAoS();
 
-  _pclstmp.reserve(_pcls.size());
-  {
-    numpcls_in_bucket->setall(0);
-    // iterate through particles and count where they will go
-    for (int pidx = 0; pidx < _pcls.size(); pidx++)
+    _pclstmp.reserve(_pcls.size());
     {
-      const SpeciesParticle& pcl = get_pcl(pidx);
-      // get the cell indices of the particle
-      int cx,cy,cz; // the cell index from their actual position
-      grid->get_safe_cell_coordinates(cx,cy,cz,pcl.get_x(),pcl.get_y(),pcl.get_z());
+        numpcls_in_bucket->setall(0);
+        // iterate through particles and count where they will go
+        for (int pidx = 0; pidx < _pcls.size(); pidx++)
+        {
+            const SpeciesParticle& pcl = get_pcl(pidx);
+            // get the cell indices of the particle
+            int cx,cy,cz; // the cell index from their actual position
+            grid->get_safe_cell_coordinates(cx,cy,cz,pcl.get_x(),pcl.get_y(),pcl.get_z());
 
-      // increment the number of particles in bucket of this particle
-      (*numpcls_in_bucket)[cx][cy][cz]++;
+            // increment the number of particles in bucket of this particle
+            (*numpcls_in_bucket)[cx][cy][cz]++;
+        }
+
+        // compute prefix sum to determine initial position
+        // of each bucket (could parallelize this)
+        //
+        int accpcls=0;
+        for(int cx=0;cx<nxc;cx++)
+        for(int cy=0;cy<nyc;cy++)
+        for(int cz=0;cz<nzc;cz++)
+        {
+            (*bucket_offset)[cx][cy][cz] = accpcls;
+            accpcls += (*numpcls_in_bucket)[cx][cy][cz];
+        }
+        assert_eq(accpcls,getNOP());
+
+        numpcls_in_bucket_now->setall(0);
+        // put the particles where they are supposed to go
+        const int nop = getNOP();
+        for (int pidx = 0; pidx < nop; pidx++)
+        {
+            const SpeciesParticle& pcl = get_pcl(pidx);
+            // get the cell indices of the particle
+            int cx,cy,cz; // the address of the new bucket of this particle
+            grid->get_safe_cell_coordinates(cx,cy,cz,pcl.get_x(),pcl.get_y(),pcl.get_z());
+
+            // compute where the data should go
+            const int numpcls_now = (*numpcls_in_bucket_now)[cx][cy][cz]++;
+            const int outpidx = (*bucket_offset)[cx][cy][cz] + numpcls_now;
+            assert_lt(outpidx, nop);
+            assert_ge(outpidx, 0);
+            assert_lt(pidx, nop);
+            assert_ge(pidx, 0);
+
+            // copy particle data to new location
+            //
+            _pclstmp[outpidx] = pcl;
+        }
+        // swap the tmp particle memory with the official particle memory
+        {
+        // if using accessors rather than transposition,
+        // here I would need not only to swap the pointers but also
+        // to swap all the accessors.
+        //
+        _pcls.swap(_pclstmp);
+        }
+
+        // check if the particles were sorted incorrectly
+        if(true)
+        {
+            for(int cx=0;cx<nxc;cx++)
+            for(int cy=0;cy<nyc;cy++)
+            for(int cz=0;cz<nzc;cz++)
+            {
+                // check the number of particles in every cell is reasonable
+                assert_eq((*numpcls_in_bucket_now)[cx][cy][cz], (*numpcls_in_bucket)[cx][cy][cz]);
+            }
+        }
     }
-
-    // compute prefix sum to determine initial position
-    // of each bucket (could parallelize this)
-    //
-    int accpcls=0;
-    for(int cx=0;cx<nxc;cx++)
-    for(int cy=0;cy<nyc;cy++)
-    for(int cz=0;cz<nzc;cz++)
-    {
-      (*bucket_offset)[cx][cy][cz] = accpcls;
-      accpcls += (*numpcls_in_bucket)[cx][cy][cz];
-    }
-    assert_eq(accpcls,getNOP());
-
-    numpcls_in_bucket_now->setall(0);
-    // put the particles where they are supposed to go
-    const int nop = getNOP();
-    for (int pidx = 0; pidx < nop; pidx++)
-    {
-      const SpeciesParticle& pcl = get_pcl(pidx);
-      // get the cell indices of the particle
-      int cx,cy,cz; // the address of the new bucket of this particle
-      grid->get_safe_cell_coordinates(cx,cy,cz,pcl.get_x(),pcl.get_y(),pcl.get_z());
-
-      // compute where the data should go
-      const int numpcls_now = (*numpcls_in_bucket_now)[cx][cy][cz]++;
-      const int outpidx = (*bucket_offset)[cx][cy][cz] + numpcls_now;
-      assert_lt(outpidx, nop);
-      assert_ge(outpidx, 0);
-      assert_lt(pidx, nop);
-      assert_ge(pidx, 0);
-
-      // copy particle data to new location
-      //
-      _pclstmp[outpidx] = pcl;
-    }
-    // swap the tmp particle memory with the official particle memory
-    {
-      // if using accessors rather than transposition,
-      // here I would need not only to swap the pointers but also
-      // to swap all the accessors.
-      //
-      _pcls.swap(_pclstmp);
-    }
-
-    // check if the particles were sorted incorrectly
-    if(true)
-    {
-      for(int cx=0;cx<nxc;cx++)
-      for(int cy=0;cy<nyc;cy++)
-      for(int cz=0;cz<nzc;cz++)
-      {
-        // check the number of particles in every cell is reasonable
-        assert_eq((*numpcls_in_bucket_now)[cx][cy][cz], (*numpcls_in_bucket)[cx][cy][cz]);
-      }
-    }
-  }
-  // SoA particle representation is no longer valid
-  particleType = ParticleType::AoS;
+    // SoA particle representation is no longer valid
+    particleType = ParticleType::AoS;
 }
 
 
 void Particles3Dcomm::sort_particles_parallel(int* cellCount, int* cellOffset)
 {
-  switch(particleType)
-  {
-    case ParticleType::synched: [[fallthrough]];
-    case ParticleType::AoS:
-      sort_particles_parallel_AoS(cellCount, cellOffset);
-      break;
-    case ParticleType::SoA:
-      convertParticlesToAoS();
-      sort_particles_parallel_AoS(cellCount, cellOffset);
-      convertParticlesToSynched();
-      break;
-    default:
-      unsupported_value_error(particleType);
-  }
+    switch(particleType)
+    {
+        case ParticleType::synched: [[fallthrough]];
+        case ParticleType::AoS:
+        sort_particles_parallel_AoS(cellCount, cellOffset);
+        break;
+        case ParticleType::SoA:
+        convertParticlesToAoS();
+        sort_particles_parallel_AoS(cellCount, cellOffset);
+        convertParticlesToSynched();
+        break;
+        default:
+        unsupported_value_error(particleType);
+    }
 }
 
 
-void Particles3Dcomm::sort_particles_parallel_AoS(int* globalCount, 
-                                                  int* bucketOffset) {
-
+void Particles3Dcomm::sort_particles_parallel_AoS(int* globalCount, int* bucketOffset) 
+{
     const int N = getNOP();
     _pclstmp.reserve(N);
 
@@ -1745,49 +1800,50 @@ void Particles3Dcomm::sort_particles_parallel_AoS(int* globalCount,
     // stage1: local count
     #pragma omp parallel
     {
-      int tid = omp_get_thread_num();
-      int blockSize = N / numThreads;
-      int remainder = N % numThreads;
-      int start = tid * blockSize + (tid < remainder ? tid : remainder);
-      int end = start + blockSize + (tid < remainder ? 1 : 0);
+        int tid = omp_get_thread_num();
+        int blockSize = N / numThreads;
+        int remainder = N % numThreads;
+        int start = tid * blockSize + (tid < remainder ? tid : remainder);
+        int end = start + blockSize + (tid < remainder ? 1 : 0);
 
-      for (int pidx = start; pidx < end; pidx++) {
-          const SpeciesParticle& pcl = get_pcl(pidx);
-          int cx, cy, cz;
-          grid->get_safe_cell_coordinates(cx, cy, cz, pcl.get_x(), pcl.get_y(), pcl.get_z());
-          int cellIndex = cx * (nyc * nzc) + cy * nzc + cz;
-          threadLocalCounts[tid][cellIndex]++;
-      }
-      #pragma omp barrier
-      #pragma omp single
-      {
-        // stage2: global count, prefix sum and bucket offset
-        int acc = 0;
-        for (int cell = 0; cell < totalCells; cell++) {
-            int localSum = 0;
-            for (int tid = 0; tid < numThreads; tid++) {
-                threadLocalOffsets[tid][cell] = acc + localSum;
-                localSum += threadLocalCounts[tid][cell];
-            }
-            globalCount[cell] = localSum;
-            bucketOffset[cell] = acc;
-            acc += localSum;
+        for (int pidx = start; pidx < end; pidx++) {
+            const SpeciesParticle& pcl = get_pcl(pidx);
+            int cx, cy, cz;
+            grid->get_safe_cell_coordinates(cx, cy, cz, pcl.get_x(), pcl.get_y(), pcl.get_z());
+            int cellIndex = cx * (nyc * nzc) + cy * nzc + cz;
+            threadLocalCounts[tid][cellIndex]++;
         }
-        assert(acc == N);
-      }
-      #pragma omp barrier
-      // stage3: sort particles into the temporary array
-      for (int pidx = start; pidx < end; pidx++) {
-          const SpeciesParticle& pcl = get_pcl(pidx);
-          int cx, cy, cz;
-          grid->get_safe_cell_coordinates(cx, cy, cz, pcl.get_x(), pcl.get_y(), pcl.get_z());
-          int cellIndex = cx * (nyc * nzc) + cy * nzc + cz;
+        #pragma omp barrier
+        #pragma omp single
+        {
+            // stage2: global count, prefix sum and bucket offset
+            int acc = 0;
+            for (int cell = 0; cell < totalCells; cell++) {
+                int localSum = 0;
+                for (int tid = 0; tid < numThreads; tid++) {
+                    threadLocalOffsets[tid][cell] = acc + localSum;
+                    localSum += threadLocalCounts[tid][cell];
+                }
+                globalCount[cell] = localSum;
+                bucketOffset[cell] = acc;
+                acc += localSum;
+            }
+            assert(acc == N);
+        }
+        #pragma omp barrier
+        // stage3: sort particles into the temporary array
+        for (int pidx = start; pidx < end; pidx++) 
+        {
+            const SpeciesParticle& pcl = get_pcl(pidx);
+            int cx, cy, cz;
+            grid->get_safe_cell_coordinates(cx, cy, cz, pcl.get_x(), pcl.get_y(), pcl.get_z());
+            int cellIndex = cx * (nyc * nzc) + cy * nzc + cz;
 
-          int pos = threadLocalOffsets[tid][cellIndex]++;
+            int pos = threadLocalOffsets[tid][cellIndex]++;
 
-          assert(pos >= 0 && pos < N);
-          _pclstmp[pos] = pcl;
-      }
+            assert(pos >= 0 && pos < N);
+            _pclstmp[pos] = pcl;
+        }
     }
     
     // checking
@@ -1810,301 +1866,165 @@ void Particles3Dcomm::sort_particles_parallel_AoS(int* globalCount,
       }
     }
 
-
     _pcls.swap(_pclstmp);
 
     particleType = ParticleType::AoS;
 }
 
-
-//void Particles3Dcomm::sort_particles_parallel(
-//  double *xpos, double *ypos, double *zpos,
-//  Grid * grid, VirtualTopology3D * vct)
-//{
-//  // should change this to first communicate particles so that
-//  // they are in the correct process and all particles
-//  // lie in this subdomain.
-//
-//  // count the number of particles to go in each bucket
-//  numpcls_in_bucket.setall(0);
-//  #pragma omp parallel
-//  {
-//    const int thread_num = omp_get_thread_num();
-//    arr3_int numpcls_in_bucket_thr = fetch_numpcls_in_bucket_thr(thread_num);
-//    numpcls_in_bucket_thr.setall(0);
-//    // iterate through particles and count where they will go
-//    #pragma omp for // nowait
-//    for (int pidx = 0; pidx < nop; pidx++)
-//    {
-//      // get the cell indices of the particle
-//      // (should change this to use xavg[pidx])
-//      const pfloat xpos = xpos[pidx];
-//      const pfloat ypos = ypos[pidx];
-//      const pfloat zpos = zpos[pidx];
-//      int cx,cy,cz;
-//      get_safe_cell_for_pos(cx,cy,cz,xpos,ypos,zpos);
-//
-//      // need to allocate these
-//      //
-//      //xidx[pidx]=cx;
-//      //yidx[pidx]=cy;
-//      //zidx[pidx]=cz;
-//
-//      // increment the number of particles in bucket of this particle
-//      numpcls_in_bucket_thr[cx][cy][cz]++;
-//    }
-//    // reduce the thread buckets into the main bucket
-//    // #pragma omp critical (numpcls_in_bucket_reduction)
-//    {
-//      #pragma omp for collapse(2)
-//      for(int cx=0;cx<nxc;cx++)
-//      for(int cy=0;cy<nyc;cy++)
-//      for(int th=0;th<num_threads;th++)
-//      for(int cz=0;cz<nzc;cz++)
-//      {
-//        numpcls_in_bucket[cx][cy][cz]
-//          += get_numpcls_in_bucket_thr(th)[cx][cy][cz];
-//      }
-//    }
-//
-//    // compute prefix sum to determine initial position
-//    // of each bucket (could parallelize this)
-//    //
-//    int accpcls=0;
-//    #pragma omp critical (bucket_offset_reduction)
-//    for(int cx=0;cx<nxc;cx++)
-//    for(int cy=0;cy<nyc;cy++)
-//    for(int cz=0;cz<nzc;cz++)
-//    {
-//      bucket_offset[cx][cy][cz] = accpcls;
-//      accpcls += numpcls_in_bucket[cx][cy][cz];
-//    }
-//
-//    // cycle through the mesh cells mod 3
-//    // (or mod(2*N+1), where N is number of mesh cells
-//    // that a slow particle can move).
-//    // This ensures that slow particles can be moved
-//    // to their destinations without write conflicts
-//    // among threads.  But what about cache contention?
-//    //
-//    for(int cxmod3=0; cxmod3<3; cxmod3++)
-//    #pragma omp for collapse(2)
-//    for(int cx=cxmod3; cx<nxc; cx+=3)
-//    for(int cy=0; cy<nyc; cy++)
-//    for(int cz=0; cz<nzc; cz++)
-//    {
-//      // put the slow particles where they are supposed to go and
-//      // set aside the fast particles for separate processing.
-//      // (to vectorize would need to sort separately in each
-//      // dimension of space).
-//      //
-//      // problem: particles might have to be moved not because
-//      // they are fast but because of an overall shift in the
-//      // number of particles in a location, e.g. because of
-//      // particles flowing in from a jet. Need a different
-//      // approach, where memory is allocated for each cell.
-//      _numpcls_in_bucket = numpcls_in_bucket[cx][cy][cz];
-//      for(int pidx=bucket_offset[cx][cy][cz]; pidx<_numpcls_in_bucket; pidx++)
-//      {
-//        const int outcx = xidx[pidx];
-//        const int outcy = yidx[pidx];
-//        const int outcz = zidx[pidx];
-//        const int cxlower = outcx <= 0 ? 0 : outcx-1;
-//        const int cxupper = outcx >= (nxc-1) ? nxc-1 : outcx+1;
-//        const int lowerindex = bucket_offset[cxlower][cylower][czlower];
-//        const int upperoffset = bucket_offset[cxupper][cyupper][czupper];
-//        const int upperindex = upperoffset + numpcls_in_bucket[outcx][outcy][outcz];
-//        ...
-//      }
-//    }
-//    // (1) put fast particles that must be moved more than one
-//    // mesh cell at the end of the cell's list, and
-//    // (2) put slow particles in the correct location
-//
-//    // count the number of particles that need to be moved
-//    // more than one mesh cell and allocate a special buffer for them.
-//    // (could change to count number of particles that need
-//    // to move more than N mesh cells).
-//    //
-//    int numpcls_long_move_thr = 0;
-//    #pragma omp for // nowait
-//    for (int i = 0; i < nop; i++)
-//    {
-//      const int cx = xidx[pidx];
-//      const int cy = yidx[pidx];
-//      const int cz = zidx[pidx];
-//
-//      const int cxlower = cx <= 0 ? 0 : cx-1;
-//      const int cxupper = cx >= (nxc-1) ? nxc-1 : cx+1;
-//      const int lowerindex = bucket_offset[cxlower][cylower][czlower];
-//      const int upperoffset = bucket_offset[cxupper][cyupper][czupper];
-//      const int upperindex = upperoffset + numpcls_in_bucket[cx][cy][cz];
-//      if(i < lowerindex || i > upperindex)
-//      {
-//        numpcls_long_move_thr++;
-//      }
-//    }
-//  }
-//}
-//#endif
-
 // This can be called from within an omp parallel block
 void Particles3Dcomm::copyParticlesToSoA()
 {
-  timeTasks_set_task(TimeTasks::TRANSPOSE_PCLS_TO_SOA);
-  const int nop = _pcls.size();
-  // create memory for SoA representation
-  resize_SoA(nop);
- #ifndef __MIC__stub // replace with __MIC__ when this has been debugged
-  #pragma omp for
-  for(int pidx=0; pidx<nop; pidx++)
-  {
-    const SpeciesParticle& pcl = _pcls[pidx];
-    u[pidx] = pcl.get_u();
-    v[pidx] = pcl.get_v();
-    w[pidx] = pcl.get_w();
-    q[pidx] = pcl.get_q();
-    x[pidx] = pcl.get_x();
-    y[pidx] = pcl.get_y();
-    z[pidx] = pcl.get_z();
-    t[pidx] = pcl.get_t();
-  }
- #else // __MIC__
-  // rather than doing stride-8 scatter,
-  // copy and transpose data 8 particles at a time
-  assert_divides(8,u.capacity());
-  #pragma omp for
-  for(int pidx=0; pidx<nop; pidx+=8)
-  {
-    F64vec8* SoAdata[8] = {
-      (F64vec8*) &u[pidx],
-      (F64vec8*) &v[pidx],
-      (F64vec8*) &w[pidx],
-      (F64vec8*) &q[pidx],
-      (F64vec8*) &x[pidx],
-      (F64vec8*) &y[pidx],
-      (F64vec8*) &z[pidx],
-      (F64vec8*) &t[pidx]};
-    F64vec8* AoSdata = reinterpret_cast<F64vec8*>(&_pcls[pidx]);
-    transpose_8x8_double(AoSdata,SoAdata);
-  }
- #endif // __MIC__
-  particleType = ParticleType::synched;
+    timeTasks_set_task(TimeTasks::TRANSPOSE_PCLS_TO_SOA);
+    const int nop = _pcls.size();
+    // create memory for SoA representation
+    resize_SoA(nop);
+    #ifndef __MIC__stub // replace with __MIC__ when this has been debugged
+    #pragma omp for
+    for(int pidx=0; pidx<nop; pidx++)
+    {
+        const SpeciesParticle& pcl = _pcls[pidx];
+        u[pidx] = pcl.get_u();
+        v[pidx] = pcl.get_v();
+        w[pidx] = pcl.get_w();
+        q[pidx] = pcl.get_q();
+        x[pidx] = pcl.get_x();
+        y[pidx] = pcl.get_y();
+        z[pidx] = pcl.get_z();
+        t[pidx] = pcl.get_t();
+    }
+    #else // __MIC__
+    // rather than doing stride-8 scatter,
+    // copy and transpose data 8 particles at a time
+    assert_divides(8,u.capacity());
+    #pragma omp for
+    for(int pidx=0; pidx<nop; pidx+=8)
+    {
+        F64vec8* SoAdata[8] = {
+        (F64vec8*) &u[pidx],
+        (F64vec8*) &v[pidx],
+        (F64vec8*) &w[pidx],
+        (F64vec8*) &q[pidx],
+        (F64vec8*) &x[pidx],
+        (F64vec8*) &y[pidx],
+        (F64vec8*) &z[pidx],
+        (F64vec8*) &t[pidx]};
+        F64vec8* AoSdata = reinterpret_cast<F64vec8*>(&_pcls[pidx]);
+        transpose_8x8_double(AoSdata,SoAdata);
+    }
+    #endif // __MIC__
+    particleType = ParticleType::synched;
 }
 
 // This can be called from within an omp parallel block
 void Particles3Dcomm::copyParticlesToAoS()
 {
-  timeTasks_set_task(TimeTasks::TRANSPOSE_PCLS_TO_AOS);
-  const int nop = u.size();
-  if(is_output_thread()) dprintf("copying to array of structs");
-  resize_AoS(nop);
- #ifndef __MIC__
-  // use a simple stride-8 gather
-  #pragma omp for
-  for(int pidx=0; pidx<nop; pidx++)
-  {
-    _pcls[pidx].set(
-      u[pidx],v[pidx],w[pidx], q[pidx],
-      x[pidx],y[pidx],z[pidx], t[pidx]);
-  }
- #else // __MIC__
-  // for efficiency, copy data 8 particles at a time,
-  // transposing each block of particles
-  assert_divides(8,_pcls.capacity());
-  #pragma omp for
-  for(int pidx=0; pidx<nop; pidx+=8)
-  {
-    F64vec8* AoSdata = reinterpret_cast<F64vec8*>(&_pcls[pidx]);
-    F64vec8* SoAdata[8] ={
-      (F64vec8*) &u[pidx],
-      (F64vec8*) &v[pidx],
-      (F64vec8*) &w[pidx],
-      (F64vec8*) &q[pidx],
-      (F64vec8*) &x[pidx],
-      (F64vec8*) &y[pidx],
-      (F64vec8*) &z[pidx],
-      (F64vec8*) &t[pidx]};
-    transpose_8x8_double(SoAdata, AoSdata);
-  }
- #endif
-  particleType = ParticleType::synched;
+    timeTasks_set_task(TimeTasks::TRANSPOSE_PCLS_TO_AOS);
+    const int nop = u.size();
+    if(is_output_thread()) dprintf("copying to array of structs");
+    resize_AoS(nop);
+    #ifndef __MIC__
+    // use a simple stride-8 gather
+    #pragma omp for
+    for(int pidx=0; pidx<nop; pidx++)
+    {
+        _pcls[pidx].set(
+        u[pidx],v[pidx],w[pidx], q[pidx],
+        x[pidx],y[pidx],z[pidx], t[pidx]);
+    }
+    #else // __MIC__
+    // for efficiency, copy data 8 particles at a time,
+    // transposing each block of particles
+    assert_divides(8,_pcls.capacity());
+    #pragma omp for
+    for(int pidx=0; pidx<nop; pidx+=8)
+    {
+        F64vec8* AoSdata = reinterpret_cast<F64vec8*>(&_pcls[pidx]);
+        F64vec8* SoAdata[8] ={
+        (F64vec8*) &u[pidx],
+        (F64vec8*) &v[pidx],
+        (F64vec8*) &w[pidx],
+        (F64vec8*) &q[pidx],
+        (F64vec8*) &x[pidx],
+        (F64vec8*) &y[pidx],
+        (F64vec8*) &z[pidx],
+        (F64vec8*) &t[pidx]};
+        transpose_8x8_double(SoAdata, AoSdata);
+    }
+    #endif
+    particleType = ParticleType::synched;
 }
 
 // synched AoS and SoA conceptually implies a write-lock
-//
 void Particles3Dcomm::convertParticlesToSynched()
 {
-  switch(particleType)
-  {
-    default:
-      unsupported_value_error(particleType);
-    case ParticleType::SoA:
-      copyParticlesToAoS();
-      break;
-    case ParticleType::AoS:
-      copyParticlesToSoA();
-      break;
-    case ParticleType::synched:
-      break;
-  }
-  // this state conceptually implies a write-lock
-  particleType = ParticleType::synched;
+    switch(particleType)
+    {
+        default:
+        unsupported_value_error(particleType);
+        case ParticleType::SoA:
+        copyParticlesToAoS();
+        break;
+        case ParticleType::AoS:
+        copyParticlesToSoA();
+        break;
+        case ParticleType::synched:
+        break;
+    }
+    // this state conceptually implies a write-lock
+    particleType = ParticleType::synched;
 }
 
 
 // defines AoS to be the authority
 // (conceptually releasing any write-lock)
-//
 void Particles3Dcomm::convertParticlesToAoS()
 {
-  switch(particleType)
-  {
-    default:
-      unsupported_value_error(particleType);
-    case ParticleType::SoA:
-      copyParticlesToAoS();
-      break;
-    case ParticleType::AoS:
-    case ParticleType::synched:
-      break;
-  }
-  particleType = ParticleType::AoS;
+    switch(particleType)
+    {
+        default:
+        unsupported_value_error(particleType);
+        case ParticleType::SoA:
+        copyParticlesToAoS();
+        break;
+        case ParticleType::AoS:
+        case ParticleType::synched:
+        break;
+    }
+    particleType = ParticleType::AoS;
 }
 
 // check whether particles are SoA
 bool Particles3Dcomm::particlesAreSoA()const
 {
-  switch(particleType)
-  {
-    default:
-      unsupported_value_error(particleType);
-    case ParticleType::AoS:
-      return false;
-      break;
-    case ParticleType::SoA:
-    case ParticleType::synched:
-      break;
-  }
-  return true;
+    switch(particleType)
+    {
+        default:
+        unsupported_value_error(particleType);
+        case ParticleType::AoS:
+        return false;
+        break;
+        case ParticleType::SoA:
+        case ParticleType::synched:
+        break;
+    }
+    return true;
 }
 
 // defines SoA to be the authority
 // (conceptually releasing any write-lock)
-//
 void Particles3Dcomm::convertParticlesToSoA()
 {
-  switch(particleType)
-  {
-    default:
-      unsupported_value_error(particleType);
-    case ParticleType::AoS:
-      copyParticlesToSoA();
-      break;
-    case ParticleType::SoA:
-    case ParticleType::synched:
-      break;
-  }
-  particleType = ParticleType::SoA;
+    switch(particleType)
+    {
+        default:
+        unsupported_value_error(particleType);
+        case ParticleType::AoS:
+        copyParticlesToSoA();
+        break;
+        case ParticleType::SoA:
+        case ParticleType::synched:
+        break;
+    }
+    particleType = ParticleType::SoA;
 }
 

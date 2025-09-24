@@ -61,395 +61,492 @@ namespace BCparticles
 class Particles3Dcomm // :public Particles
 {
 public:
-  /** constructor */
-  Particles3Dcomm(int species, CollectiveIO * col,
-    VirtualTopology3D * vct, Grid * grid);
+    //! Constructor !//
+    Particles3Dcomm(int species, CollectiveIO * col, VirtualTopology3D * vct, Grid * grid);
 
-  void reserveSpace(int nop);
-  void restartLoad();
+    void reserveSpace(int nop);
+    void restartLoad();
 
-  /** destructor */
-  ~Particles3Dcomm();
+    //! Destructor !//
+    ~Particles3Dcomm();
 
-  /** interpolation method GRID->PARTICLE order 1: CIC */
-  // This does not belong in this class and is no longer in use.
-  void interpP2G(Field * EMf);
+    /** interpolation method GRID->PARTICLE order 1: CIC */
+    // This does not belong in this class and is no longer in use.
+    void interpP2G(Field * EMf);
 
- public: // handle boundary conditions
-  // apply boundary conditions to all particles at the
-  // end of a list of particles starting with index start
-  // 
-  // these are virtual so user can override these
-  // to provide arbitrary custom boundary conditions
-  virtual void apply_Xleft_BC(vector_SpeciesParticle& pcls, int start=0);
-  virtual void apply_Yleft_BC(vector_SpeciesParticle& pcls, int start=0);
-  virtual void apply_Zleft_BC(vector_SpeciesParticle& pcls, int start=0);
-  virtual void apply_Xrght_BC(vector_SpeciesParticle& pcls, int start=0);
-  virtual void apply_Yrght_BC(vector_SpeciesParticle& pcls, int start=0);
-  virtual void apply_Zrght_BC(vector_SpeciesParticle& pcls, int start=0);
- private: // handle boundary conditions
-  void apply_periodic_BC_global(vector_SpeciesParticle& pcl_list, int pstart);
-  bool test_pcls_are_in_nonperiodic_domain(const vector_SpeciesParticle& pcls)const;
-  bool test_pcls_are_in_domain(const vector_SpeciesParticle& pcls)const;
-  bool test_outside_domain(const SpeciesParticle& pcl)const;
-  bool test_outside_nonperiodic_domain(const SpeciesParticle& pcl)const;
-  bool test_Xleft_of_domain(const SpeciesParticle& pcl)
-  { return pcl.get_x() < 0.; }
-  bool test_Xrght_of_domain(const SpeciesParticle& pcl)
-  { return pcl.get_x() > Lx; }
-  bool test_Yleft_of_domain(const SpeciesParticle& pcl)
-  { return pcl.get_y() < 0.; }
-  bool test_Yrght_of_domain(const SpeciesParticle& pcl)
-  { return pcl.get_y() > Ly; }
-  bool test_Zleft_of_domain(const SpeciesParticle& pcl)
-  { return pcl.get_z() < 0.; }
-  bool test_Zrght_of_domain(const SpeciesParticle& pcl)
-  { return pcl.get_z() > Lz; }
-  void apply_nonperiodic_BCs_global(vector_SpeciesParticle&, int pstart);
-  bool test_all_pcls_are_in_subdomain();
-  void apply_BCs_globally(vector_SpeciesParticle& pcl_list);
-  void apply_BCs_locally(vector_SpeciesParticle& pcl_list,
-    int direction, bool apply_shift, bool do_apply_BCs);
- private: // communicate particles between processes
-  void flush_send();
-  bool send_pcl_to_appropriate_buffer(SpeciesParticle& pcl, int count[6]);
-  int handle_received_particles(int pclCommMode=0);
- public:
-  int separate_and_send_particles();
-  void recommunicate_particles_until_done(int min_num_iterations=3);
-  void communicate_particles();
-  void pad_capacities();
- private:
-  void resize_AoS(int nop);
-  void resize_SoA(int nop);
-  void copyParticlesToAoS();
-  void copyParticlesToSoA();
+public: 
+    //* Apply boundary conditions to all particles at the end of a list of particles starting with index start;
+    //* These are virtual so user can override these to provide arbitrary custom boundary conditions
+    virtual void apply_Xleft_BC(vector_SpeciesParticle& pcls, int start=0);
+    virtual void apply_Yleft_BC(vector_SpeciesParticle& pcls, int start=0);
+    virtual void apply_Zleft_BC(vector_SpeciesParticle& pcls, int start=0);
+    virtual void apply_Xrght_BC(vector_SpeciesParticle& pcls, int start=0);
+    virtual void apply_Yrght_BC(vector_SpeciesParticle& pcls, int start=0);
+    virtual void apply_Zrght_BC(vector_SpeciesParticle& pcls, int start=0);
 
- public:
-  void convertParticlesToSynched();
-  void convertParticlesToAoS();
-  void convertParticlesToSoA();
-  bool particlesAreSoA()const;
-
-  /*! sort particles for vectorized push (needs to be parallelized) */
-  //void sort_particles_serial_SoA_by_xavg();
-  void sort_particles_serial();
-  void sort_particles_serial_AoS();
-  void sort_particles_parallel(int* cellCount, int* cellOffset);
-  void sort_particles_parallel_AoS(int* globalCount, int* bucketOffset);
-  //void sort_particles_serial_SoA();
-
-  // get accessors for optional arrays
-  //
-  //Larray<SpeciesParticle>& fetch_pcls(){ return _pcls; }
-  //Larray<SpeciesParticle>& fetch_pclstmp(){ return _pclstmp; }
-
-  // particle creation methods
-  //
-  void reserve_remaining_particle_IDs()
-  {
-    // reserve remaining particle IDs starting from getNOP()
-    pclIDgenerator.reserve_particles_in_range(getNOP());
-  }
-  // create new particle
-  void create_new_particle(
-    cudaParticleType u, cudaParticleType v, cudaParticleType w, cudaParticleType q,
-    cudaParticleType x, cudaParticleType y, cudaParticleType z)
-  {
-    const cudaParticleType t = pclIDgenerator.generateID();
-    _pcls.push_back(SpeciesParticle(u,v,w,q,x,y,z,t));
-  }
-  // add particle to the list
-  void add_new_particle(
-    cudaParticleType u, cudaParticleType v, cudaParticleType w, cudaParticleType q,
-    cudaParticleType x, cudaParticleType y, cudaParticleType z, cudaParticleType t)
-  {
-    _pcls.push_back(SpeciesParticle(u,v,w,q,x,y,z,t));
-  }
-
-  void delete_particle(int pidx)
-  {
-    _pcls[pidx]=_pcls.back();
-    _pcls.pop_back();
-    //_pcls.delete_element(pidx);
-  }
-
-  // inline get accessors
-  //
-  double get_dx(){return dx;}
-  double get_dy(){return dy;}
-  double get_dz(){return dz;}
-  double get_invdx(){return inv_dx;}
-  double get_invdy(){return inv_dy;}
-  double get_invdz(){return inv_dz;}
-  double get_xstart(){return xstart;}
-  double get_ystart(){return ystart;}
-  double get_zstart(){return zstart;}
-  ParticleType::Type get_particleType()const { return particleType; }
-  void set_particleType(ParticleType::Type newType) { particleType = newType; }
-  const SpeciesParticle& get_pcl(int pidx)const{ return _pcls[pidx]; }
-  const vector_SpeciesParticle& get_pcl_list()const{ return _pcls; }
-  vector_SpeciesParticle& get_pcl_array(){ return _pcls; }
-  vector_SpeciesParticle* get_pcl_arrayPtr(){ return &_pcls; }
-  const SpeciesParticle* get_pclptr(int id)const{ return &(_pcls[id]); }
-  const double *getUall()  const { assert(particlesAreSoA()); return &u[0]; }
-  const double *getVall()  const { assert(particlesAreSoA()); return &v[0]; }
-  const double *getWall()  const { assert(particlesAreSoA()); return &w[0]; }
-  const double *getQall()  const { assert(particlesAreSoA()); return &q[0]; }
-  const double *getXall()  const { assert(particlesAreSoA()); return &x[0]; }
-  const double *getYall()  const { assert(particlesAreSoA()); return &y[0]; }
-  const double *getZall()  const { assert(particlesAreSoA()); return &z[0]; }
-  const double *getParticleIDall() const{assert(particlesAreSoA());return &t[0];  }
-  // accessors for particle with index indexPart
-  //
-  int getNOP()  const { return _pcls.size(); }
-  // set particle components
-  void setU(int i, cudaParticleType in){_pcls[i].set_u(in);}
-  void setV(int i, cudaParticleType in){_pcls[i].set_v(in);}
-  void setW(int i, cudaParticleType in){_pcls[i].set_w(in);}
-  void setQ(int i, cudaParticleType in){_pcls[i].set_q(in);}
-  void setX(int i, cudaParticleType in){_pcls[i].set_x(in);}
-  void setY(int i, cudaParticleType in){_pcls[i].set_y(in);}
-  void setZ(int i, cudaParticleType in){_pcls[i].set_z(in);}
-  void setT(int i, cudaParticleType in){_pcls[i].set_t(in);}
-  // fetch particle components
-  cudaParticleType& fetchU(int i){return _pcls[i].fetch_u();}
-  cudaParticleType& fetchV(int i){return _pcls[i].fetch_v();}
-  cudaParticleType& fetchW(int i){return _pcls[i].fetch_w();}
-  cudaParticleType& fetchQ(int i){return _pcls[i].fetch_q();}
-  cudaParticleType& fetchX(int i){return _pcls[i].fetch_x();}
-  cudaParticleType& fetchY(int i){return _pcls[i].fetch_y();}
-  cudaParticleType& fetchZ(int i){return _pcls[i].fetch_z();}
-  cudaParticleType& fetchT(int i){return _pcls[i].fetch_t();}
-  // get particle components
-  cudaParticleType getU(int i)const{return _pcls[i].get_u();}
-  cudaParticleType getV(int i)const{return _pcls[i].get_v();}
-  cudaParticleType getW(int i)const{return _pcls[i].get_w();}
-  cudaParticleType getQ(int i)const{return _pcls[i].get_q();}
-  cudaParticleType getX(int i)const{return _pcls[i].get_x();}
-  cudaParticleType getY(int i)const{return _pcls[i].get_y();}
-  cudaParticleType getZ(int i)const{return _pcls[i].get_z();}
-  cudaParticleType getT(int i)const{return _pcls[i].get_t();}
-  //int get_npmax() const {return npmax;}
-
-  // computed get access
-  //
-  /** return the Kinetic energy */
-  double getKe();
-  /** return the maximum kinetic energy */
-  double getMaxVelocity();
-  /** return energy distribution */
-  long long *getVelocityDistribution(int nBins, double maxVel);
-  /** return the momentum */
-  double getP();
-  /** Print particles info: positions, velocities */
-  void Print() const;
-  /** Print the number of particles of this subdomain */
-  void PrintNp() const;
+private: // handle boundary conditions
+    void apply_periodic_BC_global(vector_SpeciesParticle& pcl_list, int pstart);
+    bool test_pcls_are_in_nonperiodic_domain(const vector_SpeciesParticle& pcls)const;
+    bool test_pcls_are_in_domain(const vector_SpeciesParticle& pcls)const;
+    bool test_outside_domain(const SpeciesParticle& pcl)const;
+    bool test_outside_nonperiodic_domain(const SpeciesParticle& pcl)const;
+    bool test_Xleft_of_domain(const SpeciesParticle& pcl){ return pcl.get_x() < 0.; }
+    bool test_Xrght_of_domain(const SpeciesParticle& pcl){ return pcl.get_x() > Lx; }
+    bool test_Yleft_of_domain(const SpeciesParticle& pcl){ return pcl.get_y() < 0.; }
+    bool test_Yrght_of_domain(const SpeciesParticle& pcl){ return pcl.get_y() > Ly; }
+    bool test_Zleft_of_domain(const SpeciesParticle& pcl){ return pcl.get_z() < 0.; }
+    bool test_Zrght_of_domain(const SpeciesParticle& pcl){ return pcl.get_z() > Lz; }
+    void apply_nonperiodic_BCs_global(vector_SpeciesParticle&, int pstart);
+    bool test_all_pcls_are_in_subdomain();
+    void apply_BCs_globally(vector_SpeciesParticle& pcl_list);
+    void apply_BCs_locally(vector_SpeciesParticle& pcl_list, int direction, bool apply_shift, bool do_apply_BCs);
+ 
+private: // communicate particles between processes
+    void flush_send();
+    bool send_pcl_to_appropriate_buffer(SpeciesParticle& pcl, int count[6]);
+    int handle_received_particles(int pclCommMode=0);
 
 public:
-  // accessors
-  //int get_ns()const{return ns;}
-  // return number of this species
-  int get_species_num()const{return ns;}
-  int get_numpcls_in_bucket(int cx, int cy, int cz)const
-  { return (*numpcls_in_bucket)[cx][cy][cz]; }
-  int get_bucket_offset(int cx, int cy, int cz)const
-  { return (*bucket_offset)[cx][cy][cz]; }
+    int separate_and_send_particles();
+    void recommunicate_particles_until_done(int min_num_iterations=3);
+    void communicate_particles();
+    void pad_capacities();
+
+private:
+    void resize_AoS(int nop);
+    void resize_SoA(int nop);
+    void copyParticlesToAoS();
+    void copyParticlesToSoA();
+
+public:
+    void convertParticlesToSynched();
+    void convertParticlesToAoS();
+    void convertParticlesToSoA();
+    bool particlesAreSoA()const;
+
+    /*! sort particles for vectorized push (needs to be parallelized) */
+    //void sort_particles_serial_SoA_by_xavg();
+    void sort_particles_serial();
+    void sort_particles_serial_AoS();
+    void sort_particles_parallel(int* cellCount, int* cellOffset);
+    void sort_particles_parallel_AoS(int* globalCount, int* bucketOffset);
+    //void sort_particles_serial_SoA();
+
+    // get accessors for optional arrays
+    //Larray<SpeciesParticle>& fetch_pcls(){ return _pcls; }
+    //Larray<SpeciesParticle>& fetch_pclstmp(){ return _pclstmp; }
+
+    //* Particle creation methods
+    void reserve_remaining_particle_IDs()
+    {
+        // reserve remaining particle IDs starting from getNOP()
+        pclIDgenerator.reserve_particles_in_range(getNOP());
+    }
+
+    //* Create new particle
+    void create_new_particle(cudaParticleType u, cudaParticleType v, cudaParticleType w, cudaParticleType q,
+                             cudaParticleType x, cudaParticleType y, cudaParticleType z)
+    {
+        const cudaParticleType t = pclIDgenerator.generateID();
+        _pcls.push_back(SpeciesParticle(u,v,w,q,x,y,z,t));
+    }
+
+    //* Add particle to the list
+    void add_new_particle(cudaParticleType u, cudaParticleType v, cudaParticleType w, cudaParticleType q,
+                          cudaParticleType x, cudaParticleType y, cudaParticleType z, cudaParticleType t)
+    {
+        _pcls.push_back(SpeciesParticle(u,v,w,q,x,y,z,t));
+    }
+
+    void delete_particle(int pidx)
+    {
+        _pcls[pidx]=_pcls.back();
+        _pcls.pop_back();
+        //_pcls.delete_element(pidx);
+    }
+
+    // inline get accessors
+    double get_dx(){return dx;}
+    double get_dy(){return dy;}
+    double get_dz(){return dz;}
+    double get_invdx(){return inv_dx;}
+    double get_invdy(){return inv_dy;}
+    double get_invdz(){return inv_dz;}
+    double get_xstart(){return xstart;}
+    double get_ystart(){return ystart;}
+    double get_zstart(){return zstart;}
+
+    ParticleType::Type get_particleType()const { return particleType; }
+    void set_particleType(ParticleType::Type newType) { particleType = newType; }
+    const SpeciesParticle& get_pcl(int pidx)const{ return _pcls[pidx]; }
+    const vector_SpeciesParticle& get_pcl_list()const{ return _pcls; }
+    vector_SpeciesParticle& get_pcl_array(){ return _pcls; }
+    vector_SpeciesParticle* get_pcl_arrayPtr(){ return &_pcls; }
+    const SpeciesParticle* get_pclptr(int id)const{ return &(_pcls[id]); }
+    const double *getUall()  const { assert(particlesAreSoA()); return &u[0]; }
+    const double *getVall()  const { assert(particlesAreSoA()); return &v[0]; }
+    const double *getWall()  const { assert(particlesAreSoA()); return &w[0]; }
+    const double *getQall()  const { assert(particlesAreSoA()); return &q[0]; }
+    const double *getXall()  const { assert(particlesAreSoA()); return &x[0]; }
+    const double *getYall()  const { assert(particlesAreSoA()); return &y[0]; }
+    const double *getZall()  const { assert(particlesAreSoA()); return &z[0]; }
+    const double *getParticleIDall() const{assert(particlesAreSoA());return &t[0];  }
+
+    //* Downsampled particles 
+    double *getU_DS()
+    {
+        const long long required_size = (getNOP() + ParticlesDownsampleFactor - 1) / ParticlesDownsampleFactor;
+
+        if (u_ds != nullptr)
+            delete[] u_ds;
+
+        u_ds = new double[required_size];
+
+        long long counter = 0;
+        for (long long ip = 0; ip < getNOP(); ip += ParticlesDownsampleFactor) 
+            u_ds[counter++] = u[ip];
+
+        return u_ds; 
+    }
+    
+    double *getV_DS()
+    { 
+        const long long required_size = (getNOP() + ParticlesDownsampleFactor - 1) / ParticlesDownsampleFactor;
+
+        if (v_ds != nullptr)
+            delete[] v_ds;
+
+        v_ds = new double[required_size];
+
+        long long counter = 0;
+        for (long long ip = 0; ip < getNOP(); ip += ParticlesDownsampleFactor) 
+            v_ds[counter++] = v[ip];
+
+        return v_ds;
+    }
+
+    double *getW_DS()
+    {
+        const long long required_size = (getNOP() + ParticlesDownsampleFactor - 1) / ParticlesDownsampleFactor;
+
+        if (w_ds != nullptr)
+            delete[] w_ds;
+
+        w_ds = new double[required_size];
+
+        long long counter = 0;
+        for (long long ip = 0; ip < getNOP(); ip += ParticlesDownsampleFactor) 
+            w_ds[counter++] = w[ip];
+
+        return w_ds;
+    }
+
+    double *getQ_DS()
+    {
+        const long long required_size = (getNOP() + ParticlesDownsampleFactor - 1) / ParticlesDownsampleFactor;
+
+        if (q_ds != nullptr)
+            delete[] q_ds;
+
+        q_ds = new double[required_size];
+
+        long long counter = 0;
+        for (long long ip = 0; ip < getNOP(); ip += ParticlesDownsampleFactor) 
+        {
+            q_ds[counter] = q[ip];
+            counter++;
+        }
+
+        return q_ds; 
+    }
+
+    double *getX_DS()
+    {
+        const long long required_size = (getNOP() + ParticlesDownsampleFactor - 1) / ParticlesDownsampleFactor;
+
+        if (x_ds != nullptr)
+            delete[] x_ds;
+
+        x_ds = new double[required_size];
+
+        long long counter = 0;
+        for (long long ip = 0; ip < getNOP(); ip += ParticlesDownsampleFactor) 
+        {
+            x_ds[counter] = x[ip];
+            counter++;
+        }
+
+        return x_ds; 
+    }
+    
+    double *getY_DS()
+    {
+        const long long required_size = (getNOP() + ParticlesDownsampleFactor - 1) / ParticlesDownsampleFactor;
+
+        if (y_ds != nullptr)
+            delete[] y_ds;
+
+        y_ds = new double[required_size];
+
+        long long counter = 0;
+        for (long long ip = 0; ip < getNOP(); ip += ParticlesDownsampleFactor) 
+        {
+            y_ds[counter] = y[ip];
+            counter++;
+        }
+
+        return y_ds; 
+    }
+
+    double *getZ_DS()
+    {
+        const long long required_size = (getNOP() + ParticlesDownsampleFactor - 1) / ParticlesDownsampleFactor;
+
+        if (z_ds != nullptr)
+            delete[] z_ds;
+
+        z_ds = new double[required_size];
+
+        long long counter = 0;
+        for (long long ip = 0; ip < getNOP(); ip += ParticlesDownsampleFactor) 
+        {
+            z_ds[counter] = z[ip];
+            counter++;
+        }
+
+        return z_ds; 
+    }
+
+    //* accessors for particle with index indexPart
+    int getNOP()  const { return _pcls.size(); }
+
+    //* Get number of downsampled particles
+    long long get_NOP_DS() const 
+    {
+        long long nop_ds = static_cast<long long>(ceil(static_cast<double>(getNOP())/ParticlesDownsampleFactor));
+        return (nop_ds);
+    }
+    
+    // set particle components
+    void setU(int i, cudaParticleType in){_pcls[i].set_u(in);}
+    void setV(int i, cudaParticleType in){_pcls[i].set_v(in);}
+    void setW(int i, cudaParticleType in){_pcls[i].set_w(in);}
+    void setQ(int i, cudaParticleType in){_pcls[i].set_q(in);}
+    void setX(int i, cudaParticleType in){_pcls[i].set_x(in);}
+    void setY(int i, cudaParticleType in){_pcls[i].set_y(in);}
+    void setZ(int i, cudaParticleType in){_pcls[i].set_z(in);}
+    void setT(int i, cudaParticleType in){_pcls[i].set_t(in);}
+
+    // fetch particle components
+    cudaParticleType& fetchU(int i){return _pcls[i].fetch_u();}
+    cudaParticleType& fetchV(int i){return _pcls[i].fetch_v();}
+    cudaParticleType& fetchW(int i){return _pcls[i].fetch_w();}
+    cudaParticleType& fetchQ(int i){return _pcls[i].fetch_q();}
+    cudaParticleType& fetchX(int i){return _pcls[i].fetch_x();}
+    cudaParticleType& fetchY(int i){return _pcls[i].fetch_y();}
+    cudaParticleType& fetchZ(int i){return _pcls[i].fetch_z();}
+    cudaParticleType& fetchT(int i){return _pcls[i].fetch_t();}
+
+    // get particle components
+    cudaParticleType getU(int i)const{return _pcls[i].get_u();}
+    cudaParticleType getV(int i)const{return _pcls[i].get_v();}
+    cudaParticleType getW(int i)const{return _pcls[i].get_w();}
+    cudaParticleType getQ(int i)const{return _pcls[i].get_q();}
+    cudaParticleType getX(int i)const{return _pcls[i].get_x();}
+    cudaParticleType getY(int i)const{return _pcls[i].get_y();}
+    cudaParticleType getZ(int i)const{return _pcls[i].get_z();}
+    cudaParticleType getT(int i)const{return _pcls[i].get_t();}
+ 
+    //! Remove
+    // double get_kinetic_energy();
+    // double get_momentum();
+
+    double get_momentum();
+    double get_kinetic_energy();
+    
+    int get_num_particles();
+    double get_total_charge();
+
+    double getMaxVelocity();
+    double getMinVelocity();
+    double *getVelocityDistribution(int nBins, double minVel, double maxVel);
+
+    void Print() const;
+    void PrintNp() const;
+
+public:
+    int get_species_num()const{return ns;}
+    int get_numpcls_in_bucket(int cx, int cy, int cz)const { return (*numpcls_in_bucket)[cx][cy][cz]; }
+    int get_bucket_offset(int cx, int cy, int cz)const { return (*bucket_offset)[cx][cy][cz]; }
 
 protected:
-  // pointers to topology and grid information
-  // (should be const)
-  const Collective * col;
-  const VirtualTopology3D * vct;
-  const Grid * grid;
-  //
-  /** number of this species */
-  int ns;
-  /** maximum number of particles of this species on this domain. used for memory allocation */
-  //int npmax;
-  /** number of particles of this species on this domain */
-  //int nop; // see getNOP();
-  /** total number of particles */
-  //long long np_tot;
-  /** number of particles per cell */
-  int npcel;
-  /** number of particles per cell - X direction */
-  int npcelx;
-  /** number of particles per cell - Y direction */
-  int npcely;
-  /** number of particles per cell - Z direction */
-  int npcelz;
-  /** charge to mass ratio */
-  double qom;
-  /** recon thick */
-  double delta;
-  /** thermal velocity  - Direction X*/
-  double uth;
-  /** thermal velocity  - Direction Y*/
-  double vth;
-  /** thermal velocity  - Direction Z*/
-  double wth;
-  /** u0 Drift velocity - Direction X */
-  double u0;
-  /** v0 Drift velocity - Direction Y */
-  double v0;
-  /** w0 Drift velocity - Direction Z */
-  double w0;
-  // used to generate unique particle IDs
-  doubleIDgenerator pclIDgenerator;
+    //* pointers to topology and grid information (should be const)
+    const Collective * col;
+    const VirtualTopology3D * vct;
+    const Grid * grid;
 
-  ParticleType::Type particleType;
-  //
-  // AoS representation
-  //
-  //Larray<SpeciesParticle> _pcls;
-  vector_SpeciesParticle_registered _pcls;
-  //
-  // particles data
-  //
-  // SoA representation
-  //
-  // velocity components
-  vector_double u;
-  vector_double v;
-  vector_double w;
-  // charge
-  vector_double q;
-  // position
-  vector_double x;
-  vector_double y;
-  vector_double z;
-  // subcycle time
-  vector_double t;
-  // indicates whether this class is for tracking particles
-  //bool TrackParticleID;
-  bool isTestParticle;
-  double pitch_angle;
-  double energy;
+    //* Number of species
+    int ns;
 
-  // structures for sorting particles
-  //
-  /** Average position data (used during particle push) **/
-  //
-  //Larray<double>& _xavg;
-  //Larray<double>& _yavg;
-  //Larray<double>& _zavg;
-  //
-  // alternate temporary storage for sorting particles
-  //
-  vector_SpeciesParticle_registered _pclstmp;
-  //
-  // references for buckets for serial sort.
-  //
-  array3_int* numpcls_in_bucket;
-  array3_int* numpcls_in_bucket_now; // accumulator used during sorting
-  //array3_int* bucket_size; // maximum number of particles in bucket
-  array3_int* bucket_offset;
+    //* Number of particles per cell (total, X, Y, Z)
+    int npcel, npcelx, npcely, npcelz;
 
-  /** rank of processor in which particle is created (for ID) */
-  int BirthRank[2];
-  /** number of variables to be stored in buffer for communication for each particle  */
-  int nVar;
-  /** time step */
-  double dt;
-  //
-  // Copies of grid data (should just put pointer to Grid in this class)
-  //
-  /** Simulation domain lengths */
-  double xstart, xend, ystart, yend, zstart, zend, invVOL;
-  /** Lx = simulation box length - x direction   */
-  double Lx;
-  /** Ly = simulation box length - y direction   */
-  double Ly;
-  /** Lz = simulation box length - z direction   */
-  double Lz;
-  /** grid spacings */
-  double dx, dy, dz;
-  /** number of grid nodes */
-  int nxn, nyn, nzn;
-  /** number of grid cells */
-  int nxc, nyc, nzc;
-  // convenience values from grid
-  double inv_dx;
-  double inv_dy;
-  double inv_dz;
-  //
-  // Communication variables
-  //
-  /** buffers for communication */
-  //
-  // communicator for this specie
-  MPI_Comm mpi_comm;
-  // send buffers
-  //
-  BlockCommunicator<SpeciesParticle> sendXleft;
-  BlockCommunicator<SpeciesParticle> sendXrght;
-  BlockCommunicator<SpeciesParticle> sendYleft;
-  BlockCommunicator<SpeciesParticle> sendYrght;
-  BlockCommunicator<SpeciesParticle> sendZleft;
-  BlockCommunicator<SpeciesParticle> sendZrght;
-  //
-  // recv buffers
-  //
-  BlockCommunicator<SpeciesParticle> recvXleft;
-  BlockCommunicator<SpeciesParticle> recvXrght;
-  BlockCommunicator<SpeciesParticle> recvYleft;
-  BlockCommunicator<SpeciesParticle> recvYrght;
-  BlockCommunicator<SpeciesParticle> recvZleft;
-  BlockCommunicator<SpeciesParticle> recvZrght;
+    //* Charge to mass ratio
+    double qom;
+    
+    //* Thermal velocity (X, Y, Z)
+    double uth, vth, wth;
 
-  /** bool for communication verbose */
-  bool cVERBOSE;
-  /** Boundary condition on particles:
+    //* Bulk/Drift velocity (X, Y, Z)
+    double u0, v0, w0;
+
+    //* Initial charge density
+    double rhoINIT;
+
+    //! Renove
+    double delta;
+
+    // used to generate unique particle IDs
+    doubleIDgenerator pclIDgenerator;
+
+    ParticleType::Type particleType;
+
+    // AoS representation
+    vector_SpeciesParticle_registered _pcls;
+
+    //? Particles' data (SoA representation)
+    vector_double u;
+    vector_double v;
+    vector_double w;
+    vector_double q;
+    vector_double x;
+    vector_double y;
+    vector_double z;
+    vector_double t;            // subcycle time
+
+    //? Downsampled particles' data
+    double* u_ds;
+    double* v_ds;
+    double* w_ds;
+    double* q_ds;
+    double* x_ds;
+    double* y_ds;
+    double* z_ds;
+
+    // indicates whether this class is for tracking particles
+    //bool TrackParticleID;
+    bool isTestParticle;
+    double pitch_angle;
+    double energy;
+
+    // structures for sorting particles: Average position data (used during particle push)
+    //Larray<double>& _xavg;
+    //Larray<double>& _yavg;
+    //Larray<double>& _zavg;
+
+    // alternate temporary storage for sorting particles
+    vector_SpeciesParticle_registered _pclstmp;
+
+    // references for buckets for serial sort.
+    array3_int* numpcls_in_bucket;
+    array3_int* numpcls_in_bucket_now; // accumulator used during sorting
+    //array3_int* bucket_size; // maximum number of particles in bucket
+    array3_int* bucket_offset;
+
+    /** rank of processor in which particle is created (for ID) */
+    int BirthRank[2];
+    /** number of variables to be stored in buffer for communication for each particle  */
+    int nVar;
+    /** time step */
+    double dt;
+
+    // Copies of grid data (should just put pointer to Grid in this class)
+    //* Simulation domain length
+    double xstart, xend, ystart, yend, zstart, zend, invVOL;
+    
+    //* Simulation box length
+    double Lx, Ly, Lz, dx, dy, dz;
+
+    //* Number of grid nodes and cells
+    int nxn, nyn, nzn, nxc, nyc, nzc;
+
+    // convenience values from grid
+    double inv_dx, inv_dy, inv_dz;
+
+    // Communication variables
+    MPI_Comm mpi_comm;
+    
+    // send buffers
+    BlockCommunicator<SpeciesParticle> sendXleft;
+    BlockCommunicator<SpeciesParticle> sendXrght;
+    BlockCommunicator<SpeciesParticle> sendYleft;
+    BlockCommunicator<SpeciesParticle> sendYrght;
+    BlockCommunicator<SpeciesParticle> sendZleft;
+    BlockCommunicator<SpeciesParticle> sendZrght;
+
+    // recv buffers
+    BlockCommunicator<SpeciesParticle> recvXleft;
+    BlockCommunicator<SpeciesParticle> recvXrght;
+    BlockCommunicator<SpeciesParticle> recvYleft;
+    BlockCommunicator<SpeciesParticle> recvYrght;
+    BlockCommunicator<SpeciesParticle> recvZleft;
+    BlockCommunicator<SpeciesParticle> recvZrght;
+
+    /** bool for communication verbose */
+    bool cVERBOSE;
+
+    //* Speed of light in vacuum
+    double c;
+
+    //* restart variable for loading particles from restart file
+    int restart;
+
+    /** Number of iteration of the mover*/
+    int NiterMover;
+    
+    //* Velocity of injection of particles
+    double Vinj;
+
+    //* Removed charge from species
+    double Q_removed;
+
+    //* density of the injection of the particles
+    double Ninj;
+
+    //* Object of class to handle which nodes have to be computed when the mass matrix is calculated
+    // NeighbouringNodes NeNo;
+
+    //* Limits to apply to particle velocity
+    double umin, umax, vmin, vmax, wmin, wmax;
+
+    //* RelSIM
+    bool Relativistic;
+
+    //* Relativistic particle pusher
+    std::string Relativistic_pusher;
+
+    //* Custom input parameters
+    double *input_param; int nparam;
+
+    //* Downsampling factor
+    int ParticlesDownsampleFactor;
+
+public:
+    /** Boundary condition on particles:
           <ul>
           <li>0 = exit</li>
           <li>1 = perfect mirror</li>
           <li>2 = riemission</li>
           <li>3 = periodic condition </li>
           </ul>
-          */
-public:
-  /** Boundary Condition Particles: FaceXright */
-  int bcPfaceXright;
-  /** Boundary Condition Particles: FaceXleft */
-  int bcPfaceXleft;
-  /** Boundary Condition Particles: FaceYright */
-  int bcPfaceYright;
-  /** Boundary Condition Particles: FaceYleft */
-  int bcPfaceYleft;
-  /** Boundary Condition Particles: FaceYright */
-  int bcPfaceZright;
-  /** Boundary Condition Particles: FaceYleft */
-  int bcPfaceZleft;
-protected:
-  //
-  // Other variables
-  //
-  /** speed of light in vacuum */
-  double c;
-  /** restart variable for loading particles from restart file */
-  int restart;
-  /** Number of iteration of the mover*/
-  int NiterMover;
-  /** velocity of the injection of the particles */
-  double Vinj;
-  /** removed charge from species */
-  double Q_removed;
-  /** density of the injection of the particles */
-  double Ninj;
+    **/
 
- protected:
-
-  // limits to apply to particle velocity
-  //
-  double umax;
-  double vmax;
-  double wmax;
-  double umin;
-  double vmin;
-  double wmin;
-
+    int bcPfaceXright;
+    int bcPfaceXleft;
+    int bcPfaceYright;
+    int bcPfaceYleft;
+    int bcPfaceZright;
+    int bcPfaceZleft;
 };
 
 // find the particles with particular IDs and print them
