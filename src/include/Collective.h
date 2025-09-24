@@ -67,6 +67,8 @@ class Collective
     void ReadInput(string inputfile);
     int ReadRestart(string inputfile) = delete;
 
+    void trim_conserved_quantities_file(const std::string& filename, int restart_cycle);
+
     void read_field_restart(const VCtopology3D* vct,const Grid* grid,arr3_double Bxn, arr3_double Byn, arr3_double Bzn,
     						arr3_double Ex, arr3_double Ey, arr3_double Ez,array4_double* rhons_, int ns)const;
 
@@ -80,116 +82,148 @@ class Collective
     void save();
 
     // accessors
-    //
-    int getDim()const{ return (dim); }
-    double getLx()const{ return (Lx); }
-    double getLy()const{ return (Ly); }
-    double getLz()const{ return (Lz); }
-    double getx_center()const{ return (x_center); }
-    double gety_center()const{ return (y_center); }
-    double getz_center()const{ return (z_center); }
-    double getL_square()const{ return (L_square); }
-    int getNxc()const{ return (nxc); }
-    int getNyc()const{ return (nyc); }
-    int getNzc()const{ return (nzc); }
-    int getXLEN()const{ return (XLEN); }
-    int getYLEN()const{ return (YLEN); }
-    int getZLEN()const{ return (ZLEN); }
-    bool getPERIODICX()const{ return (PERIODICX); }
-    bool getPERIODICY()const{ return (PERIODICY); }
-    bool getPERIODICZ()const{ return (PERIODICZ); }
-    bool getPERIODICX_P()const{ return (PERIODICX_P); }
-    bool getPERIODICY_P()const{ return (PERIODICY_P); }
-    bool getPERIODICZ_P()const{ return (PERIODICZ_P); }
-    double getDx()const{ return (dx); }
-    double getDy()const{ return (dy); }
-    double getDz()const{ return (dz); }
-    double getC()const{ return (c); }
-    double getDt()const{ return (dt); }
-    double getTh()const{ return (th); }
-    double getPushWithBatTime()const{ return PushWithBatTime; }
-    double getPushWithEatTime()const{ return PushWithEatTime; }
-    double getImplSusceptTime()const{ return ImplSusceptTime; }
-    int getImplSusceptMode()const{ return ImplSusceptMode; }
-    double getSmooth()const{ return (Smooth); }
-    int    getSmoothNiter()const{return SmoothNiter;}
-    int getNcycles()const{ return (ncycles); }
-    int getNs()const{ return (ns); }
-    int getNsTestPart()const{ return (nstestpart); }
-    int getNpcel(int nspecies)const{ return (npcel[nspecies]); }
-    int getNpcelx(int nspecies)const{ return (npcelx[nspecies]); }
-    int getNpcely(int nspecies)const{ return (npcely[nspecies]); }
-    int getNpcelz(int nspecies)const{ return (npcelz[nspecies]); }
-    //int getNp(int nspecies)const{ return (np[nspecies]); }
-    //int getNpMax(int nspecies)const{ return (npMax[nspecies]); }
-    double getNpMaxNpRatio()const{ return (NpMaxNpRatio); }
-    double getQOM(int nspecies)const{ return (qom[nspecies]); }
-    double getRHOinit(int nspecies)const{ return (rhoINIT[nspecies]); }
-    double getRHOinject(int nspecies)const { return(rhoINJECT[nspecies]); }
-    double getUth(int nspecies)const{ return (uth[nspecies]); }
-    double getVth(int nspecies)const{ return (vth[nspecies]); }
-    double getWth(int nspecies)const{ return (wth[nspecies]); }
-    double getU0(int nspecies)const{ return (u0[nspecies]); }
-    double getV0(int nspecies)const{ return (v0[nspecies]); }
-    double getW0(int nspecies)const{ return (w0[nspecies]); }
+    int getDim()                        const{ return (dim); }
+    double getLx()                      const{ return (Lx); }
+    double getLy()                      const{ return (Ly); }
+    double getLz()                      const{ return (Lz); }
+    double getx_center()                const{ return (x_center); }
+    double gety_center()                const{ return (y_center); }
+    double getz_center()                const{ return (z_center); }
+    double getL_square()                const{ return (L_square); }
+    int getNxc()                        const{ return (nxc); }
+    int getNyc()                        const{ return (nyc); }
+    int getNzc()                        const{ return (nzc); }
+    int getXLEN()                       const{ return (XLEN); }
+    int getYLEN()                       const{ return (YLEN); }
+    int getZLEN()                       const{ return (ZLEN); }
+    bool getPERIODICX()                 const{ return (PERIODICX); }
+    bool getPERIODICY()                 const{ return (PERIODICY); }
+    bool getPERIODICZ()                 const{ return (PERIODICZ); }
+    bool getPERIODICX_P()               const{ return (PERIODICX_P); }
+    bool getPERIODICY_P()               const{ return (PERIODICY_P); }
+    bool getPERIODICZ_P()               const{ return (PERIODICZ_P); }
+    double getDx()                      const{ return (dx); }
+    double getDy()                      const{ return (dy); }
+    double getDz()                      const{ return (dz); }
+    double getC()                       const{ return (c); }
+    double getDt()                      const{ return (dt); }
+    double getTh()                      const{ return (th); }    
+    double getSmooth()                  const{ return (Smooth); }
+    int getNcycles()                    const{ return (ncycles); }
 
-    double getPitchAngle(int nspecies)const{ return (pitch_angle[nspecies]); }
-    double getEnergy(int nspecies)const{ return (energy[nspecies]); }
-    int    getTestPartFlushCycle()const{ return (testPartFlushCycle); }
-
-    int getBcPfaceXright()const{ return (bcPfaceXright); }
-    int getBcPfaceXleft()const{ return (bcPfaceXleft); }
-    int getBcPfaceYright()const{ return (bcPfaceYright); }
-    int getBcPfaceYleft()const{ return (bcPfaceYleft); }
-    int getBcPfaceZright()const{ return (bcPfaceZright); }
-    int getBcPfaceZleft()const{ return (bcPfaceZleft); }
-    int getBcPHIfaceXright()const{ return (bcPHIfaceXright); }
-    int getBcPHIfaceXleft()const{ return (bcPHIfaceXleft); }
-    int getBcPHIfaceYright()const{ return (bcPHIfaceYright); }
-    int getBcPHIfaceYleft()const{ return (bcPHIfaceYleft); }
-    int getBcPHIfaceZright()const{ return (bcPHIfaceZright); }
-    int getBcPHIfaceZleft()const{ return (bcPHIfaceZleft); }
-    int getBcEMfaceXright()const{ return (bcEMfaceXright); }
-    int getBcEMfaceXleft()const{ return (bcEMfaceXleft); }
-    int getBcEMfaceYright()const{ return (bcEMfaceYright); }
-    int getBcEMfaceYleft()const{ return (bcEMfaceYleft); }
-    int getBcEMfaceZright()const{ return (bcEMfaceZright); }
-    int getBcEMfaceZleft()const{ return (bcEMfaceZleft); }
+    //! Remove
+    int getSmoothNiter()const{return SmoothNiter;}
     double getDelta()const{ return (delta); }
-    double getB0x()const{ return (B0x); }
-    double getB0y()const{ return (B0y); }
-    double getB0z()const{ return (B0z); }
-    double getB1x()const{ return (B1x); }
-    double getB1y()const{ return (B1y); }
-    double getB1z()const{ return (B1z); }
-    //bool getVerbose()const{ return (verbose); }
-    //bool getTrackParticleID(int nspecies)const{ return (TrackParticleID[nspecies]); }
-    int getRestart_status()const{ return (restart_status); }
-    string getSaveDirName()const{ return (SaveDirName); }
-    string getRestartDirName()const{ return (RestartDirName); }
-    string getinputfile()const{ return (inputfile); }
-    string getCase()const{ return (Case); }
-    string getSimName()const{ return (SimName); }
-    string getWriteMethod()const{ return (wmethod); }
-    string getFieldOutputTag()const{return FieldOutputTag;}
-    string getMomentsOutputTag()const{return MomentsOutputTag;}
-    string getPclOutputTag()const{return ParticlesOutputTag;}
     string getPoissonCorrection()const{ return (PoissonCorrection); }
     int getPoissonCorrectionCycle()const{ return (PoissonCorrectionCycle); }
-    int getLast_cycle()const{ return (last_cycle); }
-    double getVinj()const{ return (Vinj); }
     double getCGtol()const{ return (CGtol); }
-    double getGMREStol()const{ return (GMREStol); }
-    int getNiterMover()const{ return (NiterMover); }
-    int getFieldOutputCycle()const{ return (FieldOutputCycle); }
-    int getParticlesOutputCycle()const{ return (ParticlesOutputCycle); }
-    int getTestParticlesOutputCycle()const{ return (TestParticlesOutputCycle); }
-    int getRestartOutputCycle()const{ return (RestartOutputCycle); }
-    int getDiagnosticsOutputCycle()const{ return (DiagnosticsOutputCycle); }
-    bool getCallFinalize()const{ return (CallFinalize); }
-    bool particle_output_is_off()const;
-    bool testparticle_output_is_off()const;
-    bool field_output_is_off()const;
+
+    int getNs()                         const{ return (ns); }
+    int getNsTestPart()                 const{ return (nstestpart); }
+    int getNpcel(int nspecies)          const{ return (npcel[nspecies]); }
+    int getNpcelx(int nspecies)         const{ return (npcelx[nspecies]); }
+    int getNpcely(int nspecies)         const{ return (npcely[nspecies]); }
+    int getNpcelz(int nspecies)         const{ return (npcelz[nspecies]); }
+
+    double getNpMaxNpRatio()            const{ return (NpMaxNpRatio); }
+    double getQOM(int nspecies)         const{ return (qom[nspecies]); }
+    double getRHOinit(int nspecies)     const{ return (rhoINIT[nspecies]); }
+    double getRHOinject(int nspecies)   const{ return(rhoINJECT[nspecies]); }
+    double getUth(int nspecies)         const{ return (uth[nspecies]); }
+    double getVth(int nspecies)         const{ return (vth[nspecies]); }
+    double getWth(int nspecies)         const{ return (wth[nspecies]); }
+    double getU0(int nspecies)          const{ return (u0[nspecies]); }
+    double getV0(int nspecies)          const{ return (v0[nspecies]); }
+    double getW0(int nspecies)          const{ return (w0[nspecies]); }
+
+    double getPitchAngle(int nspecies)  const{ return (pitch_angle[nspecies]); }
+    double getEnergy(int nspecies)      const{ return (energy[nspecies]); }
+    int getTestPartFlushCycle()         const{ return (testPartFlushCycle); }
+
+    //? Nonperiodic boundaries
+    int getBcPfaceXright()              const{ return (bcPfaceXright); }
+    int getBcPfaceXleft()               const{ return (bcPfaceXleft); }
+    int getBcPfaceYright()              const{ return (bcPfaceYright); }
+    int getBcPfaceYleft()               const{ return (bcPfaceYleft); }
+    int getBcPfaceZright()              const{ return (bcPfaceZright); }
+    int getBcPfaceZleft()               const{ return (bcPfaceZleft); }
+    int getBcPHIfaceXright()            const{ return (bcPHIfaceXright); }
+    int getBcPHIfaceXleft()             const{ return (bcPHIfaceXleft); }
+    int getBcPHIfaceYright()            const{ return (bcPHIfaceYright); }
+    int getBcPHIfaceYleft()             const{ return (bcPHIfaceYleft); }
+    int getBcPHIfaceZright()            const{ return (bcPHIfaceZright); }
+    int getBcPHIfaceZleft()             const{ return (bcPHIfaceZleft); }
+    int getBcEMfaceXright()             const{ return (bcEMfaceXright); }
+    int getBcEMfaceXleft()              const{ return (bcEMfaceXleft); }
+    int getBcEMfaceYright()             const{ return (bcEMfaceYright); }
+    int getBcEMfaceYleft()              const{ return (bcEMfaceYleft); }
+    int getBcEMfaceZright()             const{ return (bcEMfaceZright); }
+    int getBcEMfaceZleft()              const{ return (bcEMfaceZleft); }
+
+    double getB0x()                     const{ return (B0x); }
+    double getB0y()                     const{ return (B0y); }
+    double getB0z()                     const{ return (B0z); }
+    double getB1x()                     const{ return (B1x); }
+    double getB1y()                     const{ return (B1y); }
+    double getB1z()                     const{ return (B1z); }
+
+    int getRestart_status()             const{ return (restart_status); }
+    string getSaveDirName()             const{ return (SaveDirName); }
+    string getRestartDirName()          const{ return (RestartDirName); }
+    string getinputfile()               const{ return (inputfile); }
+    string getCase()                    const{ return (Case); }
+    string getSimName()                 const{ return (SimName); }
+    string getWriteMethod()             const{ return (wmethod); }
+    string getFieldOutputTag()          const{ return FieldOutputTag;}
+    string getMomentsOutputTag()        const{ return MomentsOutputTag;}
+    string getPclOutputTag()            const{ return ParticlesOutputTag;}
+    string getPclDSOutputTag()          const{ return ParticlesDownsampleOutputTag;}
+    string get_output_data_precision()  const{ return output_data_precision; }
+    
+    
+    double getVinj()                    const{ return (Vinj); }
+    double getGMREStol()                const{ return (GMREStol); }
+    int getLast_cycle()                 const{ return (last_cycle); }
+    int getNiterMover()                 const{ return (NiterMover); }
+    int getFieldOutputCycle()           const{ return (FieldOutputCycle); }
+    int getParticlesOutputCycle()       const{ return (ParticlesOutputCycle); }
+    int getTestParticlesOutputCycle()   const{ return (TestParticlesOutputCycle); }
+    int getRestartOutputCycle()         const{ return (RestartOutputCycle); }
+    int getDiagnosticsOutputCycle()     const{ return (DiagnosticsOutputCycle); }
+    int getParticlesDownsampleOutputCycle()    const{ return (ParticlesDownsampleOutputCycle); }
+    int getParticlesDownsampleFactor()  const{ return (ParticlesDownsampleFactor); }
+    
+    bool getCallFinalize()              const{ return (CallFinalize); }
+    bool particle_output_is_off()       const;
+    bool DS_particle_output_is_off()    const;
+    bool testparticle_output_is_off()   const;
+    bool field_output_is_off()          const;
+    bool getSaveHeatFluxTensor()        const { return (SaveHeatFluxTensor); }
+
+    bool getAddExternalCurlB()          const { return AddExternalCurlB; }
+    bool getAddExternalCurlE()          const { return AddExternalCurlE; }
+    int getZeroCurrent()                      { return zeroCurrent; }
+
+    int getSmoothCycle()                const { return SmoothCycle; }
+    int getNumSmoothings()              const { return num_smoothings; }
+    int getCurrentCycle()               const { return CurrentCycle; }
+    void setCurrentCycle(int cycle)           { CurrentCycle = cycle; }
+
+    double getPoissonMAdiv()                  { return PoissonMAdiv; }
+    double getPoissonMAres()                  { return PoissonMAres; }
+    double getPoissonMArho()                  { return PoissonMArho; }
+
+    //* Particle distribution parameters
+    int getParticleDistOutputCycle()          { return ParticleDistOutputCycle; }
+    int getParticleDistBins()                 { return ParticleDistBins; }
+    double getParticleDistMinVelocity()       { return ParticleDistMinVelocity; }
+    double getParticleDistMaxVelocity()       { return ParticleDistMaxVelocity; }
+
+    bool getRelativistic()              const { return Relativistic; }
+    string getRelativisticPusher()      const { return Relativistic_pusher; }   
+
+    int getNparam()                     const { return (nparam); }
+    double getInputParam(int ip)        const { return (input_param[ip]); }
     
     /*! Boundary condition selection for BCFace for the electric field components */
     int bcEx[6], bcEy[6], bcEz[6];
@@ -197,33 +231,30 @@ class Collective
     int bcBx[6], bcBy[6], bcBz[6];
     string getParaviewScriptPath()const{return ParaviewScriptPath;}
 
-  private:
-    /*! inputfile */
+    private:
+
     string inputfile;
     string ParaviewScriptPath;
-    /*! light speed */
-    double c;
-    /*! 4 pi */
-    double fourpi;
-    /*! time step */
-    double dt;
-    //
-    // parameters used to support second order accuracy in time 
-    //
-    /*! decentering parameter */
-    double th; // second-order for th=1/2, stable for 1/2 <= th <= 1
-    /*! time of magnetic field used in particle push (0=initial, 1=final) */
-    double PushWithBatTime; // 0=initial (default), 1=final
-    /*! time of electric field used in particle push */
-    double PushWithEatTime; // 0=initial, 1=final (default)
-    /*! means of estimating time-advanced implicit susceptibility */
-    int ImplSusceptMode; // "initial" (default), "explPredict", "implPredict"
-    /*! time of implicit susceptibility used in field advance */
-    double ImplSusceptTime; // 0=initial (default), 1=final
-    //
-    /*! Smoothing value */
-    double Smooth;
+
+    double c; double fourpi; double dt; double th; //! second-order for th=1/2; stable for 1/2 <= th <= 1
+    
+    //* Smoothing parameters
+    double Smooth; int num_smoothings; int SmoothCycle;
+
+    int CurrentCycle;
+    int zeroCurrent;
+
+    // ! Remove
     int SmoothNiter;
+        /*! Poisson correction flag */
+    string PoissonCorrection;
+    int PoissonCorrectionCycle;
+        /*! GEM Challenge parameters */
+    /*! current sheet thickness */
+    double delta;
+        /*! CG solver stopping criterium tolerance */
+    double CGtol;    
+    
     /*! number of time cycles */
     int ncycles;
     /*! physical space dimensions */
@@ -306,16 +337,13 @@ class Collective
     /*! Energy for Test Particles */
     std::unique_ptr<double[]> energy;
 
-
     /*! Case type */
     string Case;
     /*! Output writing method */
     string wmethod;
     /*! Simulation name */
     string SimName;
-    /*! Poisson correction flag */
-    string PoissonCorrection;
-    int PoissonCorrectionCycle;
+
     /*! TrackParticleID */
     //bool *TrackParticleID;
     /*! SaveDirName */
@@ -340,7 +368,6 @@ class Collective
     int bcPfaceZright;
     /*! Boundary Condition Particles: FaceYleft */
     int bcPfaceZleft;
-
 
     /*! Field Boundary Condition 0 = Dirichlet Boundary Condition: specifies the valueto take pn the boundary of the domain 1 = Neumann Boundary Condition: specifies the value of derivative to take on the boundary of the domain 2 = Periodic Condition */
     /*! Boundary Condition Electrostatic Potential: FaceXright */
@@ -369,10 +396,6 @@ class Collective
     /*! Boundary Condition EM Field: FaceZleft */
     int bcEMfaceZleft;
 
-
-    /*! GEM Challenge parameters */
-    /*! current sheet thickness */
-    double delta;
     /* Amplitude of the field */
     double B0x;
     double B0y;
@@ -381,39 +404,70 @@ class Collective
     double B1y;
     double B1z;
 
-
-    /*! boolean value for verbose results */
-    //bool verbose;
-    /*! RESTART */
+    //* RESTART simulations
     bool RESTART1;
+    
+    //* Restart cycle
+    int RestartOutputCycle;
 
-    /*! velocity of the injection from the wall */
+    //* Velocity of the injection from the wall
     double Vinj;
 
-    /*! CG solver stopping criterium tolerance */
-    double CGtol;
-    /*! GMRES solver stopping criterium tolerance */
+    //* Tolerance for GMRES solver
     double GMREStol;
-    /*! mover predictor correcto iteration */
+
+    //* mover predictor correction iteration (not needed for ECSIM)
     int NiterMover;
 
-    /*! Output for field */
+    //* Output for field
     int FieldOutputCycle;
-    string  FieldOutputTag;
-    string  MomentsOutputTag;
-    /*! Output for particles */
+    string FieldOutputTag;
+    string MomentsOutputTag;
+
+    //* Output for particles
     int ParticlesOutputCycle;
     string ParticlesOutputTag;
-    /*! Output for test particles */
+    string ParticlesDownsampleOutputTag;
+
+    //* Downsamplimg of particles
+    int ParticlesDownsampleOutputCycle; int ParticlesDownsampleFactor;
+
+    //* Output for test particles
     int TestParticlesOutputCycle;
-    /*! test particles are flushed to disk every testPartFlushCycle  */
+    
+    //* Test particles are flushed to disk every testPartFlushCycle
     int testPartFlushCycle;
-    /*! restart cycle */
-    int RestartOutputCycle;
-    /*! Output for diagnostics */
+    
+    //* Output for diagnostics
     int DiagnosticsOutputCycle;
     /*! Call Finalize() at end of program execution (true by default) */
     bool CallFinalize;
+
+    //* Add External CurlB and External CurlE
+    bool AddExternalCurlB;
+    bool AddExternalCurlE;
+
+    //* RelSIM
+    bool Relativistic;
+
+    //* Relativistic particle pusher
+    string Relativistic_pusher;
+
+    //* Write heat flux tensor to files
+    bool SaveHeatFluxTensor;
+
+    //* Moving average value for rho density (Poisson correction)
+    double PoissonMArho, PoissonMAdiv, PoissonMAres;
+
+    //* Custom input parameters
+    double *input_param; int nparam;
+
+    //* Output data precision
+    string output_data_precision;
+
+    //* Particle distribution parameters
+    int ParticleDistOutputCycle; int ParticleDistBins;
+    double ParticleDistMinVelocity; double ParticleDistMaxVelocity;
 };
 typedef Collective CollectiveIO;
 
