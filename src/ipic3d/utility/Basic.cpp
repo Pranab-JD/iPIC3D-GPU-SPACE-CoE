@@ -26,13 +26,10 @@
 #include "TimeTasks.h"
 #include "errors.h"
 
-#include "ompdefs.h"
-
 /** method to calculate the parallel dot product with vect1, vect2 having the ghost cells*/
 double dotP(const double *vect1, const double *vect2, int n,MPI_Comm* comm) {
   double result = 0;
   double local_result = 0;
-  #pragma omp parallel for reduction(+:local_result)
   for (int i = 0; i < n; i++)
     local_result += vect1[i] * vect2[i];
   MPI_Allreduce(&local_result, &result, 1, MPI_DOUBLE, MPI_SUM, *comm);
@@ -42,86 +39,118 @@ double dotP(const double *vect1, const double *vect2, int n,MPI_Comm* comm) {
 /** method to calculate dot product */
 double dot(const double *vect1, const double *vect2, int n) {
   double result = 0;
-  #pragma omp parallel for reduction(+:result)
   for (int i = 0; i < n; i++)
     result += vect1[i] * vect2[i];
   return (result);
 }
-/** method to calculate the square norm of a vector */
-double norm2(const double *const*vect, int nx, int ny) {
-  double result = 0;
-  for (int i = 0; i < nx; i++)
-    for (int j = 0; j < ny; j++)
-      result += vect[i][j] * vect[i][j];
-  return (result);
-}
-/** method to calculate the square norm of a vector */
-double norm2(const arr3_double vect, int nx, int ny) {
-  double result = 0;
-  for (int i = 0; i < nx; i++)
-    for (int j = 0; j < ny; j++)
-      result += vect.get(i,j,0) * vect.get(i,j,0);
-  return (result);
-}
-/** method to calculate the square norm of a vector */
-double norm2(const double *vect, int nx) {
-  double result = 0;
-  #pragma omp parallel for reduction(+:result)
-  for (int i = 0; i < nx; i++)
-    result += vect[i] * vect[i];
-  return (result);
+
+
+//? ========================= L2 norm ========================= ?//
+
+double norm2(const double *vect, int nx) 
+{
+    double result = 0;
+    
+    for (int i = 0; i < nx; i++)
+        result += vect[i] * vect[i];
+    
+        return (result);
 }
 
-
-
-/** method to calculate the parallel dot product */
-/*
-double norm2P(const arr3_double vect, int nx, int ny, int nz) {
-  double result = 0;
-  double local_result = 0;
-  for (int i = 0; i < nx; i++)
-    for (int j = 0; j < ny; j++)
-      for (int k = 0; k < nz; k++)
-        local_result += vect.get(i,j,k) * vect.get(i,j,k);
-
-  MPI_Allreduce(&local_result, &result, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  return (result);
-}*/
-
-/** method to calculate the parallel norm of a vector on different processors with the ghost cell */
-/*
-double norm2P(const double *vect, int n) {
-  double result = 0;
-  double local_result = 0;
-  for (int i = 0; i < n; i++)
-    local_result += vect[i] * vect[i];
-  MPI_Allreduce(&local_result, &result, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  return (result);
-}*/
-/** method to calculate the parallel norm of a vector on different processors with the gost cell*/
-double normP(const double *vect, int n,MPI_Comm* comm) {
-  double result = 0.0;
-  double local_result = 0.0;
-  #pragma omp parallel for reduction(+:local_result)
-  for (int i = 0; i < n; i++)
-    local_result += vect[i] * vect[i];
-  MPI_Allreduce(&local_result, &result, 1, MPI_DOUBLE, MPI_SUM, *comm);
-  return (sqrt(result));
-
+double norm2(const double *const*vect, int nx, int ny) 
+{
+    double result = 0;
+    
+    for (int i = 0; i < nx; i++)
+        for (int j = 0; j < ny; j++)
+            result += vect[i][j] * vect[i][j];
+    
+            return (result);
 }
+double norm2(const arr3_double vect, int nx, int ny) 
+{
+    double result = 0;
+    
+    for (int i = 0; i < nx; i++)
+        for (int j = 0; j < ny; j++)
+            result += vect.get(i,j,0) * vect.get(i,j,0);
+    
+            return (result);
+}
+
+double norm2(const arr3_double vect, int nx, int ny, int nz) 
+{
+    double result = 0;
+    
+    for (int i = 0; i < nx; i++)
+        for (int j = 0; j < ny; j++)
+            for (int k = 0; k < nz; j++)
+                result += vect.get(i,j,k) * vect.get(i,j,k);
+    
+            return (result);
+}
+
+double norm2(double ***vect, int nx, int ny) 
+{
+    double result = 0;
+    
+    for (int i = 0; i < nx; i++)
+        for (int j = 0; j < ny; j++)
+            result += vect[i][j][0] * vect[i][j][0];
+
+    return (result);
+}
+
+double norm2(double ***vect, int nx, int ny, int nz) 
+{
+    double result = 0;
+    
+    for (int i = 0; i < nx; i++)
+        for (int j = 0; j < ny; j++)
+            for (int k = 0; k < nz; k++)
+                result += vect[i][j][k] * vect[i][j][k];
+
+    return (result);
+  }
+
+//* Compute parallel norm of a vector on different processors with the ghost cell
+double normP(const double *vect, int n,MPI_Comm* comm) 
+{
+    double result = 0.0;
+    double local_result = 0.0;
+    
+    for (int i = 0; i < n; i++)
+        local_result += vect[i] * vect[i];
+    
+    MPI_Allreduce(&local_result, &result, 1, MPI_DOUBLE, MPI_SUM, *comm);
+    
+    return (sqrt(result));
+}
+
+double norm2P(double ***vect, int nx, int ny, int nz) 
+{
+    double result = 0;
+    double local_result = 0;
+    for (int i = 0; i < nx; i++)
+        for (int j = 0; j < ny; j++)
+            for (int k = 0; k < nz; k++)
+                local_result += vect[i][j][k] * vect[i][j][k];
+
+    MPI_Allreduce(&local_result, &result, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    return (result);
+}
+
+//? =========================================================== ?//
+
 /** method to calculate the difference of two vectors*/
 void sub(double *res, const double *vect1, const double *vect2, int n) {
-  #pragma omp parallel for
   for (int i = 0; i < n; i++)
     res[i] = vect1[i] - vect2[i];
 }
 /** method to calculate the sum of two vectors vector1 = vector1 + vector2*/
 void sum(double *vect1, const double *vect2, int n) {
-  #pragma omp parallel for
   for (int i = 0; i < n; i++)
     vect1[i] += vect2[i];
-
-
 }
 /** method to calculate the sum of two vectors vector1 = vector1 + vector2*/
 void sum(arr3_double vect1, const arr3_double vect2, int nx, int ny, int nz) {
@@ -148,14 +177,12 @@ void sum(arr3_double vect1, const arr4_double vect2, int nx, int ny, int nz, int
 
 /** method to calculate the sum of two vectors vector1 = vector1 + vector2*/
 void sum(arr3_double vect1, const arr4_double vect2, int nx, int ny, int ns) {
-  #pragma omp parallel for
   for (int i = 0; i < nx; i++)
     for (int j = 0; j < ny; j++)
       vect1.fetch(i,j,0) += vect2.get(ns,i,j,0);
 }
 /** method to calculate the subtraction of two vectors vector1 = vector1 - vector2*/
 void sub(arr3_double vect1, const arr3_double vect2, int nx, int ny, int nz) {
-  #pragma omp parallel for collapse(2)
   for (int i = 0; i < nx; i++)
     for (int j = 0; j < ny; j++)
       for (int k = 0; k < nz; k++)
@@ -180,107 +207,135 @@ void sum4(arr3_double vect1, double alfa, const arr3_double vect2, double beta, 
 }
 /** method to calculate the scalar-vector product */
 void scale(double *vect, double alfa, int n) {
-  #pragma omp parallel for
   for (int i = 0; i < n; i++)
     vect[i] *= alfa;
 }
 
-/** method to calculate the scalar-vector product */
-void scale(arr3_double vect, double alfa, int nx, int ny) {
-  for (int i = 0; i < nx; i++)
-    for (int j = 0; j < ny; j++)
-      vect.fetch(i,j,0) *= alfa;
+//* vector = alfa * vector
+void scale(arr3_double vect, double alfa, int nx, int ny) 
+{
+    for (int i = 0; i < nx; i++)
+        for (int j = 0; j < ny; j++)
+            vect.fetch(i,j,0) *= alfa;
 }
 
-
-/** method to calculate the scalar-vector product */
-void scale(arr3_double vect, double alfa, int nx, int ny, int nz) {
-  #pragma omp parallel for collapse(2)
-  for (int i = 0; i < nx; i++)
-    for (int j = 0; j < ny; j++)
-      for (int k = 0; k < nz; k++)
-        vect.fetch(i,j,k) *= alfa;
-}
-/** method to calculate the scalar-vector product */
-void scale(arr3_double vect1, const arr3_double vect2, double alfa, int nx, int ny, int nz) {
-  for (int i = 0; i < nx; i++)
-    for (int j = 0; j < ny; j++)
-      for (int k = 0; k < nz; k++)
-        vect1.fetch(i,j,k) = vect2.get(i,j,k) * alfa;
+void scale(arr3_double vect, double alfa, int nx, int ny, int nz) 
+{
+    for (int i = 0; i < nx; i++)
+        for (int j = 0; j < ny; j++)
+            for (int k = 0; k < nz; k++)
+                vect.fetch(i,j,k) *= alfa;
 }
 
-/** method to calculate the scalar-vector product */
-void scale(arr3_double vect1, const arr3_double vect2, double alfa, int nx, int ny) {
-  for (int i = 0; i < nx; i++)
-    for (int j = 0; j < ny; j++)
-      vect1.fetch(i,j,0) = vect2.get(i,j,0) * alfa;
+//* vector_1 = alfa * vector_2
+void scale(arr3_double vect1, const arr3_double vect2, double alfa, int nx, int ny, int nz)
+{
+    for (int i = 0; i < nx; i++)
+        for (int j = 0; j < ny; j++)
+            for (int k = 0; k < nz; k++)
+                vect1.fetch(i,j,k) = vect2.get(i,j,k) * alfa;
 }
 
-/** method to calculate the scalar-vector product */
-void scale(double *vect1, const double *vect2, double alfa, int n) {
-  #pragma omp parallel for
-  for (int i = 0; i < n; i++)
-    vect1[i] = vect2[i] * alfa;
+void scale(arr4_double vect1, const arr3_double vect2, double alfa, int ns, int nx, int ny, int nz)
+{
+    for (int is = 0; is < ns; is++)
+        for (int i = 0; i < nx; i++)
+            for (int j = 0; j < ny; j++)
+                for (int k = 0; k < nz; k++)
+                    vect1.fetch(is,i,j,k) = vect2.get(i,j,k) * alfa;
 }
 
-/** method to calculate vector1 = vector1 + alfa*vector2   */
-void addscale(double alfa, arr3_double vect1, arr3_double vect2, const arr3_double vect3, int nx, int ny, int nz){
-	  for (int i = 0; i < nx; i++)
+void scale(arr3_double vect1, const arr3_double vect2, double alfa, int nx, int ny) 
+{
+    for (int i = 0; i < nx; i++)
+        for (int j = 0; j < ny; j++)
+            vect1.fetch(i,j,0) = vect2.get(i,j,0) * alfa;
+}
+
+void scale(double *vect1, const double *vect2, double alfa, int n) 
+{
+    for (int i = 0; i < n; i++)
+        vect1[i] = vect2[i] * alfa;
+}
+
+//* vector3 = vector1 + alfa*vector2
+void addscale(double alfa, arr3_double vect1, arr3_double vect2, const arr3_double vect3, int nx, int ny, int nz)
+{
+    for (int i = 0; i < nx; i++)
 	    for (int j = 0; j < ny; j++)
-	      for (int k = 0; k < nz; k++)
-	        vect3.fetch(i,j,k) = vect1.get(i,j,k) + alfa * vect2.get(i,j,k);
-}
-void addscale(double alfa, arr3_double vect1, const arr3_double vect2, int nx, int ny, int nz) {
-  for (int i = 0; i < nx; i++)
-    for (int j = 0; j < ny; j++)
-      for (int k = 0; k < nz; k++)
-        vect1.fetch(i,j,k) = vect1.get(i,j,k) + alfa * vect2.get(i,j,k);
-}
-/** add scale for weights */
-void addscale(double alfa, double vect1[][2][2], double vect2[][2][2], int nx, int ny, int nz) {
-  for (int i = 0; i < nx; i++)
-    for (int j = 0; j < ny; j++)
-      for (int k = 0; k < nz; k++)
-        vect1[i][j][k] = vect1[i][j][k] + alfa * vect2[i][j][k];
-
-}
-/** method to calculate vector1 = vector1 + alfa*vector2   */
-void addscale(double alfa, arr3_double vect1, const arr3_double vect2, int nx, int ny) {
-  for (int i = 0; i < nx; i++)
-    for (int j = 0; j < ny; j++)
-      vect1.fetch(i,j,0) += alfa * vect2.get(i,j,0);
-}
-/** method to calculate vector1 = vector1 + alfa*vector2   */
-void addscale(double alfa, double *vect1, const double *vect2, int n) {
-  #pragma omp parallel for
-  for (int i = 0; i < n; i++)
-    vect1[i] += alfa * vect2[i];
-
-}
-/** method to calculate vector1 = beta*vector1 + alfa*vector2   */
-void addscale(double alfa, double beta, double *vect1, const double *vect2, int n) {
-  for (int i = 0; i < n; i++)
-    vect1[i] = vect1[i] * beta + alfa * vect2[i];
-
-}
-/** method to calculate vector1 = beta*vector1 + alfa*vector2 */
-void addscale(double alfa, double beta, arr3_double vect1, const arr3_double vect2, int nx, int ny, int nz) {
-
-  for (int i = 0; i < nx; i++)
-    for (int j = 0; j < ny; j++)
-      for (int k = 0; k < nz; k++) {
-        vect1.fetch(i,j,k) = beta * vect1.get(i,j,k) + alfa * vect2.get(i,j,k);
-      }
-
-}
-/** method to calculate vector1 = beta*vector1 + alfa*vector2 */
-void addscale(double alfa, double beta, arr3_double vect1, const arr3_double vect2, int nx, int ny) {
-  for (int i = 0; i < nx; i++)
-    for (int j = 0; j < ny; j++)
-      vect1.fetch(i,j,0) = beta * vect1.get(i,j,0) + alfa * vect2.get(i,j,0);
-
+	        for (int k = 0; k < nz; k++)
+	            vect3.fetch(i,j,k) = vect1.get(i,j,k) + alfa * vect2.get(i,j,k);
 }
 
+//* vector1 = vector1 + alfa*vector2
+void addscale(double alfa, arr4_double vect1, const arr3_double vect2, int ns, int nx, int ny, int nz)
+{
+    for (int is = 0; is < ns; is++)
+        for (int i = 0; i < nx; i++)
+            for (int j = 0; j < ny; j++)
+                for (int k = 0; k < nz; k++)
+                    vect1.fetch(is,i,j,k) = vect1.get(is,i,j,k) + alfa * vect2.get(i,j,k);
+}
+
+void addscale(double alfa, arr4_double vect1, const arr4_double vect2, int ns, int nx, int ny, int nz)
+{
+    for (int is = 0; is < ns; is++)
+        for (int i = 0; i < nx; i++)
+            for (int j = 0; j < ny; j++)
+                for (int k = 0; k < nz; k++)
+                    vect1.fetch(is,i,j,k) = vect1.get(is,i,j,k) + alfa * vect2.get(is,i,j,k);
+}
+
+void addscale(double alfa, arr3_double vect1, const arr3_double vect2, int nx, int ny, int nz)
+{
+    for (int i = 0; i < nx; i++)
+        for (int j = 0; j < ny; j++)
+            for (int k = 0; k < nz; k++)
+                vect1.fetch(i,j,k) = vect1.get(i,j,k) + alfa * vect2.get(i,j,k);
+}
+
+void addscale(double alfa, double vect1[][2][2], double vect2[][2][2], int nx, int ny, int nz)
+{
+    for (int i = 0; i < nx; i++)
+        for (int j = 0; j < ny; j++)
+            for (int k = 0; k < nz; k++)
+                vect1[i][j][k] = vect1[i][j][k] + alfa * vect2[i][j][k];
+}
+
+void addscale(double alfa, arr3_double vect1, const arr3_double vect2, int nx, int ny) 
+{
+    for (int i = 0; i < nx; i++)
+        for (int j = 0; j < ny; j++)
+            vect1.fetch(i,j,0) += alfa * vect2.get(i,j,0);
+}
+
+void addscale(double alfa, double *vect1, const double *vect2, int n) 
+{
+    for (int i = 0; i < n; i++)
+        vect1[i] += alfa * vect2[i];
+}
+
+//* vector1 = beta*vector1 + alfa*vector2 
+void addscale(double alfa, double beta, double *vect1, const double *vect2, int n) 
+{
+    for (int i = 0; i < n; i++)
+        vect1[i] = vect1[i] * beta + alfa * vect2[i];
+}
+
+void addscale(double alfa, double beta, arr3_double vect1, const arr3_double vect2, int nx, int ny, int nz)
+{
+    for (int i = 0; i < nx; i++)
+        for (int j = 0; j < ny; j++)
+            for (int k = 0; k < nz; k++)
+                vect1.fetch(i,j,k) = beta * vect1.get(i,j,k) + alfa * vect2.get(i,j,k);
+}
+
+void addscale(double alfa, double beta, arr3_double vect1, const arr3_double vect2, int nx, int ny)
+{
+    for (int i = 0; i < nx; i++)
+        for (int j = 0; j < ny; j++)
+            vect1.fetch(i,j,0) = beta * vect1.get(i,j,0) + alfa * vect2.get(i,j,0);
+}
 
 /** method to calculate vector1 = alfa*vector2 + beta*vector3 */
 void scaleandsum(arr3_double vect1, double alfa, double beta, const arr3_double vect2, const arr3_double vect3, int nx, int ny, int nz) {
@@ -330,7 +385,6 @@ void proddiv(arr3_double vect1, const arr3_double vect2, double alfa, const arr3
 }
 /** method to calculate the opposite of a vector */
 void neg(arr3_double vect, int nx, int ny, int nz) {
-  #pragma omp parallel for collapse(2)
   for (int i = 0; i < nx; i++)
     for (int j = 0; j < ny; j++)
       for (int k = 0; k < nz; k++)
@@ -349,79 +403,98 @@ void neg(arr3_double vect, int nx) {
     vect.fetch(i,0,0) = -vect.get(i,0,0);
 }
 /** method to calculate the opposite of a vector */
-void neg(double *vect, int n) {
-  for (int i = 0; i < n; i++)
-    vect[i] = -vect[i];
-
-
-}
-/** method to set equal two vectors */
-void eq(arr3_double vect1, const arr3_double vect2, int nx, int ny, int nz) {
-  for (int i = 0; i < nx; i++)
-    for (int j = 0; j < ny; j++)
-      for (int k = 0; k < nz; k++)
-        vect1.fetch(i,j,k) = vect2.get(i,j,k);
-
-}
-/** method to set equal two vectors */
-void eq(arr3_double vect1, const arr3_double vect2, int nx, int ny) {
-  for (int i = 0; i < nx; i++)
-    for (int j = 0; j < ny; j++)
-      vect1.fetch(i,j,0) = vect2.get(i,j,0);
-
+void neg(double *vect, int n) 
+{
+    for (int i = 0; i < n; i++)
+        vect[i] = -vect[i];
 }
 
-/** method to set equal two vectors */
-void eq(arr4_double vect1, const arr3_double vect2, int nx, int ny, int is) {
-  for (int i = 0; i < nx; i++)
-    for (int j = 0; j < ny; j++)
-      vect1.fetch(is,i,j,0) = vect2.get(i,j,0);
-
-}
-/** method to set equal two vectors */
-void eq(arr4_double vect1, const arr3_double vect2, int nx, int ny, int nz, int is) {
-  for (int i = 0; i < nx; i++)
-    for (int j = 0; j < ny; j++)
-      for (int k = 0; k < nz; k++)
-        vect1.fetch(is,i,j,k) = vect2.get(i,j,k);
-
+//* vect1(i, j, k) = vect2(i, j, k)
+void eq(arr3_double vect1, const arr3_double vect2, int nx, int ny, int nz) 
+{
+    for (int i = 0; i < nx; i++)
+        for (int j = 0; j < ny; j++)
+            for (int k = 0; k < nz; k++)
+                vect1.fetch(i, j, k) = vect2.get(i, j, k);
 }
 
-/** method to set a vector to a Value */
-void eqValue(double value, arr3_double vect, int nx, int ny, int nz) {
-  #pragma omp parallel for collapse(2)
-  for (int i = 0; i < nx; i++)
-    for (int j = 0; j < ny; j++)
-      for (int k = 0; k < nz; k++)
-        vect.fetch(i,j,k) = value;
+//* vect1(i, j, 0) = vect2(i, j, 0)
+void eq(arr3_double vect1, const arr3_double vect2, int nx, int ny) 
+{
+    for (int i = 0; i < nx; i++)
+        for (int j = 0; j < ny; j++)
+            vect1.fetch(i, j, 0) = vect2.get(i, j, 0);
+}
 
+//* vect1(is, i, j, 0) = vect2(is, i, j, 0)
+void eq(arr4_double vect1, const arr3_double vect2, int nx, int ny, int is)
+{
+    for (int i = 0; i < nx; i++)
+        for (int j = 0; j < ny; j++)
+            vect1.fetch(is, i, j, 0) = vect2.get(i, j, 0);
 }
-//void eqValue(double value, double vect[][2][2], int nx, int ny, int nz) {
-//  for (int i = 0; i < nx; i++)
-//    for (int j = 0; j < ny; j++)
-//      for (int k = 0; k < nz; k++)
-//        vect[i][j][k] = value;
-//
-//}
-/** method to set a vector to a Value */
-void eqValue(double value, arr3_double vect, int nx, int ny) {
-  for (int i = 0; i < nx; i++)
-    for (int j = 0; j < ny; j++)
-      vect.fetch(i,j,0) = value;
 
+//* vect1(is, i, j, k) = vect2(is, i, j, k)
+void eq(arr4_double vect1, const arr3_double vect2, int nx, int ny, int nz, int is) 
+{
+    for (int i = 0; i < nx; i++)
+        for (int j = 0; j < ny; j++)
+            for (int k = 0; k < nz; k++)
+                vect1.fetch(is,i,j,k) = vect2.get(i,j,k);
 }
-/** method to set a vector to a Value */
-void eqValue(double value, arr3_double vect, int nx) {
-  for (int i = 0; i < nx; i++)
-    vect.fetch(i,0,0) = value;
 
+//* Set a vector (arr3_double/arr4_double) to a value
+void eqValue(double value, arr3_double vect, int nx, int ny, int nz) 
+{
+    for (int i = 0; i < nx; i++)
+        for (int j = 0; j < ny; j++)
+            for (int k = 0; k < nz; k++)
+                vect.fetch(i, j, k) = value;
 }
-/** method to set a vector to a Value */
-void eqValue(double value, double *vect, int n) {
-  #pragma omp parallel for
-  for (int i = 0; i < n; i++)
-    vect[i] = value;
+
+void eqValue(double value, arr3_double vect, int nx, int ny) 
+{
+    for (int i = 0; i < nx; i++)
+        for (int j = 0; j < ny; j++)
+            vect.fetch(i, j, 0) = value;
 }
+
+void eqValue(double value, arr3_double vect, int nx) 
+{
+    for (int i = 0; i < nx; i++)
+        vect.fetch(i, 0, 0) = value;
+}
+
+void eqValue(double value, arr4_double vect, int ns, int nx, int ny, int nz) 
+{
+    for (int is = 0; is < ns; is++)
+        for (int i = 0; i < nx; i++)
+            for (int j = 0; j < ny; j++)
+                for (int k = 0; k < nz; k++)
+                    vect.fetch(is, i, j, k) = value;
+}
+
+void eqValue(double value, arr4_double vect, int ns, int nx, int ny) 
+{
+    for (int s = 0; s < ns; s++)
+        for (int i = 0; i < nx; i++)
+            for (int j = 0; j < ny; j++)
+                vect.fetch(s, i, j, 0) = value;
+}
+
+void eqValue(double value, arr4_double vect, int ns, int nx) 
+{
+    for (int s = 0; s < ns; s++)
+        for (int i = 0; i < nx; i++)
+            vect.fetch(s, i, 0, 0) = value;
+}
+
+void eqValue(double value, double *vect, int n) 
+{
+    for (int i = 0; i < n; i++)
+        vect[i] = value;
+}
+
 /** method to put a column in a matrix 2D */
 void putColumn(double **Matrix, double *vect, int column, int n) {
   for (int i = 0; i < n; i++)
@@ -430,7 +503,6 @@ void putColumn(double **Matrix, double *vect, int column, int n) {
 }
 /** method to get a column in a matrix 2D */
 void getColumn(double *vect, double **Matrix, int column, int n) {
-  #pragma omp parallel for
   for (int i = 0; i < n; i++)
     vect[i] = Matrix[i][column];
 }
