@@ -219,87 +219,109 @@ EMfields3D::EMfields3D(Collective * col, Grid * grid, VirtualTopology3D *vct) :
     vectZ   (nxn, nyn, nzn)
 
 {
-  // External imposed fields
-  //
-  B1x = col->getB1x();
-  B1y = col->getB1y();
-  B1z = col->getB1z();
-  //if(B1x!=0. || B1y !=0. || B1z!=0.)
-  //{
-  //  eprintf("This functionality has not yet been implemented");
-  //}
-  Bx_ext.setall(0.);
-  By_ext.setall(0.);
-  Bz_ext.setall(0.);
-  Bx_tot.setall(0.);
-  By_tot.setall(0.);
-  Bz_tot.setall(0.);
-  //
-  PoissonCorrection = false;
-  if (col->getPoissonCorrection()=="yes"){
-	  PoissonCorrection = true;
-	  PoissonCorrectionCycle = col->getPoissonCorrectionCycle();
-  }
-  CGtol = col->getCGtol();
-  GMREStol = col->getGMREStol();
-  qom = new double[ns];
-  for (int i = 0; i < ns; i++)
-    qom[i] = col->getQOM(i);
-  // boundary conditions: PHI and EM fields
-  bcPHIfaceXright = col->getBcPHIfaceXright();
-  bcPHIfaceXleft  = col->getBcPHIfaceXleft();
-  bcPHIfaceYright = col->getBcPHIfaceYright();
-  bcPHIfaceYleft  = col->getBcPHIfaceYleft();
-  bcPHIfaceZright = col->getBcPHIfaceZright();
-  bcPHIfaceZleft  = col->getBcPHIfaceZleft();
+    //! =============== Constructor =============== !//
+    
+    //? External fields
+    B1x = col->getB1x();
+    B1y = col->getB1y();
+    B1z = col->getB1z();
 
-  bcEMfaceXright = col->getBcEMfaceXright();
-  bcEMfaceXleft = col->getBcEMfaceXleft();
-  bcEMfaceYright = col->getBcEMfaceYright();
-  bcEMfaceYleft = col->getBcEMfaceYleft();
-  bcEMfaceZright = col->getBcEMfaceZright();
-  bcEMfaceZleft = col->getBcEMfaceZleft();
-  // GEM challenge parameters
-  B0x = col->getB0x();
-  B0y = col->getB0y();
-  B0z = col->getB0z();
-  delta = col->getDelta();
-  Smooth = col->getSmooth();
-  SmoothNiter = col->getSmoothNiter();
-  // get the density background for the gem Challange
-  rhoINIT = new double[ns];
-  DriftSpecies = new bool[ns];
-  for (int i = 0; i < ns; i++) {
-    rhoINIT[i] = col->getRHOinit(i);
-    if ((fabs(col->getW0(i)) != 0) || (fabs(col->getU0(i)) != 0)) // GEM and LHDI
-      DriftSpecies[i] = true;
+    Bx_ext.setall(0.);
+    By_ext.setall(0.);
+    Bz_ext.setall(0.);
+    Bx_tot.setall(0.);
+    By_tot.setall(0.);
+    Bz_tot.setall(0.);
+
+    GMREStol = col->getGMREStol();
+
+    qom = new double[ns];
+    for (int i = 0; i < ns; i++)
+        qom[i] = col->getQOM(i);
+
+    //? boundary conditions: PHI and EM fields
+    bcPHIfaceXright = col->getBcPHIfaceXright();
+    bcPHIfaceXleft  = col->getBcPHIfaceXleft();
+    bcPHIfaceYright = col->getBcPHIfaceYright();
+    bcPHIfaceYleft  = col->getBcPHIfaceYleft();
+    bcPHIfaceZright = col->getBcPHIfaceZright();
+    bcPHIfaceZleft  = col->getBcPHIfaceZleft();
+
+    bcEMfaceXright  = col->getBcEMfaceXright();
+    bcEMfaceXleft   = col->getBcEMfaceXleft();
+    bcEMfaceYright  = col->getBcEMfaceYright();
+    bcEMfaceYleft   = col->getBcEMfaceYleft();
+    bcEMfaceZright  = col->getBcEMfaceZright();
+    bcEMfaceZleft   = col->getBcEMfaceZleft();
+
+    B0x = col->getB0x();
+    B0y = col->getB0y();
+    B0z = col->getB0z();
+    Smooth = col->getSmooth();
+    smooth_cycle = col->getSmoothCycle();
+    num_smoothings = col->getNumSmoothings();
+    SaveHeatFluxTensor = col->getSaveHeatFluxTensor();
+
+    rhoINIT = new double[ns];           //* Background density
+    DriftSpecies = new bool[ns];
+    for (int i = 0; i < ns; i++) 
+    {
+        rhoINIT[i] = col->getRHOinit(i);
+        if ((fabs(col->getW0(i)) != 0) || (fabs(col->getU0(i)) != 0)) // GEM and LHDI
+            DriftSpecies[i] = true;
+        else
+            DriftSpecies[i] = false;
+    }
+
+    FourPI = 16 * atan(1.0);
+    restart_status = col->getRestart_status();
+
+    //! Mass Matrix (dyadic product of a vector)
+    mass_matrix = new double[3];
+    mass_matrix[0] = 0.0;
+    mass_matrix[1] = 1.0;
+    mass_matrix[2] = 0.0;
+
+    //* Custom input parameters
+    nparam = col->getNparam();
+    if (nparam > 0) 
+    {
+        input_param = new double[nparam];
+        
+        for (int ip=0; ip<nparam; ip++) 
+            input_param[ip] = col->getInputParam(ip);
+    }
+
+    if(Parameters::get_VECTORIZE_MOMENTS())
+    {
+        //* In this case particles are sorted and there is no need for each thread to sum moments in a separate array.
+        sizeMomentsArray = 1;
+    }
     else
-      DriftSpecies[i] = false;
-  }
-  /*! parameters for GEM challenge */
-  FourPI = 16 * atan(1.0);
-  /*! Restart */
-  restart1 = col->getRestart_status();
+    {
+        sizeMomentsArray = omp_get_max_threads();
+    }
+    
+    moments10Array = new Moments10*[sizeMomentsArray];
+    for(int i=0;i<sizeMomentsArray;i++)
+    {
+        moments10Array[i] = new Moments10(nxn, nyn, nzn);
+    }
+    
+    if (col->getSaveHeatFluxTensor()) 
+    {
+        Qxxxs = newArr4(double, ns, nxn, nyn, nzn);
+        Qxxys = newArr4(double, ns, nxn, nyn, nzn);
+        Qxyys = newArr4(double, ns, nxn, nyn, nzn);
+        Qxzzs = newArr4(double, ns, nxn, nyn, nzn);
+        Qyyys = newArr4(double, ns, nxn, nyn, nzn);
+        Qyzzs = newArr4(double, ns, nxn, nyn, nzn);
+        Qzzzs = newArr4(double, ns, nxn, nyn, nzn);
+        Qxyzs = newArr4(double, ns, nxn, nyn, nzn);
+        Qxxzs = newArr4(double, ns, nxn, nyn, nzn);
+        Qyyzs = newArr4(double, ns, nxn, nyn, nzn);
+    }
 
-  if(Parameters::get_VECTORIZE_MOMENTS())
-  {
-    // In this case particles are sorted
-    // and there is no need for each thread
-    // to sum moments in a separate array.
-    sizeMomentsArray = 1;
-  }
-  else
-  {
-    sizeMomentsArray = omp_get_max_threads();
-  }
-  moments10Array = new Moments10*[sizeMomentsArray];
-  for(int i=0;i<sizeMomentsArray;i++)
-  {
-    moments10Array[i] = new Moments10(nxn,nyn,nzn);
-  }
-    
-    
-    
     //Define MPI Derived Data types for Center Halo Exchange
     //For face exchange on X dir
     MPI_Type_vector((nyc-2),(nzc-2),nzc, MPI_DOUBLE, &yzFacetypeC);
@@ -2170,6 +2192,180 @@ void EMfields3D::communicateGhostP2G(int ns)
     communicateNode_P(nxn, nyn, nzn, moment9, vct, this);
 }
 
+//! Communicate ghost data for ECSIM/RelSIM (computation) moments
+
+void EMfields3D::communicateGhostP2G_ecsim(int is)
+{
+    const VirtualTopology3D *vct = &get_vct();
+    int rank = vct->getCartesian_rank();
+
+    //* Convert ECSIM/RelSIM moments from type array4_double to *** for communication
+    // double ***moment_rhons = convert_to_arr3(rhons[is]);
+    // double ***moment_Jxhs  = convert_to_arr3(Jxhs[is]);
+    // double ***moment_Jyhs  = convert_to_arr3(Jyhs[is]);
+    // double ***moment_Jzhs  = convert_to_arr3(Jzhs[is]);
+
+    // interpolate adding common nodes among processors
+    communicateInterp(nxn, nyn, nzn, Jxh, vct, this);
+    communicateInterp(nxn, nyn, nzn, Jyh, vct, this);
+    communicateInterp(nxn, nyn, nzn, Jzh, vct, this);
+
+    //* NonBlocking Halo Exchange for Interpolation
+    // communicateInterp(nxn, nyn, nzn, moment_rhons, vct, this);
+    // communicateInterp(nxn, nyn, nzn, moment_Jxhs,  vct, this);
+    // communicateInterp(nxn, nyn, nzn, moment_Jyhs,  vct, this);
+    // communicateInterp(nxn, nyn, nzn, moment_Jzhs,  vct, this);
+
+    communicateInterp_old(nxn, nyn, nzn, is, Jxhs,  0, 0, 0, 0, 0, 0, vct, this);
+    communicateInterp_old(nxn, nyn, nzn, is, Jyhs,  0, 0, 0, 0, 0, 0, vct, this);
+    communicateInterp_old(nxn, nyn, nzn, is, Jzhs,  0, 0, 0, 0, 0, 0, vct, this);
+    communicateInterp_old(nxn, nyn, nzn, is, rhons, 0, 0, 0, 0, 0, 0, vct, this);
+
+    //* Populate the ghost nodes - Nonblocking Halo Exchange
+    communicateNode_P(nxn, nyn, nzn, Jxh, vct, this);
+    communicateNode_P(nxn, nyn, nzn, Jyh, vct, this);
+    communicateNode_P(nxn, nyn, nzn, Jzh, vct, this);
+
+    // communicateNode_P(nxn, nyn, nzn, moment_Jxhs,  vct, this);
+    // communicateNode_P(nxn, nyn, nzn, moment_Jyhs,  vct, this);
+    // communicateNode_P(nxn, nyn, nzn, moment_Jzhs,  vct, this);
+    // communicateNode_P(nxn, nyn, nzn, moment_rhons, vct, this);
+
+    communicateNode_P_old(nxn, nyn, nzn, is, Jxhs,  vct, this);
+    communicateNode_P_old(nxn, nyn, nzn, is, Jyhs,  vct, this);
+    communicateNode_P_old(nxn, nyn, nzn, is, Jzhs,  vct, this);
+    communicateNode_P_old(nxn, nyn, nzn, is, rhons, vct, this);
+}
+
+void EMfields3D::communicateGhostP2G_mass_matrix()
+{
+    const VirtualTopology3D * vct = &get_vct();
+    int rank = vct->getCartesian_rank();
+
+    for (int m = 0; m < NE_MASS; m++)
+    {
+        //! This gives wrong results
+        // double ***moment_Mxx = convert_to_arr3(Mxx[m]);
+        // double ***moment_Mxy = convert_to_arr3(Mxy[m]);
+        // double ***moment_Mxz = convert_to_arr3(Mxz[m]);
+        // double ***moment_Myx = convert_to_arr3(Myx[m]);
+        // double ***moment_Myy = convert_to_arr3(Myy[m]);
+        // double ***moment_Myz = convert_to_arr3(Myz[m]);
+        // double ***moment_Mzx = convert_to_arr3(Mzx[m]);
+        // double ***moment_Mzy = convert_to_arr3(Mzy[m]);
+        // double ***moment_Mzz = convert_to_arr3(Mzz[m]);
+
+        // communicateInterp(nxn, nyn, nzn, moment_Mxx, vct, this);
+        // communicateInterp(nxn, nyn, nzn, moment_Mxy, vct, this);
+        // communicateInterp(nxn, nyn, nzn, moment_Mxz, vct, this);
+        // communicateInterp(nxn, nyn, nzn, moment_Myx, vct, this);
+        // communicateInterp(nxn, nyn, nzn, moment_Myy, vct, this);
+        // communicateInterp(nxn, nyn, nzn, moment_Myz, vct, this);
+        // communicateInterp(nxn, nyn, nzn, moment_Mzx, vct, this);
+        // communicateInterp(nxn, nyn, nzn, moment_Mzy, vct, this);
+        // communicateInterp(nxn, nyn, nzn, moment_Mzz, vct, this);
+
+        // communicateNode_P(nxn, nyn, nzn, moment_Mxx, vct, this);
+        // communicateNode_P(nxn, nyn, nzn, moment_Mxy, vct, this);
+        // communicateNode_P(nxn, nyn, nzn, moment_Mxz, vct, this);
+        // communicateNode_P(nxn, nyn, nzn, moment_Myx, vct, this);
+        // communicateNode_P(nxn, nyn, nzn, moment_Myy, vct, this);
+        // communicateNode_P(nxn, nyn, nzn, moment_Myz, vct, this);
+        // communicateNode_P(nxn, nyn, nzn, moment_Mzx, vct, this);
+        // communicateNode_P(nxn, nyn, nzn, moment_Mzy, vct, this);
+        // communicateNode_P(nxn, nyn, nzn, moment_Mzz, vct, this);
+
+        communicateInterp_old(nxn, nyn, nzn, m, Mxx, 0, 0, 0, 0, 0, 0, vct, this);
+        communicateInterp_old(nxn, nyn, nzn, m, Mxy, 0, 0, 0, 0, 0, 0, vct, this);
+        communicateInterp_old(nxn, nyn, nzn, m, Mxz, 0, 0, 0, 0, 0, 0, vct, this);
+        communicateInterp_old(nxn, nyn, nzn, m, Myx, 0, 0, 0, 0, 0, 0, vct, this);
+        communicateInterp_old(nxn, nyn, nzn, m, Myy, 0, 0, 0, 0, 0, 0, vct, this);
+        communicateInterp_old(nxn, nyn, nzn, m, Myz, 0, 0, 0, 0, 0, 0, vct, this);
+        communicateInterp_old(nxn, nyn, nzn, m, Mzx, 0, 0, 0, 0, 0, 0, vct, this);
+        communicateInterp_old(nxn, nyn, nzn, m, Mzy, 0, 0, 0, 0, 0, 0, vct, this);
+        communicateInterp_old(nxn, nyn, nzn, m, Mzz, 0, 0, 0, 0, 0, 0, vct, this);
+
+        communicateNode_P_old(nxn, nyn, nzn, m, Mxx, vct, this);
+        communicateNode_P_old(nxn, nyn, nzn, m, Mxy, vct, this);
+        communicateNode_P_old(nxn, nyn, nzn, m, Mxz, vct, this);
+        communicateNode_P_old(nxn, nyn, nzn, m, Myx, vct, this);
+        communicateNode_P_old(nxn, nyn, nzn, m, Myy, vct, this);
+        communicateNode_P_old(nxn, nyn, nzn, m, Myz, vct, this);
+        communicateNode_P_old(nxn, nyn, nzn, m, Mzx, vct, this);
+        communicateNode_P_old(nxn, nyn, nzn, m, Mzy, vct, this);
+        communicateNode_P_old(nxn, nyn, nzn, m, Mzz, vct, this);
+    }
+}
+
+//! Communicate ghost data for ECSIM/RelSIM (output only) moments
+void EMfields3D::communicateGhostP2G_supplementary_moments(int is) 
+{
+    const VirtualTopology3D *vct = &get_vct();
+    int rank = vct->getCartesian_rank();
+
+    communicateInterp_old(nxn, nyn, nzn, is, rhons, 0, 0, 0, 0, 0, 0, vct, this);
+    
+    communicateInterp_old(nxn, nyn, nzn, is, Jxs,  0, 0, 0, 0, 0, 0, vct, this);
+    communicateInterp_old(nxn, nyn, nzn, is, Jys,  0, 0, 0, 0, 0, 0, vct, this);
+    communicateInterp_old(nxn, nyn, nzn, is, Jzs,  0, 0, 0, 0, 0, 0, vct, this);
+
+    communicateInterp_old(nxn, nyn, nzn, is, E_flux_xs,  0, 0, 0, 0, 0, 0, vct, this);
+    communicateInterp_old(nxn, nyn, nzn, is, E_flux_ys,  0, 0, 0, 0, 0, 0, vct, this);
+    communicateInterp_old(nxn, nyn, nzn, is, E_flux_zs,  0, 0, 0, 0, 0, 0, vct, this);
+
+    if (SaveHeatFluxTensor) 
+    {
+        communicateInterp_old(nxn, nyn, nzn, is, Qxxxs, 0, 0, 0, 0, 0, 0, vct, this);
+        communicateInterp_old(nxn, nyn, nzn, is, Qxxys, 0, 0, 0, 0, 0, 0, vct, this);
+        communicateInterp_old(nxn, nyn, nzn, is, Qxyys, 0, 0, 0, 0, 0, 0, vct, this);
+        communicateInterp_old(nxn, nyn, nzn, is, Qxzzs, 0, 0, 0, 0, 0, 0, vct, this);
+        communicateInterp_old(nxn, nyn, nzn, is, Qyyys, 0, 0, 0, 0, 0, 0, vct, this);
+        communicateInterp_old(nxn, nyn, nzn, is, Qyzzs, 0, 0, 0, 0, 0, 0, vct, this);
+        communicateInterp_old(nxn, nyn, nzn, is, Qzzzs, 0, 0, 0, 0, 0, 0, vct, this);
+        communicateInterp_old(nxn, nyn, nzn, is, Qxyzs, 0, 0, 0, 0, 0, 0, vct, this);
+        communicateInterp_old(nxn, nyn, nzn, is, Qxxzs, 0, 0, 0, 0, 0, 0, vct, this);
+        communicateInterp_old(nxn, nyn, nzn, is, Qyyzs, 0, 0, 0, 0, 0, 0, vct, this);
+    }
+
+    communicateInterp_old(nxn, nyn, nzn, is, pXXsn, 0, 0, 0, 0, 0, 0, vct, this);
+    communicateInterp_old(nxn, nyn, nzn, is, pXYsn, 0, 0, 0, 0, 0, 0, vct, this);
+    communicateInterp_old(nxn, nyn, nzn, is, pXZsn, 0, 0, 0, 0, 0, 0, vct, this);
+    communicateInterp_old(nxn, nyn, nzn, is, pYYsn, 0, 0, 0, 0, 0, 0, vct, this);
+    communicateInterp_old(nxn, nyn, nzn, is, pYZsn, 0, 0, 0, 0, 0, 0, vct, this);
+    communicateInterp_old(nxn, nyn, nzn, is, pZZsn, 0, 0, 0, 0, 0, 0, vct, this);
+
+    communicateNode_P_old(nxn, nyn, nzn, is, rhons, vct, this);
+
+    communicateNode_P_old(nxn, nyn, nzn, is, Jxs, vct, this);
+    communicateNode_P_old(nxn, nyn, nzn, is, Jys, vct, this);
+    communicateNode_P_old(nxn, nyn, nzn, is, Jzs, vct, this);
+
+    communicateNode_P_old(nxn, nyn, nzn, is, E_flux_xs, vct, this);
+    communicateNode_P_old(nxn, nyn, nzn, is, E_flux_ys, vct, this);
+    communicateNode_P_old(nxn, nyn, nzn, is, E_flux_zs, vct, this);
+
+    if (SaveHeatFluxTensor)
+    {
+        communicateNode_P_old(nxn, nyn, nzn, is, Qxxxs, vct, this);
+        communicateNode_P_old(nxn, nyn, nzn, is, Qxxys, vct, this);
+        communicateNode_P_old(nxn, nyn, nzn, is, Qxyys, vct, this);
+        communicateNode_P_old(nxn, nyn, nzn, is, Qxzzs, vct, this);
+        communicateNode_P_old(nxn, nyn, nzn, is, Qyyys, vct, this);
+        communicateNode_P_old(nxn, nyn, nzn, is, Qyzzs, vct, this);
+        communicateNode_P_old(nxn, nyn, nzn, is, Qzzzs, vct, this);
+        communicateNode_P_old(nxn, nyn, nzn, is, Qxyzs, vct, this);
+        communicateNode_P_old(nxn, nyn, nzn, is, Qxxzs, vct, this);
+        communicateNode_P_old(nxn, nyn, nzn, is, Qyyzs, vct, this);
+    }
+
+    communicateNode_P_old(nxn, nyn, nzn, is, pXXsn, vct, this);
+    communicateNode_P_old(nxn, nyn, nzn, is, pXYsn, vct, this);
+    communicateNode_P_old(nxn, nyn, nzn, is, pXZsn, vct, this);
+    communicateNode_P_old(nxn, nyn, nzn, is, pYYsn, vct, this);
+    communicateNode_P_old(nxn, nyn, nzn, is, pYZsn, vct, this);
+    communicateNode_P_old(nxn, nyn, nzn, is, pZZsn, vct, this);
+}
+
 //! ===================================== Compute Fields ===================================== !//
 
 //? Convert a 3D field to a 1D array (not considering guard cells)
@@ -2479,9 +2675,9 @@ void EMfields3D::MaxwellImage(double *im, double* vector)
     //? Move from Krylov space to physical space
     solver2phys(tempX, tempY, tempZ, vector, nxn, nyn, nzn);
 
-    // communicateNodeBC_old(nxn, nyn, nzn, tempX, col->bcEx[0],col->bcEx[1],col->bcEx[2],col->bcEx[3],col->bcEx[4],col->bcEx[5], vct, this);
-	// communicateNodeBC_old(nxn, nyn, nzn, tempY, col->bcEy[0],col->bcEy[1],col->bcEy[2],col->bcEy[3],col->bcEy[4],col->bcEy[5], vct, this);
-	// communicateNodeBC_old(nxn, nyn, nzn, tempZ, col->bcEz[0],col->bcEz[1],col->bcEz[2],col->bcEz[3],col->bcEz[4],col->bcEz[5], vct, this);
+    communicateNodeBC_old(nxn, nyn, nzn, tempX, col->bcEx[0],col->bcEx[1],col->bcEx[2],col->bcEx[3],col->bcEx[4],col->bcEx[5], vct, this);
+	communicateNodeBC_old(nxn, nyn, nzn, tempY, col->bcEy[0],col->bcEy[1],col->bcEy[2],col->bcEy[3],col->bcEy[4],col->bcEy[5], vct, this);
+	communicateNodeBC_old(nxn, nyn, nzn, tempZ, col->bcEz[0],col->bcEz[1],col->bcEz[2],col->bcEz[3],col->bcEz[4],col->bcEz[5], vct, this);
 
     //? curl(curl(E)) is computed using finite differences
     grid->curlN2C(tempXC, tempYC, tempZC, tempX, tempY, tempZ);
@@ -2805,7 +3001,6 @@ void EMfields3D::MUdot(arr3_double MUdotX, arr3_double MUdotY, arr3_double MUdot
 
 //! ===================================== Smoothing ===================================== !//
 
-//TODO: Define "communicateNodeBC_old"
 void EMfields3D::energy_conserve_smooth_direction(double*** data, int nx, int ny, int nz, int dir)
 {
     const Collective *col = &get_col();
@@ -2820,7 +3015,7 @@ void EMfields3D::energy_conserve_smooth_direction(double*** data, int nx, int ny
     double ***temp = newArr3(double, nx, ny, nz);
 
     //! Using new communication routines results in energy growth
-    // communicateNodeBC_old(nx, ny, nz, data, bc[0], bc[1], bc[2], bc[3], bc[4], bc[5], vct, this);
+    communicateNodeBC_old(nx, ny, nz, data, bc[0], bc[1], bc[2], bc[3], bc[4], bc[5], vct, this);
 
     int k = 0;
 
@@ -2843,7 +3038,7 @@ void EMfields3D::energy_conserve_smooth_direction(double*** data, int nx, int ny
                     data[i][j][k] = temp[i][j][k];
 
         //! Using new communication routines results in energy growth
-        // communicateNodeBC_old(nx, ny, nz, data, bc[0], bc[1], bc[2], bc[3], bc[4], bc[5], vct, this);
+        communicateNodeBC_old(nx, ny, nz, data, bc[0], bc[1], bc[2], bc[3], bc[4], bc[5], vct, this);
     }
 
     delArr3(temp, nxn, nyn);
@@ -2863,7 +3058,7 @@ void EMfields3D::energy_conserve_smooth(arr3_double data_X, arr3_double data_Y, 
 }
 
 
-//TODO: Remove following 3 functions
+//TODO: Remove
 /* Interpolation smoothing: Smoothing (vector must already have ghost cells) TO MAKE SMOOTH value as to be different from 1.0 type = 0 --> center based vector ; type = 1 --> node based vector ; */
 void EMfields3D::smooth(arr3_double vector, int type)
 {
@@ -2888,7 +3083,7 @@ void EMfields3D::smooth(arr3_double vector, int type)
 			   break;
   }
   double ***temp = newArr3(double, nx, ny, nz);
-  for (int icount = 1; icount < SmoothNiter + 1; icount++) {
+  for (int icount = 1; icount < num_smoothings + 1; icount++) {
       switch (type) {
         case (0):
           communicateCenterBoxStencilBC_P(nx, ny, nz, vector, 2, 2, 2, 2, 2, 2, vct, this);
@@ -2914,77 +3109,9 @@ void EMfields3D::smooth(arr3_double vector, int type)
   delArr3(temp, nx, ny);
 }
 
-/* Interpolation smoothing: Smoothing (vector must already have ghost cells)
- * TO MAKE SMOOTH value as to be different from 1.0 type = 0 --> center based vector ; type = 1 --> node based vector ; */
-void EMfields3D::smoothE()
-{
-  if(Smooth==1.0) return;
-  const Collective *col = &get_col();
-  const VirtualTopology3D *vct = &get_vct();
-
-  double alpha   = Smooth;
-  double beta3D  = (1-alpha)/6.0;
-  double beta2D  = (1-alpha)/4.0;
-
-  double ***temp = newArr3(double, nxn, nyn, nzn);
-
-  for (int icount = 1; icount < SmoothNiter + 1; icount++) {
-      communicateNodeBoxStencilBC(nxn, nyn, nzn, Ex, col->bcEx[0],col->bcEx[1],col->bcEx[2],col->bcEx[3],col->bcEx[4],col->bcEx[5], vct, this);
-      communicateNodeBoxStencilBC(nxn, nyn, nzn, Ey, col->bcEy[0],col->bcEy[1],col->bcEy[2],col->bcEy[3],col->bcEy[4],col->bcEy[5], vct, this);
-      communicateNodeBoxStencilBC(nxn, nyn, nzn, Ez, col->bcEz[0],col->bcEz[1],col->bcEz[2],col->bcEz[3],col->bcEz[4],col->bcEz[5], vct, this);
-
-      // Exth
-      for (int i = 1; i < nxn - 1; i++)
-        for (int j = 1; j < nyn - 1; j++)
-          for (int k = 1; k < nzn - 1; k++)
-              temp[i][j][k] = alpha * Ex[i][j][k] + beta3D * (Ex[i - 1][j][k] + Ex[i + 1][j][k] + Ex[i][j - 1][k] + Ex[i][j + 1][k] + Ex[i][j][k - 1] + Ex[i][j][k + 1]);
-      	    //temp[i][j][k] = alpha * Ex[i][j][k] + beta2D * (Ex[i - 1][j][k] + Ex[i + 1][j][k] + Ex[i][j][k - 1] + Ex[i][j][k + 1]);//2D smooth in XZ dimension
-            //temp[i][j][k] = alpha * Ex[i][j][k] + beta2D * (Ex[i - 1][j][k] + Ex[i + 1][j][k] + Ex[i][j-1][k] + Ex[i][j+1][k]);//2D smooth in XY dimension
-
-      for (int i = 1; i < nxn - 1; i++)
-        for (int j = 1; j < nyn - 1; j++)
-          for (int k = 1; k < nzn - 1; k++)
-            Ex[i][j][k] = temp[i][j][k];
-
-      // Eyth
-      for (int i = 1; i < nxn - 1; i++)
-        for (int j = 1; j < nyn - 1; j++)
-          for (int k = 1; k < nzn - 1; k++)
-	         temp[i][j][k] = alpha * Ey[i][j][k] + beta3D * (Ey[i - 1][j][k] + Ey[i + 1][j][k] + Ey[i][j - 1][k] + Ey[i][j + 1][k] + Ey[i][j][k - 1] + Ey[i][j][k + 1]);
-           //temp[i][j][k] = alpha * Ey[i][j][k] + beta2D * (Ey[i - 1][j][k] + Ey[i + 1][j][k] + Ey[i][j][k - 1] + Ey[i][j][k + 1]);//2D smooth in XZ dimension
-	       //temp[i][j][k] = alpha * Ey[i][j][k] + beta2D * (Ey[i - 1][j][k] + Ey[i + 1][j][k] + Ey[i][j-1][k]   + Ey[i][j+1][k]);//2D smooth in XY dimension
-
-      for (int i = 1; i < nxn - 1; i++)
-        for (int j = 1; j < nyn - 1; j++)
-          for (int k = 1; k < nzn - 1; k++)
-            Ey[i][j][k] = temp[i][j][k];
-
-      // Ezth
-      for (int i = 1; i < nxn - 1; i++)
-        for (int j = 1; j < nyn - 1; j++)
-          for (int k = 1; k < nzn - 1; k++)
-             temp[i][j][k] = alpha * Ez[i][j][k] + beta3D * (Ez[i - 1][j][k] + Ez[i + 1][j][k] + Ez[i][j - 1][k] + Ez[i][j + 1][k] + Ez[i][j][k - 1] + Ez[i][j][k + 1]);
-           //temp[i][j][k] = alpha * Ez[i][j][k] + beta2D * (Ez[i - 1][j][k] + Ez[i + 1][j][k] + Ez[i][j][k - 1] + Ez[i][j][k + 1]);//2D smooth in XZ dimension
-	       //temp[i][j][k] = alpha * Ez[i][j][k] + beta2D * (Ez[i - 1][j][k] + Ez[i + 1][j][k] + Ez[i][j-1][k]   + Ez[i][j+1][k]);//2D smooth in XY dimension
-
-      for (int i = 1; i < nxn - 1; i++)
-        for (int j = 1; j < nyn - 1; j++)
-          for (int k = 1; k < nzn - 1; k++)
-            Ez[i][j][k] = temp[i][j][k];
-
-  }
-  delArr3(temp, nxn, nyn);
-}
-
-/* SPECIES: Interpolation smoothing TO MAKE SMOOTH value as to be different from 1.0 type = 0 --> center based vector type = 1 --> node based vector */
-void EMfields3D::smooth(double value, arr4_double vector, int is, int type)
-{
-  eprintf("Smoothing for Species not implemented in 3D");
-}
 
 
-//! ===================================== Initial Field Distributions ===================================== !//
-
+//! ===================================== Initial Field Distributions ===================================== !
 /*! fix the B boundary when running gem , This assume non-periodic condition on Y dimension*/
 void EMfields3D::fixBcGEM()
 {
@@ -3697,7 +3824,7 @@ void EMfields3D::sumOverSpecies()
                     Jzh[i][j][k]   += Jzhs[is][i][j][k];
                 }
 
-    communicateNode_P(nxn, nyn, nzn, rhon, vct, this);
+    (nxn, nyn, nzn, rhon, vct, this);
     grid->interpN2C(rhoc, rhon);
     communicateCenterBC(nxc, nyc, nzc, rhoc, 2, 2, 2, 2, 2, 2, vct, this);
 }
@@ -3710,83 +3837,97 @@ void EMfields3D::sumOverSpecies()
 //* Default electric and magnetic field configurations
 void EMfields3D::init()
 {
-  const Collective *col = &get_col();
-  const VirtualTopology3D *vct = &get_vct();
-  const Grid *grid = &get_grid();
+    const Collective *col = &get_col();
+    const VirtualTopology3D *vct = &get_vct();
+    const Grid *grid = &get_grid();
 
-  if (restart1 == 0) {
-    for (int i = 0; i < nxn; i++) {
-      for (int j = 0; j < nyn; j++) {
-        for (int k = 0; k < nzn; k++) {
-          for (int is = 0; is < ns; is++) {
-            rhons[is][i][j][k] = rhoINIT[is] / FourPI;
-          }
-          Ex[i][j][k] = 0.0;
-          Ey[i][j][k] = 0.0;
-          Ez[i][j][k] = 0.0;
-          Bxn[i][j][k] = B0x;
-          Byn[i][j][k] = B0y;
-          Bzn[i][j][k] = B0z;
-        }
-      }
+    if (restart_status == 0) 
+    {
+        if (vct->getCartesian_rank() == 0) 
+            cout << "Default field initialisation; initial magnetic field components (Bx, By, Bz) = " << "(" << B0x << ", " << B0y << ", " << B0z << ")" << endl;
+
+        //! Initial setup (NOT RESTART)
+
+        for (int i = 0; i < nxn; i++)
+            for (int j = 0; j < nyn; j++)
+                for (int k = 0; k < nzn; k++)
+                {
+                    //* Initialise E on nodes (if external E exixts, this needs to be initalised here)
+                    Ex[i][j][k] = 0.0;
+                    Ey[i][j][k] = 0.0;
+                    Ez[i][j][k] = 0.0;
+
+                    //* Initialise B on nodes
+                    Bxn[i][j][k] = B0x;
+                    Byn[i][j][k] = B0y;
+                    Bzn[i][j][k] = B0z;
+
+                    //* Initialize rho on nodes
+                    for (int is = 0; is < ns; is++)
+                        rhons[is][i][j][k] = rhoINIT[is] / FourPI;
+                }
+
+        //* Initialise B and rho on cell centers
+        grid->interpN2C(Bxc, Bxn);
+        grid->interpN2C(Byc, Byn);
+        grid->interpN2C(Bzc, Bzn);
+
+        //* Communicate ghost data on cell centres
+        communicateCenterBC(nxc, nyc, nzc, Bxc, col->bcBx[0],col->bcBx[1],col->bcBx[2],col->bcBx[3],col->bcBx[4],col->bcBx[5], vct, this);
+        communicateCenterBC(nxc, nyc, nzc, Byc, col->bcBy[0],col->bcBy[1],col->bcBy[2],col->bcBy[3],col->bcBy[4],col->bcBy[5], vct, this);
+        communicateCenterBC(nxc, nyc, nzc, Bzc, col->bcBz[0],col->bcBz[1],col->bcBz[2],col->bcBz[3],col->bcBz[4],col->bcBz[5], vct, this);
+
+        for (int is = 0; is < ns; is++)
+            grid->interpN2C(rhocs, is, rhons);
     }
+    else 
+    {       
+        //! READ FROM RESTART
+        col->read_field_restart(vct,grid,Bxn,Byn,Bzn,Ex,Ey,Ez,&rhons,ns);
 
-    // initialize B on centers
-    grid->interpN2C(Bxc, Bxn);
-    grid->interpN2C(Byc, Byn);
-    grid->interpN2C(Bzc, Bzn);
+        // communicate species densities to ghost nodes
+        for (int is = 0; is < ns; is++) {
+            double ***moment0 = convert_to_arr3(rhons[is]);
+            communicateNode_P(nxn, nyn, nzn, moment0, vct, this);
+        }
 
-    for (int is = 0; is < ns; is++)
-      grid->interpN2C(rhocs, is, rhons);
-  }
-  else {                        // READING FROM RESTART
+        if (col->getCase()=="Dipole") 
+        {
+            ConstantChargePlanet(col->getL_square(),col->getx_center(),col->gety_center(),col->getz_center());
+        }
+        else if (col->getCase()=="Dipole2D") 
+        {
+            ConstantChargePlanet2DPlaneXZ(col->getL_square(),col->getx_center(),col->getz_center());
+        }
+        // I am not sure what this open BC does, but perhaps it is responsible for energy losses in the restart? Jan 2017, Slavik.
+        else if ((col->getCase().find("TaylorGreen") != std::string::npos) && (col->getCase() != "NullPoints"))
+        {
+            ConstantChargeOpenBC();
+        }
 
-  col->read_field_restart(vct,grid,Bxn,Byn,Bzn,Ex,Ey,Ez,&rhons,ns);
+        // communicate ghost
+        communicateNodeBC(nxn, nyn, nzn, Bxn, col->bcBx[0],col->bcBx[1],col->bcBx[2],col->bcBx[3],col->bcBx[4],col->bcBx[5], vct, this);
+        communicateNodeBC(nxn, nyn, nzn, Byn, col->bcBy[0],col->bcBy[1],col->bcBy[2],col->bcBy[3],col->bcBy[4],col->bcBy[5], vct, this);
+        communicateNodeBC(nxn, nyn, nzn, Bzn, col->bcBz[0],col->bcBz[1],col->bcBz[2],col->bcBz[3],col->bcBz[4],col->bcBz[5], vct, this);
 
-  // communicate species densities to ghost nodes
-  for (int is = 0; is < ns; is++) {
-    double ***moment0 = convert_to_arr3(rhons[is]);
-    communicateNode_P(nxn, nyn, nzn, moment0, vct, this);
-  }
+        // initialize B on centers
+        grid->interpN2C(Bxc, Bxn);
+        grid->interpN2C(Byc, Byn);
+        grid->interpN2C(Bzc, Bzn);
 
-  if (col->getCase()=="Dipole") 
-  {
-    ConstantChargePlanet(col->getL_square(),col->getx_center(),col->gety_center(),col->getz_center());
-  }
-  else if (col->getCase()=="Dipole2D") 
-  {
-    ConstantChargePlanet2DPlaneXZ(col->getL_square(),col->getx_center(),col->getz_center());
-  }
-  // I am not sure what this open BC does, but perhaps it is responsible for energy losses in the restart? Jan 2017, Slavik.
-  else if ((col->getCase().find("TaylorGreen") != std::string::npos) && (col->getCase() != "NullPoints"))
-  {
-    ConstantChargeOpenBC();
-  }
+        // communicate ghost
+        communicateCenterBC(nxc, nyc, nzc, Bxc, col->bcBx[0],col->bcBx[1],col->bcBx[2],col->bcBx[3],col->bcBx[4],col->bcBx[5], vct,this);
+        communicateCenterBC(nxc, nyc, nzc, Byc, col->bcBy[0],col->bcBy[1],col->bcBy[2],col->bcBy[3],col->bcBy[4],col->bcBy[5], vct,this);
+        communicateCenterBC(nxc, nyc, nzc, Bzc, col->bcBz[0],col->bcBz[1],col->bcBz[2],col->bcBz[3],col->bcBz[4],col->bcBz[5], vct,this);
 
-  // communicate ghost
-  communicateNodeBC(nxn, nyn, nzn, Bxn, col->bcBx[0],col->bcBx[1],col->bcBx[2],col->bcBx[3],col->bcBx[4],col->bcBx[5], vct, this);
-  communicateNodeBC(nxn, nyn, nzn, Byn, col->bcBy[0],col->bcBy[1],col->bcBy[2],col->bcBy[3],col->bcBy[4],col->bcBy[5], vct, this);
-  communicateNodeBC(nxn, nyn, nzn, Bzn, col->bcBz[0],col->bcBz[1],col->bcBz[2],col->bcBz[3],col->bcBz[4],col->bcBz[5], vct, this);
+        // communicate E
+        communicateNodeBC(nxn, nyn, nzn, Ex, col->bcEx[0],col->bcEx[1],col->bcEx[2],col->bcEx[3],col->bcEx[4],col->bcEx[5], vct, this);
+        communicateNodeBC(nxn, nyn, nzn, Ey, col->bcEy[0],col->bcEy[1],col->bcEy[2],col->bcEy[3],col->bcEy[4],col->bcEy[5], vct, this);
+        communicateNodeBC(nxn, nyn, nzn, Ez, col->bcEz[0],col->bcEz[1],col->bcEz[2],col->bcEz[3],col->bcEz[4],col->bcEz[5], vct, this);
 
-  // initialize B on centers
-  grid->interpN2C(Bxc, Bxn);
-  grid->interpN2C(Byc, Byn);
-  grid->interpN2C(Bzc, Bzn);
-
-  // communicate ghost
-  communicateCenterBC(nxc, nyc, nzc, Bxc, col->bcBx[0],col->bcBx[1],col->bcBx[2],col->bcBx[3],col->bcBx[4],col->bcBx[5], vct,this);
-  communicateCenterBC(nxc, nyc, nzc, Byc, col->bcBy[0],col->bcBy[1],col->bcBy[2],col->bcBy[3],col->bcBy[4],col->bcBy[5], vct,this);
-  communicateCenterBC(nxc, nyc, nzc, Bzc, col->bcBz[0],col->bcBz[1],col->bcBz[2],col->bcBz[3],col->bcBz[4],col->bcBz[5], vct,this);
-
-  // communicate E
-  communicateNodeBC(nxn, nyn, nzn, Ex, col->bcEx[0],col->bcEx[1],col->bcEx[2],col->bcEx[3],col->bcEx[4],col->bcEx[5], vct, this);
-  communicateNodeBC(nxn, nyn, nzn, Ey, col->bcEy[0],col->bcEy[1],col->bcEy[2],col->bcEy[3],col->bcEy[4],col->bcEy[5], vct, this);
-  communicateNodeBC(nxn, nyn, nzn, Ez, col->bcEz[0],col->bcEz[1],col->bcEz[2],col->bcEz[3],col->bcEz[4],col->bcEz[5], vct, this);
-
-  for (int is = 0; is < ns; is++)
-    grid->interpN2C(rhocs, is, rhons);
-
-  }
+        for (int is = 0; is < ns; is++)
+            grid->interpN2C(rhocs, is, rhons);
+    }
 }
 
 #ifdef BATSRUS
@@ -3836,7 +3977,7 @@ void EMfields3D::initGEM()
   // perturbation localized in X
   double pertX = 0.4;
   double xpert, ypert, exp_pert;
-  if (restart1 == 0) {
+  if (restart_status == 0) {
     // initialize
     if (get_vct().getCartesian_rank() == 0) {
       cout << "------------------------------------------" << endl;
@@ -3914,7 +4055,7 @@ void EMfields3D::initNullPoints()
 {
 	const VirtualTopology3D *vct = &get_vct();
 	const Grid *grid = &get_grid();
-	if (restart1 ==0){
+	if (restart_status ==0){
 		if (vct->getCartesian_rank() ==0){
 			cout << "----------------------------------------" << endl;
 			cout << "       Initialize 3D null point(s)" << endl;
@@ -3989,7 +4130,7 @@ void EMfields3D::initTaylorGreen()
 {
   const VirtualTopology3D *vct = &get_vct();
   const Grid *grid = &get_grid();
-  if (restart1 ==0){
+  if (restart_status ==0){
     if (vct->getCartesian_rank() ==0){
       cout << "----------------------------------------" << endl;
       cout << "       Initialize Taylor-Green flow     " << endl;
@@ -4045,7 +4186,7 @@ void EMfields3D::initOriginalGEM()
 {
   const Grid *grid = &get_grid();
   // perturbation localized in X
-  if (restart1 == 0) {
+  if (restart_status == 0) {
     // initialize
     if (get_vct().getCartesian_rank() == 0) {
       cout << "------------------------------------------" << endl;
@@ -4116,7 +4257,7 @@ void EMfields3D::initGEMDoubleHarris()
 
   double pertX = 0.4;
   double xpert, ypert, exp_pert;
-  if (restart1 == 0){
+  if (restart_status == 0){
 
     if (vct->getCartesian_rank() ==0){
       cout << "------------------------------------------" << endl;
@@ -4202,7 +4343,7 @@ void EMfields3D::initDoublePeriodicHarrisWithGaussianHumpPerturbation()
   const double pertX = 0.4;
   const double deltax = 8. * delta;
   const double deltay = 4. * delta;
-  if (restart1 == 0) {
+  if (restart_status == 0) {
     // initialize
     if (get_vct().getCartesian_rank() == 0) {
       cout << "------------------------------------------" << endl;
@@ -4406,9 +4547,9 @@ void EMfields3D::init_double_Harris()
                 }
 
         //* Communicate ghost data on nodes
-        // communicateNodeBC_old(nxn, nyn, nzn, Bxn, col->bcBx[0],col->bcBx[1],col->bcBx[2],col->bcBx[3],col->bcBx[4],col->bcBx[5], vct, this);
-        // communicateNodeBC_old(nxn, nyn, nzn, Byn, col->bcBy[0],col->bcBy[1],col->bcBy[2],col->bcBy[3],col->bcBy[4],col->bcBy[5], vct, this);
-        // communicateNodeBC_old(nxn, nyn, nzn, Bzn, col->bcBz[0],col->bcBz[1],col->bcBz[2],col->bcBz[3],col->bcBz[4],col->bcBz[5], vct, this);
+        communicateNodeBC_old(nxn, nyn, nzn, Bxn, col->bcBx[0],col->bcBx[1],col->bcBx[2],col->bcBx[3],col->bcBx[4],col->bcBx[5], vct, this);
+        communicateNodeBC_old(nxn, nyn, nzn, Byn, col->bcBy[0],col->bcBy[1],col->bcBy[2],col->bcBy[3],col->bcBy[4],col->bcBy[5], vct, this);
+        communicateNodeBC_old(nxn, nyn, nzn, Bzn, col->bcBz[0],col->bcBz[1],col->bcBz[2],col->bcBz[3],col->bcBz[4],col->bcBz[5], vct, this);
         
         //* Initialise B on cell centres
         grid->interpN2C(Bxc, Bxn);
@@ -4571,7 +4712,7 @@ void EMfields3D::initGEMDipoleLikeTailNoPert()
   double pi = 3.1415927;
   double r1, r2, delta_x1x2;
 
-  if (restart1 == 0) {
+  if (restart_status == 0) {
 
     // initialize
     if (get_vct().getCartesian_rank() == 0) {
@@ -4654,7 +4795,7 @@ void EMfields3D::initGEMnoPert()
   const Collective *col = &get_col();
   const VirtualTopology3D *vct = &get_vct();
   const Grid *grid = &get_grid();
-  if (restart1 == 0) {
+  if (restart_status == 0) {
 
     // initialize
     if (get_vct().getCartesian_rank() == 0) {
@@ -4719,7 +4860,7 @@ void EMfields3D::initRandomField()
   const VirtualTopology3D *vct = &get_vct();
   const Grid *grid = &get_grid();
   double **modes_seed = newArr2(double, 7, 7);
-  if (restart1 ==0){
+  if (restart_status ==0){
     // initialize
     if (get_vct().getCartesian_rank() ==0){
       cout << "------------------------------------------" << endl;
@@ -4853,7 +4994,7 @@ void EMfields3D::initForceFree()
 {
   const VirtualTopology3D *vct = &get_vct();
   const Grid *grid = &get_grid();
-  if (restart1 == 0) {
+  if (restart_status == 0) {
 
     // initialize
     if (get_vct().getCartesian_rank() == 0) {
@@ -4915,7 +5056,7 @@ void EMfields3D::initBEAM(double x_center, double y_center, double z_center, dou
 
   double distance;
   // initialize E and rhos on nodes
-  if (restart1 == 0) {
+  if (restart_status == 0) {
     for (int i = 0; i < nxn; i++)
       for (int j = 0; j < nyn; j++)
         for (int k = 0; k < nzn; k++) {
@@ -5047,7 +5188,7 @@ void EMfields3D::initDipole()
 	for (int is=0 ; is<ns; is++)
 		grid->interpN2C(rhocs,is,rhons);
 
-	if (restart1 != 0) { // EM initialization from RESTART
+	if (restart_status != 0) { // EM initialization from RESTART
 		init();  // use the fields from restart file
 	}
 
@@ -5077,7 +5218,6 @@ void EMfields3D::initDipole2D()
       cout << "Center dipole - Z                = " << z_center << endl;
       cout << "Solar Wind drift velocity        = " << ue0 << endl;
       cout << "2D Smoothing Factor              = " << Smooth << endl;
-      cout << "Smooth Iteration                 = " << SmoothNiter << endl;
   }
 
 
@@ -5150,7 +5290,7 @@ void EMfields3D::initDipole2D()
 
 
 
-	if (restart1 != 0) { // EM initialization from RESTART
+	if (restart_status != 0) { // EM initialization from RESTART
 		init();  // use the fields from restart file
 	}
 }
