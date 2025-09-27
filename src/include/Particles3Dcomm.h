@@ -35,6 +35,7 @@ developers: Stefano Markidis, Giovanni Lapenta
 #include "aligned_vector.h"
 #include "Larray.h"
 #include "IDgenerator.h"
+#include "Neighbouring_Nodes.h"
 
 #include "cudaTypeDef.cuh"
 
@@ -514,7 +515,7 @@ protected:
     double Ninj;
 
     //* Object of class to handle which nodes have to be computed when the mass matrix is calculated
-    // NeighbouringNodes NeNo;
+    NeighbouringNodes NeNo;
 
     //* Limits to apply to particle velocity
     double umin, umax, vmin, vmax, wmin, wmax;
