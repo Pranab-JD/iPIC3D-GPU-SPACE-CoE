@@ -844,7 +844,6 @@ void Particles3D::RelSIM_velocity(Field *EMf)
 
                 double lorentz_factor_new = sqrt(1.0 + (u_temp*u_temp + v_temp*v_temp + w_temp*w_temp)/(c*c));
 
-                //! TODO: Division by c?? check in paper
                 Bxl = Bxl*q_dt_2mc/lorentz_factor_new;
                 Byl = Byl*q_dt_2mc/lorentz_factor_new;
                 Bzl = Bzl*q_dt_2mc/lorentz_factor_new;
@@ -965,10 +964,10 @@ void Particles3D::ECSIM_position(Field *EMf)
         array3_double temp_R(nxc, nyc, nzc);
         eqValue(0.0, temp_R, nxc, nyc, nzc);
 
-        // for (int ii = 0; ii < nxc; ii++)
-        //     for (int jj = 0; jj < nyc; jj++)
-        //         for (int kk = 0; kk < nzc; kk++)
-                    // temp_R.fetch(ii, jj, kk) = EMf->getResDiv(ii, jj, kk, ns);
+        for (int ii = 0; ii < nxc; ii++)
+            for (int jj = 0; jj < nyc; jj++)
+                for (int kk = 0; kk < nzc; kk++)
+                    temp_R.fetch(ii, jj, kk) = EMf->getResDiv(ii, jj, kk, ns);
 
         #pragma omp for schedule(static)
         for (int pidx = 0; pidx < getNOP(); pidx++) 
@@ -991,8 +990,8 @@ void Particles3D::ECSIM_position(Field *EMf)
             double xavg = x_n; double yavg = y_n; double zavg = z_n;
 
             //? Lorentz factor at time step "n"
-            // if (Relativistic) 
-            //     lorentz_factor = sqrt(1.0 + (u_n*u_n + v_n*v_n + w_n*w_n)/(c*c));
+            if (Relativistic) 
+                lorentz_factor = sqrt(1.0 + (u_n*u_n + v_n*v_n + w_n*w_n)/(c*c));
 
             //* --------------------------------------- *//
 
@@ -1310,22 +1309,22 @@ void Particles3D::computeMoments(Field *EMf)
             //* Add charge density                 
             for (int ii = 0; ii < 8; ii++)
                 temp[ii] = q * weights[ii];
-            // EMf->add_Rho(temp, ix, iy, iz, ns);
+            EMf->add_Rho(temp, ix, iy, iz, ns);
 
             //* Add implicit current density - X
             for (int ii = 0; ii < 8; ii++)
                 temp[ii] = qau * weights[ii];
-            // EMf->add_Jxh(temp, ix, iy, iz, ns);
+            EMf->add_Jxh(temp, ix, iy, iz, ns);
             
             //* Add implicit current density - Y
             for (int ii = 0; ii < 8; ii++)
                 temp[ii] = qav * weights[ii];
-            // EMf->add_Jyh(temp, ix, iy, iz, ns);
+            EMf->add_Jyh(temp, ix, iy, iz, ns);
 
             //* Add implicit current density - Z
             for (int ii = 0; ii < 8; ii++)
                 temp[ii] = qaw * weights[ii];
-            // EMf->add_Jzh(temp, ix, iy, iz, ns);
+            EMf->add_Jzh(temp, ix, iy, iz, ns);
 
             #ifdef __PROFILE_MOMENTS__
             time_add.stop();
@@ -1344,14 +1343,9 @@ void Particles3D::computeMoments(Field *EMf)
                         //* Iterate over half of the 27 neighbouring nodes as M is symmetric
                         for (int n_node = 0; n_node < 14; n_node++)
                         {
-                            // int n2i = ni + NeNo.getX(n_node);
-                            // int n2j = nj + NeNo.getY(n_node);
-                            // int n2k = nk + NeNo.getZ(n_node);
-
-                            //TODO: Remove following 3 lines. Uncomment above 3 lines
-                            int n2i = ni;
-                            int n2j = nj ;
-                            int n2k = nk ;
+                            int n2i = ni + NeNo.getX(n_node);
+                            int n2j = nj + NeNo.getY(n_node);
+                            int n2k = nk + NeNo.getZ(n_node);
 
                             int i2 = ix - n2i;
                             int j2 = iy - n2j;
@@ -1371,7 +1365,7 @@ void Particles3D::computeMoments(Field *EMf)
                                     for (int ind2 = 0; ind2 < 3; ind2++) 
                                         value[ind1][ind2] = alpha[ind2][ind1]*qww;
 
-                                // EMf->add_Mass(value, ni, nj, nk, n_node);
+                                EMf->add_Mass(value, ni, nj, nk, n_node);
                             }
                         }
                     }
@@ -1429,12 +1423,12 @@ void Particles3D::compute_supplementary_moments(Field * EMf)
             double lorentz_factor = 1.0;
             double lorentz_factor_E_flux = 1.0;     //* Used to compute energy 
             
-            // if (Relativistic) 
-            // {
-            //     lorentz_factor = sqrt(1.0 + (u_n*u_n + v_n*v_n + w_n*w_n)/(c*c));
-            //     lorentz_factor_E_flux = lorentz_factor;
-            // }
-            // else 
+            if (Relativistic) 
+            {
+                lorentz_factor = sqrt(1.0 + (u_n*u_n + v_n*v_n + w_n*w_n)/(c*c));
+                lorentz_factor_E_flux = lorentz_factor;
+            }
+            else 
                 lorentz_factor_E_flux = 0.5 * (u_n*u_n + v_n*v_n + w_n*w_n)/(c*c);
 
             //* --------------------------------------- *//
@@ -1448,60 +1442,60 @@ void Particles3D::compute_supplementary_moments(Field * EMf)
             const int iz = cz + 1;
 
             //! Add charge density
-            // for (int ii = 0; ii < 8; ii++)
-            //     temp[ii] = q * weights[ii];
-            // EMf->add_Rho(temp, ix, iy, iz, ns);
+            for (int ii = 0; ii < 8; ii++)
+                temp[ii] = q * weights[ii];
+            EMf->add_Rho(temp, ix, iy, iz, ns);
 
-            // //! Add current density - X, Y, Z
-            // for (int ii = 0; ii < 8; ii++)
-            //     temp[ii] = q * u_n/lorentz_factor * weights[ii];
-            // EMf->add_Jx(temp, ix, iy, iz, ns);
+            //! Add current density - X, Y, Z
+            for (int ii = 0; ii < 8; ii++)
+                temp[ii] = q * u_n/lorentz_factor * weights[ii];
+            EMf->add_Jx(temp, ix, iy, iz, ns);
             
-            // for (int ii = 0; ii < 8; ii++)
-            //     temp[ii] = q * v_n/lorentz_factor * weights[ii];
-            // EMf->add_Jy(temp, ix, iy, iz, ns);
+            for (int ii = 0; ii < 8; ii++)
+                temp[ii] = q * v_n/lorentz_factor * weights[ii];
+            EMf->add_Jy(temp, ix, iy, iz, ns);
 
-            // for (int ii = 0; ii < 8; ii++)
-            //     temp[ii] = q * w_n/lorentz_factor * weights[ii];
-            // EMf->add_Jz(temp, ix, iy, iz, ns);
+            for (int ii = 0; ii < 8; ii++)
+                temp[ii] = q * w_n/lorentz_factor * weights[ii];
+            EMf->add_Jz(temp, ix, iy, iz, ns);
 
-            // //! Add pressure tensor - X, Y, Z
-            // for (int ii = 0; ii < 8; ii++)
-            //     temp[ii] = q * u_n*u_n/lorentz_factor * weights[ii];
-            // EMf->add_Pxx(temp, ix, iy, iz, ns);
+            //! Add pressure tensor - X, Y, Z
+            for (int ii = 0; ii < 8; ii++)
+                temp[ii] = q * u_n*u_n/lorentz_factor * weights[ii];
+            EMf->add_Pxx(temp, ix, iy, iz, ns);
             
-            // for (int ii = 0; ii < 8; ii++)
-            //     temp[ii] = q * u_n*v_n/lorentz_factor * weights[ii];
-            // EMf->add_Pxy(temp, ix, iy, iz, ns);
+            for (int ii = 0; ii < 8; ii++)
+                temp[ii] = q * u_n*v_n/lorentz_factor * weights[ii];
+            EMf->add_Pxy(temp, ix, iy, iz, ns);
 
-            // for (int ii = 0; ii < 8; ii++)
-            //     temp[ii] = q * u_n*w_n/lorentz_factor * weights[ii];
-            // EMf->add_Pxz(temp, ix, iy, iz, ns);
+            for (int ii = 0; ii < 8; ii++)
+                temp[ii] = q * u_n*w_n/lorentz_factor * weights[ii];
+            EMf->add_Pxz(temp, ix, iy, iz, ns);
 
-            // for (int ii = 0; ii < 8; ii++)
-            //     temp[ii] = q * v_n*v_n/lorentz_factor * weights[ii];
-            // EMf->add_Pyy(temp, ix, iy, iz, ns);
+            for (int ii = 0; ii < 8; ii++)
+                temp[ii] = q * v_n*v_n/lorentz_factor * weights[ii];
+            EMf->add_Pyy(temp, ix, iy, iz, ns);
             
-            // for (int ii = 0; ii < 8; ii++)
-            //     temp[ii] = q * v_n*w_n/lorentz_factor * weights[ii];
-            // EMf->add_Pyz(temp, ix, iy, iz, ns);
+            for (int ii = 0; ii < 8; ii++)
+                temp[ii] = q * v_n*w_n/lorentz_factor * weights[ii];
+            EMf->add_Pyz(temp, ix, iy, iz, ns);
 
-            // for (int ii = 0; ii < 8; ii++)
-            //     temp[ii] = q * w_n*w_n/lorentz_factor * weights[ii];
-            // EMf->add_Pzz(temp, ix, iy, iz, ns);
+            for (int ii = 0; ii < 8; ii++)
+                temp[ii] = q * w_n*w_n/lorentz_factor * weights[ii];
+            EMf->add_Pzz(temp, ix, iy, iz, ns);
 
-            // //! Add energy flux density - X, Y, Z
-            // for (int ii = 0; ii < 8; ii++)
-            //     temp[ii] = q/qom * u_n * lorentz_factor_E_flux * weights[ii];
-            // EMf->add_E_flux_x(temp, ix, iy, iz, ns);
+            //! Add energy flux density - X, Y, Z
+            for (int ii = 0; ii < 8; ii++)
+                temp[ii] = q/qom * u_n * lorentz_factor_E_flux * weights[ii];
+            EMf->add_E_flux_x(temp, ix, iy, iz, ns);
             
-            // for (int ii = 0; ii < 8; ii++)
-            //     temp[ii] = q/qom * v_n * lorentz_factor_E_flux * weights[ii];
-            // EMf->add_E_flux_y(temp, ix, iy, iz, ns);
+            for (int ii = 0; ii < 8; ii++)
+                temp[ii] = q/qom * v_n * lorentz_factor_E_flux * weights[ii];
+            EMf->add_E_flux_y(temp, ix, iy, iz, ns);
 
-            // for (int ii = 0; ii < 8; ii++)
-            //     temp[ii] = q/qom * w_n * lorentz_factor_E_flux * weights[ii];
-            // EMf->add_E_flux_z(temp, ix, iy, iz, ns);
+            for (int ii = 0; ii < 8; ii++)
+                temp[ii] = q/qom * w_n * lorentz_factor_E_flux * weights[ii];
+            EMf->add_E_flux_z(temp, ix, iy, iz, ns);
 
             //TODO: Ask Fabio (no Lorentz factor?)
             // if (SaveHeatFluxTensor)

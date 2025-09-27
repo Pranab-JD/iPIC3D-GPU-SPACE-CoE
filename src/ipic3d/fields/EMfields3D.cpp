@@ -3692,9 +3692,9 @@ void EMfields3D::divergence_E(double ma)
                 for (int k = 0; k < nzc; k++) 
                     residual_divergence.fetch(is, i, j, k) = residual_divergence.get(is, i, j, k)/(rhocs_avg.get(is, i, j, k) - 1e-10) * ma;
 
-    //TODO
+    //TODO: add this function
     // for (int is = 0; is < ns; is++)
-    //     communicateCenterBC(nxc, nyc, nzc, residual_divergence[is], 2, 2, 2, 2, 2, 2, vct, this);
+        // communicateCenterBC(nxc, nyc, nzc, residual_divergence[is], 2, 2, 2, 2, 2, 2, vct, this);
 }
 
 //? Compute divergence of magnetic field
