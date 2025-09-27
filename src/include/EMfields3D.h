@@ -155,10 +155,10 @@ public:
     void MUdot(arr3_double MUdotX, arr3_double MUdotY, arr3_double MUdotZ,
       const_arr3_double vectX, const_arr3_double vectY, const_arr3_double vectZ);
     /*! Calculate rho hat, Jx hat, Jy hat, Jz hat */
-    void sumOverSpeciesJ();
-    void smoothE();
+    // void sumOverSpeciesJ();
+    // void smoothE();
     void smooth(arr3_double vector, int type);
-    void smooth(double value, arr4_double vector, int is, int type);
+    // void smooth(double value, arr4_double vector, int is, int type);
     void calculateHatFunctions();
 
 
@@ -510,13 +510,10 @@ private:
     int smooth_cycle;         // Frequency of smoothing (after every "smooth_cycle" time cycles)
     int num_smoothings;       // Number of times of smoothing at a given time cycle
 
-    //! Remove
-    int SmoothNiter;
-
     //* Custom input parameters
     double *input_param; int nparam;
     
-    int zeroCurrent; double delt; int ns; double delta;
+    double delt; int ns; double delta;
     
     //* Magnetic field
     double B0x, B0y, B0z, B1x, B1y, B1z;
@@ -595,6 +592,8 @@ private:
     //? Number of particles for each species (defined at nodes)
     array4_double Nns;
 
+    bool SaveHeatFluxTensor;
+
     //? Heat Flux Tensor (defined at nodes)
     double**** Qxxxs; double**** Qyyys; double**** Qzzzs;  
     double**** Qxxys; double**** Qxzzs; double**** Qxyys; double**** Qxyzs; 
@@ -637,11 +636,6 @@ private:
     array3_double Jxh;
     array3_double Jyh;
     array3_double Jzh;
-    int restart1;
-    double CGtol;
-    bool PoissonCorrection;
-    int PoissonCorrectionCycle;
-
 
     /*! Field Boundary Condition
       0 = Dirichlet Boundary Condition: specifies the

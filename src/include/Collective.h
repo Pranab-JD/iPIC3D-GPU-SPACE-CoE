@@ -111,13 +111,6 @@ class Collective
     double getSmooth()                  const{ return (Smooth); }
     int getNcycles()                    const{ return (ncycles); }
 
-    //! Remove
-    int getSmoothNiter()const{return SmoothNiter;}
-    double getDelta()const{ return (delta); }
-    string getPoissonCorrection()const{ return (PoissonCorrection); }
-    int getPoissonCorrectionCycle()const{ return (PoissonCorrectionCycle); }
-    double getCGtol()const{ return (CGtol); }
-
     int getNs()                         const{ return (ns); }
     int getNsTestPart()                 const{ return (nstestpart); }
     int getNpcel(int nspecies)          const{ return (npcel[nspecies]); }
@@ -202,7 +195,7 @@ class Collective
 
     bool getAddExternalCurlB()          const { return AddExternalCurlB; }
     bool getAddExternalCurlE()          const { return AddExternalCurlE; }
-    int getZeroCurrent()                      { return zeroCurrent; }
+    // int getZeroCurrent()                      { return zeroCurrent; }
 
     int getSmoothCycle()                const { return SmoothCycle; }
     int getNumSmoothings()              const { return num_smoothings; }
@@ -242,18 +235,6 @@ class Collective
     double Smooth; int num_smoothings; int SmoothCycle;
 
     int CurrentCycle;
-    int zeroCurrent;
-
-    // ! Remove
-    int SmoothNiter;
-        /*! Poisson correction flag */
-    string PoissonCorrection;
-    int PoissonCorrectionCycle;
-        /*! GEM Challenge parameters */
-    /*! current sheet thickness */
-    double delta;
-        /*! CG solver stopping criterium tolerance */
-    double CGtol;    
     
     /*! number of time cycles */
     int ncycles;

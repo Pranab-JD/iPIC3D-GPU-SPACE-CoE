@@ -161,13 +161,6 @@ void Collective::ReadInput(string inputfile)
         ParticleDistBins            = config.read<int>      ("ParticleDistBins", 90);
         ParticleDistMinVelocity     = config.read<double>   ("ParticleDistMinVelocity", 1e-6);
         ParticleDistMaxVelocity     = config.read<double>   ("ParticleDistMaxVelocity", 1e3);
-        
-        //! Remove
-        PoissonCorrection = config.read<string>("PoissonCorrection");
-        PoissonCorrectionCycle = config.read<int>("PoissonCorrectionCycle",10);
-        delta = config.read < double >("delta",0.5);
-        SmoothNiter = config.read < int >("SmoothNiter",6);
-        CGtol = config.read < double >("CGtol",1e-3);
 
         rhoINIT = std::make_unique<double[]>(ns);
         array_double rhoINIT0 = config.read < array_double > ("rhoINIT");
