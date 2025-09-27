@@ -194,9 +194,6 @@ Particles3Dcomm::Particles3Dcomm(int species_number, CollectiveIO * col_, Virtua
     dy = grid->getDY();
     dz = grid->getDZ();
 
-    //! Remove
-    delta = col->getDelta();
-
     c = col->getC();
     NiterMover = col->getNiterMover();
     Vinj = col->getVinj();
