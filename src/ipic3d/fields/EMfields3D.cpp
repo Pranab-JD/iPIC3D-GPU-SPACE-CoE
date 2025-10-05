@@ -2431,7 +2431,7 @@ void phys2solver(double *vectSolver, const arr3_double vectPhys1, const arr3_dou
 }
 
 //? Calculate electric field using GMRes
-void EMfields3D::calculateE(int cycle)
+void EMfields3D::calculateE()
 {
     #ifdef __PROFILE_FIELDS__
     LeXInt::timer time_ms, time_gmres, time_com, time_total;
@@ -3726,10 +3726,19 @@ void EMfields3D::timeAveragedDivE(double ma)
 //! ===================================== Helper Functions (Moments) ===================================== !//
 
 //! This is prolly not needed for ECSIM
-void EMfields3D::interpDensitiesN2C()
+// void EMfields3D::interpDensitiesN2C()
+// {
+//     // do we need communication or not really?
+//     get_grid().interpN2C(rhoc, rhon);
+// }
+
+void EMfields3D::interpolateCenterSpecies(int is) 
 {
-    // do we need communication or not really?
-    get_grid().interpN2C(rhoc, rhon);
+    const Grid *grid = &get_grid();
+    const VirtualTopology3D * vct = &get_vct();
+
+    grid->interpN2C(rhocs_avg, is, rhons);
+    communicateCenterBC(nxc, nyc, nzc, rhocs_avg[is], 2, 2, 2, 2, 2, 2, vct, this);
 }
 
 //? Set all elements of mass matrix to 0

@@ -126,11 +126,12 @@ public:
     //! ======================================================================================================= !//
 
     //? Functions for Field Solver
-    void calculateE(int cycle);
     void MaxwellImage(double *im, double *vector);
     void MaxwellImageLocal(double *im, double *vector);
     void MaxwellSource(double *bkrylov);
+    void Compute_EM_Fields(int cycle);
     void calculateB();
+    void calculateE();
 
     //? Problem-related functions
     /*! Impose a constant charge inside a spherical zone of the domain */
@@ -426,6 +427,8 @@ public:
     void divergence_B();
     void timeAveragedRho(double ma);
     void timeAveragedDivE(double ma);
+    void interpolateCenterSpecies(int is);
+    void setZeroRho();
 
     double get_E_field_energy();        //* Electric field energy
     double get_Ex_field_energy();       //* Electric field energy along X
@@ -437,7 +440,7 @@ public:
     double get_Bz_field_energy();       //* Magnetic (internal) field energy
     double get_Bext_energy();           //* External magnetic field energy
     double get_bulk_energy(int is);     //* Bulk kinetic energy
-    void setZeroRho();
+    
 
     double LOG_COSH(double x) 
     {
