@@ -36,7 +36,6 @@ class Timing;
 #include <string>
 using std::string;
 
-
 #include "cudaTypeDef.cuh"
 #include "moverKernel.cuh"
 #include "momentKernel.cuh"
@@ -48,196 +47,196 @@ using std::string;
 #include <fstream>
 
 
-namespace iPic3D {
-  class c_Solver;
+namespace iPic3D 
+{
+    class c_Solver;
 }
 
-namespace dataAnalysis {
-  class dataAnalysisPipelineImpl;
+namespace dataAnalysis 
+{
+    class dataAnalysisPipelineImpl;
 }
 
 #ifdef USE_ADIOS2
-#include "ADIOS2IO.hpp"
-namespace ADIOS2IO {
-  class ADIOS2Manager;
-}
+    #include "ADIOS2IO.hpp"
+    namespace ADIOS2IO 
+    {
+        class ADIOS2Manager;
+    }
 #endif
 
-namespace iPic3D {
+namespace iPic3D 
+{
 
-  class c_Solver {
+    class c_Solver 
+    {
+        friend dataAnalysis::dataAnalysisPipelineImpl;
 
-  friend dataAnalysis::dataAnalysisPipelineImpl;
+        #ifdef USE_ADIOS2
+            friend ADIOS2IO::ADIOS2Manager;
+        #endif
 
-#ifdef USE_ADIOS2
-  friend ADIOS2IO::ADIOS2Manager;
-#endif
+        public:
+        ~c_Solver();
+        c_Solver():
+            col(0),
+            vct(0),
+            grid(0),
+            EMf(0),
+            particles(0),
+            kinetic_energy_species(0),
+            bulk_energy_species(0),
+            momentum_species(0),
+            Qremoved(0),
+            my_clock(0) {}
 
-  public:
-    ~c_Solver();
-    c_Solver():
-      col(0),
-      vct(0),
-      grid(0),
-      EMf(0),
-      part(0),
-      Ke(0),
-      BulkEnergy(0),
-      momentum(0),
-      Qremoved(0),
-      my_clock(0)
-    {}
+        int Init(int argc, char **argv);
+        int initCUDA();
+        int deInitCUDA();
+        
+        void CalculateMoments();
+        int cudaLauncherAsync(int species);
+        void Finalise_Moments();
+        bool ParticlesMoverMomentAsync();
+        bool MoverAwaitAndPclExchange();
+        void Compute_EM_Fields(int cycle);
 
+        //TODO: remove
+        // void CalculateField(int cycle);
+        // void CalculateB();
 
-    int Init(int argc, char **argv);
-    int initCUDA();
-    int deInitCUDA();
-    
-    void CalculateMoments();
-    void CalculateField(int cycle);
-    int cudaLauncherAsync(int species);
-    bool ParticlesMoverMomentAsync();
-    bool MoverAwaitAndPclExchange();
-    void CalculateB();
-    void MomentsAwait();
+        void writeParticleNum(int cycle);
+        void WriteRestart(int cycle);
+        void WriteConserved(int cycle);
+        void WriteVelocityDistribution(int cycle);
+        void WriteVirtualSatelliteTraces();
+        void WriteFields(int cycle) = delete;
+        void WriteParticles(int cycle);
+        void WriteTestParticles(int cycle) = delete;
+        void outputCopyAsync(int cycle);
+        void WriteOutput(int cycle);
+        void Finalize();
 
-    //
-    // output methods
-    //
-    void writeParticleNum(int cycle);
-    void WriteRestart(int cycle);
-    void WriteConserved(int cycle);
-    void WriteVelocityDistribution(int cycle);
-    void WriteVirtualSatelliteTraces();
-    void WriteFields(int cycle) = delete;
-    void WriteParticles(int cycle);
-    void WriteTestParticles(int cycle) = delete;
-    void outputCopyAsync(int cycle);
-    void WriteOutput(int cycle);
-    void Finalize();
+        int FirstCycle() { return (first_cycle); }
+        int get_myrank() { return (myrank); }
+        int LastCycle();
 
-    int FirstCycle() { return (first_cycle); }
-    int get_myrank() { return (myrank); }
-    int LastCycle();
+        private:
+        void pad_particle_capacities();
+        void convertParticlesToSoA();
+        void convertParticlesToAoS();
+        void convertOutputParticlesToSynched();
+        void sortParticles();
 
-  private:
-    void pad_particle_capacities();
-    void convertParticlesToSoA();
-    void convertParticlesToAoS();
-    void convertOutputParticlesToSynched();
-    void sortParticles();
+        private:
+        Collective    *col;
+        VCtopology3D  *vct; 
+        Grid3DCU      *grid;
+        EMfields3D    *EMf;
+        Particles3D   *particles;               // only used for particle exchange during the simulation
+        Particles3D   *outputPart;              // buffers for all particle copy back, registered to the output warpperFPP
+        Particles3D   *testpart;                // test particles
+        double        *kinetic_energy_species;  //* kinetic energy of each species
+        double        *bulk_energy_species;     //* bulk kinetic energy of each species
+        double        *momentum_species;        //* total momentum of each species
+        int           *num_particles_species;   //* total number of each species
+        double        *charge_species;          //* total charge of each species
+        double        *Qremoved;                // array of double, with species length, removed charges from the depopulation area
+        Timing        *my_clock;
+        std::ofstream pclNumCSV;
 
-  private:
-    //static MPIdata * mpi;
-    Collective    *col; // the input parameters
-    VCtopology3D  *vct; // mpi topology 
-    Grid3DCU      *grid; // 3d cartesion grid, local grid
-    EMfields3D    *EMf; // 
-    Particles3D   *part; // only used for particle exchange during the simulation
-    Particles3D   *outputPart; // buffers for all particle copy back, registered to the output warpperFPP
-    Particles3D   *testpart;
-    double        *Ke; // kinetic energy of each species, the normal one, added up
-    double        *BulkEnergy; // bulk kinetic energy of each species, consider the bulk motion
-    double        *momentum; // an array of doubles, total momentum of all particle species
-    double        *Qremoved; // array of double, with species length, removed charges from the depopulation area
-    Timing        *my_clock;
-    std::ofstream pclNumCSV;
+        int cudaDeviceOnNode; // the device this rank should use
+        cudaStream_t*       streams;
 
+        std::future<int>* exitingResults;
+        int* stayedParticle; // stayed particles for each species
 
-    int cudaDeviceOnNode; // the device this rank should use
-    cudaStream_t*       streams;
+        //! Host pointers of objects, to be copied to device, for management later
+        particleArrayCUDA**   pclsArrayHostPtr;           // array of pointer, point to objects on host
+        departureArrayType**  departureArrayHostPtr;      // for every species
+        hashedSum**           hashedSumArrayHostPtr;      // species * 8
+        exitingArray**        exitingArrayHostPtr;        // species
+        fillerBuffer**        fillerBufferArrayHostPtr;   // species
+        grid3DCUDA* 		  grid3DCUDAHostPtr;          // one grid, used in all specieses
+        moverParameter**      moverParamHostPtr;		  // for every species
+        momentParameter**     momentParamHostPtr;		  // for every species
 
-    std::future<int>* exitingResults;
-    int* stayedParticle; // stayed particles for each species
+        int* cellCountHostPtr;
+        int* cellOffsetHostPtr;
+        
+        //! CUDA pointers of objects, have been copied to device
+        particleArrayCUDA**   pclsArrayCUDAPtr;           // array of pointer, point to pclsArray on device
+        departureArrayType**  departureArrayCUDAPtr;      // for every species
+        hashedSum**           hashedSumArrayCUDAPtr;      // species * 8
+        exitingArray**        exitingArrayCUDAPtr;        // species
+        fillerBuffer**        fillerBufferArrayCUDAPtr;   // species
+        grid3DCUDA* 		  grid3DCUDACUDAPtr;    	  // one grid, used in all specieses
+        moverParameter**      moverParamCUDAPtr;		  // for every species
+        momentParameter**     momentParamCUDAPtr;		  // for every species
 
-	//! Host pointers of objects, to be copied to device, for management later
-	  particleArrayCUDA**   pclsArrayHostPtr;       // array of pointer, point to objects on host
-    departureArrayType**  departureArrayHostPtr;  // for every species
-    hashedSum**           hashedSumArrayHostPtr;      // species * 8
-    exitingArray**        exitingArrayHostPtr;        // species
-    fillerBuffer**        fillerBufferArrayHostPtr;   // species
-    grid3DCUDA* 		      grid3DCUDAHostPtr;      // one grid, used in all specieses
-    moverParameter**      moverParamHostPtr;		  // for every species
-    momentParameter**     momentParamHostPtr;		  // for every species
+        int* cellCountCUDAPtr;
+        int* cellOffsetCUDAPtr;
 
-    int* cellCountHostPtr;
-    int* cellOffsetHostPtr;
-    
-	//! CUDA pointers of objects, have been copied to device
-    particleArrayCUDA**   pclsArrayCUDAPtr;           // array of pointer, point to pclsArray on device
-    departureArrayType**  departureArrayCUDAPtr;      // for every species
-    hashedSum**           hashedSumArrayCUDAPtr;      // species * 8
-    exitingArray**        exitingArrayCUDAPtr;        // species
-    fillerBuffer**        fillerBufferArrayCUDAPtr;   // species
-    grid3DCUDA* 		      grid3DCUDACUDAPtr;    	    // one grid, used in all specieses
-    moverParameter**      moverParamCUDAPtr;		      // for every species
-    momentParameter**     momentParamCUDAPtr;		      // for every species
+        //! simple device buffers
+        // [10][nxn][nyn][nzn], a piece of cuda memory to hold the moment
+        cudaTypeArray1<cudaMomentType>* momentsCUDAPtr; // for every species
+        // [nxn][nyn][nzn][2*4], a piece of cuda memory to hold E and B from host
+        cudaTypeArray1<cudaFieldType> fieldForPclCUDAPtr; // for all species
 
-    int* cellCountCUDAPtr;
-    int* cellOffsetCUDAPtr;
+        cudaTypeArray1<cudaFieldType> fieldForPclHostPtr;
+        
+        ThreadPool *threadPoolPtr;
 
-	//! simple device buffers
-    // [10][nxn][nyn][nzn], a piece of cuda memory to hold the moment
-    cudaTypeArray1<cudaMomentType>* momentsCUDAPtr; // for every species
-    // [nxn][nyn][nzn][2*4], a piece of cuda memory to hold E and B from host
-    cudaTypeArray1<cudaFieldType> fieldForPclCUDAPtr; // for all species
+        cudaEvent_t event0, eventOutputCopy;
 
-    cudaTypeArray1<cudaFieldType> fieldForPclHostPtr;
-    
-    ThreadPool *threadPoolPtr;
+        #ifdef USE_ADIOS2
+            ADIOS2IO::ADIOS2Manager* adiosManager;
+        #endif
 
-    cudaEvent_t event0, eventOutputCopy;
+        //bool verbose;
+        string SaveDirName;
+        string RestartDirName;
+        string cqsat;
+        string cq, cqs;
+        string ds;
+        string num_proc_str;
+        int restart_cycle;
+        int restart_status;
+        int first_cycle;
+        int ns;
+        int nstestpart;
+        int nprocs;
+        int myrank;
+        int nsat;
+        int nDistributionBins;
+        double Eenergy;
+        double Benergy;
+        double TOTenergy;
+        double TOTmomentum;
+        int mergeIdx = -1;
+        int* toBeMerged;
 
-#ifdef USE_ADIOS2
-    ADIOS2IO::ADIOS2Manager* adiosManager;
-#endif
+        //the below used for IO
+        MPI_Request *headerReq;
+        MPI_Request *dataReq;
+        MPI_Request *footReq;
+        float *testpclPos;
+        int    pclbuffersize;
+        float *testpclVel;
+        MPI_File fh;
+        MPI_Status*  status;
+        float**** fieldwritebuffer;
+        MPI_Request fieldreqArr[4];//E+B+Je+Ji
+        MPI_File    fieldfhArr[4];
+        MPI_Status  fieldstsArr[4];
+        int fieldreqcounter;
 
-    //bool verbose;
-    string SaveDirName;
-    string RestartDirName;
-    string cqsat;
-    string cq;
-    string ds;
-    string num_proc_str;
-    int restart_cycle;
-    int restart_status;
-    int first_cycle;
-    int ns;
-    int nstestpart;
-    int nprocs;
-    int myrank;
-    int nsat;
-    int nDistributionBins;
-    double Eenergy;
-    double Benergy;
-    double TOTenergy;
-    double TOTmomentum;
-    int mergeIdx = -1;
-    int* toBeMerged;
-
-    //the below used for IO
-    MPI_Request *headerReq;
-    MPI_Request *dataReq;
-    MPI_Request *footReq;
-    float *testpclPos;
-    int    pclbuffersize;
-    float *testpclVel;
-    MPI_File fh;
-  	MPI_Status*  status;
-  	float**** fieldwritebuffer;
-	MPI_Request fieldreqArr[4];//E+B+Je+Ji
-	MPI_File    fieldfhArr[4];
-	MPI_Status  fieldstsArr[4];
-	int fieldreqcounter;
-
-  	float*** momentwritebuffer;
-	MPI_Request momentreqArr[14];//rho+PXX+PXY+PXZ++PYY+PYZ+PZZ for species0,1
-	MPI_File    momentfhArr[14];
-	MPI_Status  momentstsArr[14];
-	int momentreqcounter;
-
-  };
-
+        float*** momentwritebuffer;
+        MPI_Request momentreqArr[14];//rho+PXX+PXY+PXZ++PYY+PYZ+PZZ for species0,1
+        MPI_File    momentfhArr[14];
+        MPI_Status  momentstsArr[14];
+	    int momentreqcounter;
+    };
 }
 
 #endif

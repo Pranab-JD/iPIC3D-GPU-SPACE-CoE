@@ -11,8 +11,8 @@
 
 
 
-class momentParameter{
-
+class momentParameter
+{
 public:
 
     particleArrayCUDA* pclsArray; // default main array
@@ -21,13 +21,13 @@ public:
 
 
     //! @param pclsArrayCUDAPtr It should be a device pointer
-    __host__ momentParameter(particleArrayCUDA* pclsArrayCUDAPtr, departureArrayType* departureArrayCUDAPtr){
+    __host__ momentParameter(particleArrayCUDA* pclsArrayCUDAPtr, departureArrayType* departureArrayCUDAPtr)
+    {
         pclsArray = pclsArrayCUDAPtr;
         departureArray = departureArrayCUDAPtr;
     }
 
 };
-
 
 /**
  * @brief moment kernel, one particle per thread is fine
@@ -48,5 +48,15 @@ __global__ void momentKernelNew(momentParameter* momentParam,
                                     cudaTypeArray1<cudaMomentType> moments,
                                     int stayedParticle);
 
+// __global__ void computeMoments_kernel(momentParameter* momentParam,
+//                                         grid3DCUDA* grid,
+//                                         cudaTypeArray1<cudaFieldType> fieldForPcls,   // flattened [cell][node(0..7)][comp(Bx,By,Bz,Ex,Ey,Ez)]
+//                                         // node-centered accumulators:
+//                                         cudaTypeArray1<double> Rho,                   // size = nxn*nyn*nzn
+//                                         cudaTypeArray1<double> Jxh,                   // size = nxn*nyn*nzn
+//                                         cudaTypeArray1<double> Jyh,                   // size = nxn*nyn*nzn
+//                                         cudaTypeArray1<double> Jzh,                   // size = nxn*nyn*nzn
+//                                         // mass matrix accumulator (flat per-neighbor 3x3 blocks, see comment above):
+//                                         cudaTypeArray1<double> Mass)
 
 #endif
