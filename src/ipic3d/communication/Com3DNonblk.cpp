@@ -676,19 +676,24 @@ void communicateNode_P(int nx, int ny, int nz, double*** vector,
 
 
 void communicateCenterBC(int nx, int ny, int nz, arr3_double _vector,
-                                      int bcFaceXrght, int bcFaceXleft,
-                                      int bcFaceYrght, int bcFaceYleft,
-                                      int bcFaceZrght, int bcFaceZleft,
-                                      const VirtualTopology3D * vct, EMfields3D *EMf)
+                        int bcFaceXrght, int bcFaceXleft,
+                        int bcFaceYrght, int bcFaceYleft,
+                        int bcFaceZrght, int bcFaceZleft,
+                        const VirtualTopology3D * vct, EMfields3D *EMf)
 {
 	double ***vector=_vector.fetch_arr3();
 	NBDerivedHaloComm(nx, ny, nz, vector, vct, EMf, true, false,false,false);
-
-    // ////////////////////////////////////////////////////////////////////////
-    // ///////////////// APPLY the boundary conditions ////////////////////////
-    // ////////////////////////////////////////////////////////////////////////
     BCface(nx, ny, nz, vector, bcFaceXrght, bcFaceXleft, bcFaceYrght, bcFaceYleft, bcFaceZrght, bcFaceZleft, vct);
+}
 
+void communicateCenterBC(int nx, int ny, int nz, double*** vector,
+                        int bcFaceXrght, int bcFaceXleft,
+                        int bcFaceYrght, int bcFaceYleft,
+                        int bcFaceZrght, int bcFaceZleft,
+                        const VirtualTopology3D * vct, EMfields3D *EMf)
+{
+	NBDerivedHaloComm(nx, ny, nz, vector, vct, EMf, true, false, false, false);
+    BCface(nx, ny, nz, vector, bcFaceXrght, bcFaceXleft, bcFaceYrght, bcFaceYleft, bcFaceZrght, bcFaceZleft, vct);
 }
 
 void communicateCenterBC_P(   int nx, int ny, int nz, arr3_double _vector,

@@ -66,6 +66,10 @@ void communicateCenterBC(int nx, int ny, int nz, arr3_double vector,
                          int bcFaceXright, int bcFaceXleft, int bcFaceYright, int bcFaceYleft, int bcFaceZright, int bcFaceZleft, 
                          const VirtualTopology3D * vct, EMfields3D *EMf);
 
+void communicateCenterBC(int nx, int ny, int nz, double*** vector,
+                        int bcFaceXrght, int bcFaceXleft, int bcFaceYrght, int bcFaceYleft, int bcFaceZrght, int bcFaceZleft,
+                        const VirtualTopology3D * vct, EMfields3D *EMf);
+
 void communicateCenterBC_P( int nx, int ny, int nz, arr3_double vector, 
                             int bcFaceXright, int bcFaceXleft, int bcFaceYright, int bcFaceYleft, int bcFaceZright, int bcFaceZleft, 
                             const VirtualTopology3D * vct, EMfields3D *EMf);
