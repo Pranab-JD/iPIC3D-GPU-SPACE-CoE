@@ -2824,24 +2824,6 @@ void EMfields3D::MaxwellImageLocal(double *im, double* vector)
 
 }
 
-
-/*! Populate the field data used to push particles */
-// void EMfields3D::set_fieldForPcls()
-// {
-//     #pragma omp parallel for collapse(3)
-//     for(int i=0;i<nxn;i++)
-//         for(int j=0;j<nyn;j++)
-//             for(int k=0;k<nzn;k++)
-//             {
-//                 fieldForPcls[i][j][k][0] = (pfloat) (Bxn[i][j][k] + Bx_ext[i][j][k]);
-//                 fieldForPcls[i][j][k][1] = (pfloat) (Byn[i][j][k] + By_ext[i][j][k]);
-//                 fieldForPcls[i][j][k][2] = (pfloat) (Bzn[i][j][k] + Bz_ext[i][j][k]);
-//                 fieldForPcls[i][j][k][0+DFIELD_3or4] = (pfloat) Ex[i][j][k];
-//                 fieldForPcls[i][j][k][1+DFIELD_3or4] = (pfloat) Ey[i][j][k];
-//                 fieldForPcls[i][j][k][2+DFIELD_3or4] = (pfloat) Ez[i][j][k];
-//             }
-// }
-
 /**
  * ? Populate the field data used to push particles
  * @brief field for a cell, optimized for GPU memory access
@@ -3060,54 +3042,54 @@ void EMfields3D::energy_conserve_smooth(arr3_double data_X, arr3_double data_Y, 
 
 //TODO: Remove
 /* Interpolation smoothing: Smoothing (vector must already have ghost cells) TO MAKE SMOOTH value as to be different from 1.0 type = 0 --> center based vector ; type = 1 --> node based vector ; */
-void EMfields3D::smooth(arr3_double vector, int type)
-{
-  if(Smooth==1.0) return;
-  const VirtualTopology3D *vct = &get_vct();
-  const Grid *grid = &get_grid();
+// void EMfields3D::smooth(arr3_double vector, int type)
+// {
+//   if(Smooth==1.0) return;
+//   const VirtualTopology3D *vct = &get_vct();
+//   const Grid *grid = &get_grid();
 
-  double alpha   = Smooth;
-  double beta3D  = (1-alpha)/6.0;
-  double beta2D  = (1-alpha)/4.0;
-  int nx, ny, nz;
-  switch (type) {
-  	  case (0):
-			   nx = grid->getNXC();
-			   ny = grid->getNYC();
-			   nz = grid->getNZC();
-			   break;
-  	  case (1):
-			   nx = grid->getNXN();
-			   ny = grid->getNYN();
-			   nz = grid->getNZN();
-			   break;
-  }
-  double ***temp = newArr3(double, nx, ny, nz);
-  for (int icount = 1; icount < num_smoothings + 1; icount++) {
-      switch (type) {
-        case (0):
-          communicateCenterBoxStencilBC_P(nx, ny, nz, vector, 2, 2, 2, 2, 2, 2, vct, this);
-          break;
-        case (1):
-          communicateNodeBoxStencilBC_P(nx, ny, nz, vector, 2, 2, 2, 2, 2, 2, vct, this);
-          break;
-      }
+//   double alpha   = Smooth;
+//   double beta3D  = (1-alpha)/6.0;
+//   double beta2D  = (1-alpha)/4.0;
+//   int nx, ny, nz;
+//   switch (type) {
+//   	  case (0):
+// 			   nx = grid->getNXC();
+// 			   ny = grid->getNYC();
+// 			   nz = grid->getNZC();
+// 			   break;
+//   	  case (1):
+// 			   nx = grid->getNXN();
+// 			   ny = grid->getNYN();
+// 			   nz = grid->getNZN();
+// 			   break;
+//   }
+//   double ***temp = newArr3(double, nx, ny, nz);
+//   for (int icount = 1; icount < num_smoothings + 1; icount++) {
+//       switch (type) {
+//         case (0):
+//           communicateCenterBoxStencilBC_P(nx, ny, nz, vector, 2, 2, 2, 2, 2, 2, vct, this);
+//           break;
+//         case (1):
+//           communicateNodeBoxStencilBC_P(nx, ny, nz, vector, 2, 2, 2, 2, 2, 2, vct, this);
+//           break;
+//       }
 
-      for (int i = 1; i < nx - 1; i++)
-        for (int j = 1; j < ny - 1; j++)
-          for (int k = 1; k < nz - 1; k++)
-            temp[i][j][k] = alpha * vector[i][j][k] + beta3D * (vector[i - 1][j][k] + vector[i + 1][j][k] + vector[i][j - 1][k] + vector[i][j + 1][k] + vector[i][j][k - 1] + vector[i][j][k + 1]);
-          //temp[i][j][k] = alpha * vector[i][j][k] + beta2D * (vector[i - 1][j][k] + vector[i + 1][j][k] + vector[i][j][k - 1] + vector[i][j][k + 1]);//2D smooth in XZ dimension
-          //temp[i][j][k] = alpha * vector[i][j][k] + beta2D * (vector[i - 1][j][k] + vector[i + 1][j][k] + vector[i][j-1][k] + vector[i][j+1][k]);//2D smooth in XY dimension
+//       for (int i = 1; i < nx - 1; i++)
+//         for (int j = 1; j < ny - 1; j++)
+//           for (int k = 1; k < nz - 1; k++)
+//             temp[i][j][k] = alpha * vector[i][j][k] + beta3D * (vector[i - 1][j][k] + vector[i + 1][j][k] + vector[i][j - 1][k] + vector[i][j + 1][k] + vector[i][j][k - 1] + vector[i][j][k + 1]);
+//           //temp[i][j][k] = alpha * vector[i][j][k] + beta2D * (vector[i - 1][j][k] + vector[i + 1][j][k] + vector[i][j][k - 1] + vector[i][j][k + 1]);//2D smooth in XZ dimension
+//           //temp[i][j][k] = alpha * vector[i][j][k] + beta2D * (vector[i - 1][j][k] + vector[i + 1][j][k] + vector[i][j-1][k] + vector[i][j+1][k]);//2D smooth in XY dimension
 
-      for (int i = 1; i < nx - 1; i++)
-        for (int j = 1; j < ny - 1; j++)
-          for (int k = 1; k < nz - 1; k++)
-            vector[i][j][k] = temp[i][j][k];
+//       for (int i = 1; i < nx - 1; i++)
+//         for (int j = 1; j < ny - 1; j++)
+//           for (int k = 1; k < nz - 1; k++)
+//             vector[i][j][k] = temp[i][j][k];
 
-  }
-  delArr3(temp, nx, ny);
-}
+//   }
+//   delArr3(temp, nx, ny);
+// }
 
 
 
@@ -3610,72 +3592,6 @@ void EMfields3D::AddPerturbation(double deltaBoB, double kx, double ky, double E
 }
 
 
-//! The following 2 functions are prolly not needed for ECSIM
-
-/*! Calculate hat rho hat, Jx hat, Jy hat, Jz hat */
-void EMfields3D::calculateHatFunctions()
-{
-  const VirtualTopology3D *vct = &get_vct();
-  const Grid *grid = &get_grid();
-  // smoothing
-  smooth(rhoc, 0);
-  // calculate j hat
-
-  for (int is = 0; is < ns; is++) {
-    grid->divSymmTensorN2C(tempXC, tempYC, tempZC, pXXsn, pXYsn, pXZsn, pYYsn, pYZsn, pZZsn, is);
-
-    scale(tempXC, -dt / 2.0, nxc, nyc, nzc);
-    scale(tempYC, -dt / 2.0, nxc, nyc, nzc);
-    scale(tempZC, -dt / 2.0, nxc, nyc, nzc);
-    // communicate before interpolating
-    communicateCenterBC_P(nxc, nyc, nzc, tempXC, 2, 2, 2, 2, 2, 2, vct, this);
-    communicateCenterBC_P(nxc, nyc, nzc, tempYC, 2, 2, 2, 2, 2, 2, vct, this);
-    communicateCenterBC_P(nxc, nyc, nzc, tempZC, 2, 2, 2, 2, 2, 2, vct, this);
-
-    grid->interpC2N(tempXN, tempXC);
-    grid->interpC2N(tempYN, tempYC);
-    grid->interpC2N(tempZN, tempZC);
-    sum(tempXN, Jxs, nxn, nyn, nzn, is);
-    sum(tempYN, Jys, nxn, nyn, nzn, is);
-    sum(tempZN, Jzs, nxn, nyn, nzn, is);
-    // PIDOT
-    PIdot(Jxh, Jyh, Jzh, tempXN, tempYN, tempZN, is);
-
-  }
-  // smooth j
-  smooth(Jxh, 1);
-  smooth(Jyh, 1);
-  smooth(Jzh, 1);
-
-  // calculate rho hat = rho - (dt*theta)div(jhat)
-  grid->divN2C(tempXC, Jxh, Jyh, Jzh);
-  scale(tempXC, -dt * th, nxc, nyc, nzc);
-  sum(tempXC, rhoc, nxc, nyc, nzc);
-  eq(rhoh, tempXC, nxc, nyc, nzc);
-  // communicate rhoh
-  communicateCenterBC_P(nxc, nyc, nzc, rhoh, 2, 2, 2, 2, 2, 2, vct, this);
-}
-/*! Image of Poisson Solver */
-void EMfields3D::PoissonImage(double *image, double *vector)
-{
-  const VirtualTopology3D *vct = &get_vct();
-  const Grid *grid = &get_grid();
-
-  // allocate 2 three dimensional service vectors
-  array3_double temp(nxc, nyc, nzc);
-  array3_double im(nxc, nyc, nzc);
-  eqValue(0.0, image, (nxc - 2) * (nyc - 2) * (nzc - 2));
-  eqValue(0.0, temp, nxc, nyc, nzc);
-  eqValue(0.0, im, nxc, nyc, nzc);
-  // move from krylov space to physical space and communicate ghost cells
-  solver2phys(temp, vector, nxc, nyc, nzc);
-  // calculate the laplacian
-  grid->lapC2Cpoisson(im, temp, this);
-  // move from physical space to krylov space
-  phys2solver(image, im, nxc, nyc, nzc);
-}
-/*! interpolate charge density and pressure density from node to center */
-
 //! ===================================== Helper Functions (Fields) ===================================== !//
 
 //? Compute divergence of electric field
@@ -3692,9 +3608,8 @@ void EMfields3D::divergence_E(double ma)
                 for (int k = 0; k < nzc; k++) 
                     residual_divergence.fetch(is, i, j, k) = residual_divergence.get(is, i, j, k)/(rhocs_avg.get(is, i, j, k) - 1e-10) * ma;
 
-    //TODO: add this function
-    // for (int is = 0; is < ns; is++)
-        // communicateCenterBC(nxc, nyc, nzc, residual_divergence[is], 2, 2, 2, 2, 2, 2, vct, this);
+    for (int is = 0; is < ns; is++)
+        communicateCenterBC(nxc, nyc, nzc, residual_divergence[is], 2, 2, 2, 2, 2, 2, vct, this);
 }
 
 //? Compute divergence of magnetic field

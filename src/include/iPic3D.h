@@ -101,10 +101,6 @@ namespace iPic3D
         bool MoverAwaitAndPclExchange();
         void Compute_EM_Fields(int cycle);
 
-        //TODO: remove
-        // void CalculateField(int cycle);
-        // void CalculateB();
-
         void writeParticleNum(int cycle);
         void WriteRestart(int cycle);
         void WriteConserved(int cycle);

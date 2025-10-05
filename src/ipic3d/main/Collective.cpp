@@ -647,7 +647,7 @@ void Collective::trim_conserved_quantities_file(const std::string& filename, int
  * restart_status = 2 ---> RESTART and restart and result directories coincide */
 // int Collective::ReadRestart(string inputfile) = delete;
 
-//TODO: these 2 functions need to chnaged according to ECSIM
+//TODO PJD: these 2 functions need to chnaged according to ECSIM
 void Collective::read_field_restart(// real field read from restart file
     const VCtopology3D* vct,
     const Grid* grid,

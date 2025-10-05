@@ -44,7 +44,7 @@ int main(int argc, char **argv)
         //? LeXInt timer
         LeXInt::timer time_EF, time_PM, time_MF, time_MG, time_WD, time_EX, time_CP;
 
-        //? Initial moment computation
+        //? Initial moment deposition
         KCode.CalculateMoments();
 
         for (int i = KCode.FirstCycle(); i < KCode.LastCycle(); i++) 
@@ -54,41 +54,44 @@ int main(int argc, char **argv)
             
             timeTasks.resetCycle();
 
-            KCode.writeParticleNum(i);
+            // KCode.writeParticleNum(i);
 
-            //? Field Solver --> Compute E field 
+            //? Field Solver --> Compute E and B fields (CPU)
             DA.startAnalysis(i);
             time_EF.start();
-            KCode.CalculateField(i); // E field, spare GPU cycles
+            // KCode.CalculateField(i); // E field, spare GPU cycles
+            KCode.Compute_EM_Fields(i); 
             time_EF.stop();
             DA.waitForAnalysis();
 
-            //? Particle Pusher --> Compute new velocities and positions of the particles
+            //? Particle Pusher + Moment Gatherer (GPU)
             time_PM.start();
             KCode.ParticlesMoverMomentAsync(); // launch Mover and Moment kernels
             time_PM.stop();
 
+            //? Write data to output (CPU) 
             time_WD.start();
             // KCode.WriteOutput(i);    // some spare CPU cycles
             time_WD.stop();
 
+            //? Communicate Particles + Moment Gatherer (GPU)
             time_EX.start();
             KCode.MoverAwaitAndPclExchange();
             time_EX.stop();
 
-            //? Field Solver --> Compute B fields 
-            time_MF.start();
-            KCode.CalculateB();     // some spare CPU cycles
-            time_MF.stop();
-
-            //? Moment Gatherer --> Compute charge density, current density, and pressure tnesor
+            //? Finalise Moments --> Exchange ghost data, reduce moments (CPU)
             time_MG.start();
-            KCode.MomentsAwait();
+            KCode.Finalise_Moments();
             time_MG.stop();
 
+            //? Asynchronously stage particle arrays for writing restart or particle output (CPU)
             time_CP.start();
-            KCode.outputCopyAsync(i); // copy output data to host, for next output
+            KCode.outputCopyAsync(i);
             time_CP.stop();
+
+            #ifdef LOG_TASKS_TOTAL_TIME
+                timeTasks.print_cycle_times(i); // print out total time for all tasks
+            #endif
 
             if(MPIdata::get_rank() == 0)
             {
@@ -97,17 +100,13 @@ int main(int argc, char **argv)
                 std::cout << "Field solver (B)   : " << time_MF.total()   << " s" << std::endl;
                 std::cout << "Particle mover     : " << time_PM.total()   << " s" << std::endl;
                 std::cout << "Moment gatherer    : " << time_MG.total()   << " s" << std::endl;
-            }
 
-            if(MPIdata::get_rank() == 0)
-            {
                 std::cout << std::endl << "Runtime of other core functions " << std::endl;
                 std::cout << "Write data         : " << time_WD.total()   << " s" << std::endl;
                 std::cout << "Exchange Particles : " << time_EX.total()   << " s" << std::endl;
                 std::cout << "Copy data          : " << time_CP.total()   << " s" << std::endl;
             }
         }
-
         KCode.Finalize();
     }
 

@@ -91,7 +91,7 @@ __global__ void updatePclNumAfterMoverKernel(moverParameter *moverParam);
 
 //! ECSIM
 // __global__ void ECSIM_position_kernel(moverParameter *moverParam, cudaTypeArray1<commonType> resDivC, grid3DCUDA *grid);
-__global__ void ECSIM_position_kernel(moverParameter *moverParam, grid3DCUDA *grid);    //TODO: Charge conservation is to be implemented
+__global__ void ECSIM_position_kernel(moverParameter *moverParam, grid3DCUDA *grid);    //TODO PJD: Charge conservation is to be implemented
 __global__ void ECSIM_velocity_kernel(moverParameter *moverParam, cudaTypeArray1<cudaFieldType> fieldForPcls, grid3DCUDA *grid);
 
 //! RelSIM

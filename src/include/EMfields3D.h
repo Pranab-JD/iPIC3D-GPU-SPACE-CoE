@@ -148,20 +148,12 @@ public:
     void fixBforcefree();
 
     //! Remove
-    void PoissonImage(double *image, double *vector);
     /*! Calculate the three components of Pi(implicit pressure) cross image vector */
     void PIdot(arr3_double PIdotX, arr3_double PIdotY, arr3_double PIdotZ,
       const_arr3_double vectX, const_arr3_double vectY, const_arr3_double vectZ, int ns);
     /*! Calculate the three components of mu (implicit permeattivity) cross image vector */
     void MUdot(arr3_double MUdotX, arr3_double MUdotY, arr3_double MUdotZ,
       const_arr3_double vectX, const_arr3_double vectY, const_arr3_double vectZ);
-    /*! Calculate rho hat, Jx hat, Jy hat, Jz hat */
-    // void sumOverSpeciesJ();
-    // void smoothE();
-    void smooth(arr3_double vector, int type);
-    // void smooth(double value, arr4_double vector, int is, int type);
-    void calculateHatFunctions();
-
 
     //* Interpolate B from centres to nodes
     void C2NB();
@@ -182,7 +174,6 @@ public:
     void sumOverSpecies();
 
     //? Copy field data to the array used to move the particles
-    // void set_fieldForPcls();
     void set_fieldForPclsToCenter(cudaFieldType *fieldForPclsOnCenter);
 
     //* Communicate ghost cells for grid -> particles interpolation - IMM
