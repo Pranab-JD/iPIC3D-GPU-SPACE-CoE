@@ -29,7 +29,7 @@ class NeighbouringNodes
     };
 
     int getX(int ind) 
-    { 
+    {
         if (ind <= 13) 
             return i[ind];
         else 

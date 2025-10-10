@@ -7,10 +7,6 @@
 #include "gridCUDA.cuh"
 #include "particleExchange.cuh"
 
-
-
-
-
 class momentParameter
 {
 public:
@@ -19,44 +15,56 @@ public:
 
     departureArrayType* departureArray; // a helper array for marking exiting particles
 
+    cudaParticleType dt;
+    cudaParticleType qom;
+    cudaParticleType c;
 
-    //! @param pclsArrayCUDAPtr It should be a device pointer
+    //! @param pclsArrayCUDAPtr - it should be a device pointer
     __host__ momentParameter(particleArrayCUDA* pclsArrayCUDAPtr, departureArrayType* departureArrayCUDAPtr)
     {
         pclsArray = pclsArrayCUDAPtr;
         departureArray = departureArrayCUDAPtr;
     }
-
 };
 
 /**
- * @brief moment kernel, one particle per thread is fine
- * @details the moment kernel should be launched in species
- *          if these're 4 species, launch 4 times in different streams
+ *! Moment kernel:
+ *!     - one particle per thread is fine
+ *!     - Should be launched in species --- if there are 4 species, launch 4 times in different streams
  * 
  * @param grid 
  * @param _pcls the particles of a species
  * @param moments array4, [x][y][z][density], 
  *                  here[nxn][nyn][nzn][10], must be 0 before kernel launch
  */
+
 __global__ void momentKernelStayed(momentParameter* momentParam,
-                                    grid3DCUDA* grid,
-                                    cudaTypeArray1<cudaMomentType> moments);
+                                   grid3DCUDA* grid,
+                                   cudaTypeArray1<cudaMomentType> moments);
 
 __global__ void momentKernelNew(momentParameter* momentParam,
-                                    grid3DCUDA* grid,
-                                    cudaTypeArray1<cudaMomentType> moments,
-                                    int stayedParticle);
+                                grid3DCUDA* grid,
+                                cudaTypeArray1<cudaMomentType> moments,
+                                int stayedParticle);
 
-// __global__ void computeMoments_kernel(momentParameter* momentParam,
-//                                         grid3DCUDA* grid,
-//                                         cudaTypeArray1<cudaFieldType> fieldForPcls,   // flattened [cell][node(0..7)][comp(Bx,By,Bz,Ex,Ey,Ez)]
-//                                         // node-centered accumulators:
-//                                         cudaTypeArray1<double> Rho,                   // size = nxn*nyn*nzn
-//                                         cudaTypeArray1<double> Jxh,                   // size = nxn*nyn*nzn
-//                                         cudaTypeArray1<double> Jyh,                   // size = nxn*nyn*nzn
-//                                         cudaTypeArray1<double> Jzh,                   // size = nxn*nyn*nzn
-//                                         // mass matrix accumulator (flat per-neighbor 3x3 blocks, see comment above):
-//                                         cudaTypeArray1<double> Mass)
+__global__ void ECSIM_RelSIM_Moments_PreExchange( momentParameter* momentParam,
+                                                  grid3DCUDA* grid,
+                                                  cudaTypeArray1<cudaFieldType> fieldForPcls,
+                                                  cudaTypeArray1<cudaMomentType> moments);
+
+__global__ void ECSIM_RelSIM_Moments_PostExchange(momentParameter* momentParam,
+                                                  grid3DCUDA* grid,
+                                                  cudaTypeArray1<cudaFieldType> fieldForPcls,
+                                                  cudaTypeArray1<cudaMomentType> moments,
+                                                  int stayedParticle);
+
+__device__ inline void exact_mass_matrix(cudaTypeArray1<cudaMomentType> moments,
+                                        int ix, int iy, int iz,
+                                        double q, double q_dt_2mc,
+                                        const double weights[8],
+                                        double a00, double a01, double a02,
+                                        double a10, double a11, double a12,
+                                        double a20, double a21, double a22,
+                                        int nxn, int nyn, int nzn);
 
 #endif
