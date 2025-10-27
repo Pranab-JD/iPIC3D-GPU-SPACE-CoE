@@ -163,7 +163,13 @@ else()
     enable_language(CUDA)
     
     set_target_properties(iPIC3Dlib PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-    set_property(TARGET iPIC3Dlib PROPERTY CUDA_ARCHITECTURES 75) # required for double atomicadd
+    # Cache variable so users can override at configure time
+    set(CMAKE_CUDA_ARCHITECTURES "75" CACHE STRING
+        "Semicolon-separated CUDA architectures (e.g. 70;75;80;90;native). Default 75 if unset.")
+    if(NOT CMAKE_CUDA_ARCHITECTURES OR CMAKE_CUDA_ARCHITECTURES STREQUAL "")
+        set(CMAKE_CUDA_ARCHITECTURES "75")
+    endif()
+    set_property(TARGET iPIC3Dlib PROPERTY CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}") # required for double atomicadd
     set_property(TARGET iPIC3Dlib PROPERTY CUDA_STANDARD 17)
     set_property(TARGET iPIC3Dlib PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
     #   set_property(TARGET iPIC3Dlib PROPERTY LINK_OPTIONS -fno-lto)
