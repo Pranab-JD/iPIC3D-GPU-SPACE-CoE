@@ -170,6 +170,11 @@ namespace iPic3D
         moverParameter**      moverParamCUDAPtr;		  // for every species
         momentParameter**     momentParamCUDAPtr;		  // for every species
 
+        //* per-species device outputs for the 9 mass-matrix components
+        cudaCommonType **dMxx = nullptr, **dMxy = nullptr, **dMxz = nullptr;
+        cudaCommonType **dMyx = nullptr, **dMyy = nullptr, **dMyz = nullptr;
+        cudaCommonType **dMzx = nullptr, **dMzy = nullptr, **dMzz = nullptr;
+
         int* cellCountCUDAPtr;
         int* cellOffsetCUDAPtr;
 

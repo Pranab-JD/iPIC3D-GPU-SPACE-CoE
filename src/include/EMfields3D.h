@@ -348,20 +348,27 @@ public:
     double getRHOc_avg(int X, int Y, int Z) const { return rhoc_avg.get(X, Y, Z); }
 
     //* Current (s --> of each species)
-    double getJxs(int X,int Y,int Z,int is) const { return Jxs.get(is,X,Y,Z); }
-    double getJys(int X,int Y,int Z,int is) const { return Jys.get(is,X,Y,Z); }
-    double getJzs(int X,int Y,int Z,int is) const { return Jzs.get(is,X,Y,Z); }
+    double getJxs(int X, int Y, int Z, int is) const { return Jxs.get(is,X,Y,Z); }
+    double getJys(int X, int Y, int Z, int is) const { return Jys.get(is,X,Y,Z); }
+    double getJzs(int X, int Y, int Z, int is) const { return Jzs.get(is,X,Y,Z); }
     arr4_double getJxs() { return Jxs; }
     arr4_double getJys() { return Jys; }
     arr4_double getJzs() { return Jzs; }
+
+    double getJxhs(int X, int Y,int Z, int is) const { return Jxhs.get(is,X,Y,Z); }
+    double getJyhs(int X, int Y,int Z, int is) const { return Jyhs.get(is,X,Y,Z); }
+    double getJzhs(int X, int Y,int Z, int is) const { return Jzhs.get(is,X,Y,Z); }
+    arr4_double getJxhs() { return Jxhs; }
+    arr4_double getJyhs() { return Jyhs; }
+    arr4_double getJzhs() { return Jzhs; }
 
     //* Current (overall)
     arr3_double getJx() { return Jx; }
     arr3_double getJy() { return Jy; }
     arr3_double getJz() { return Jz; }
-    double getJx(int X,int Y,int Z) const { return Jx.get(X,Y,Z); }
-    double getJy(int X,int Y,int Z) const { return Jy.get(X,Y,Z); }
-    double getJz(int X,int Y,int Z) const { return Jz.get(X,Y,Z); }
+    double getJx(int X, int Y, int Z) const { return Jx.get(X,Y,Z); }
+    double getJy(int X, int Y, int Z) const { return Jy.get(X,Y,Z); }
+    double getJz(int X, int Y, int Z) const { return Jz.get(X,Y,Z); }
 
     arr3_double getJxh() { return Jxh; }
     arr3_double getJyh() { return Jyh; }
@@ -385,6 +392,27 @@ public:
     double getpYYsn(int X, int Y, int Z, int is) const { return pYYsn.get(is,X,Y,Z); }
     double getpYZsn(int X, int Y, int Z, int is) const { return pYZsn.get(is,X,Y,Z); }
     double getpZZsn(int X, int Y, int Z, int is) const { return pZZsn.get(is,X,Y,Z); }
+
+    //* Mass Matrix
+    arr4_double getMxx() { return Mxx; }
+    arr4_double getMxy() { return Mxy; }
+    arr4_double getMxz() { return Mxz; }
+    arr4_double getMyx() { return Myx; }
+    arr4_double getMyy() { return Myy; }
+    arr4_double getMyz() { return Myz; }
+    arr4_double getMzx() { return Mzx; }
+    arr4_double getMzy() { return Mzy; }
+    arr4_double getMzz() { return Mzz; }
+
+    double getMxx(int ind,int X,int Y,int Z) const { return Mxx.get(ind,X,Y,Z); }
+    double getMxy(int ind,int X,int Y,int Z) const { return Mxy.get(ind,X,Y,Z); }
+    double getMxz(int ind,int X,int Y,int Z) const { return Mxz.get(ind,X,Y,Z); }
+    double getMyx(int ind,int X,int Y,int Z) const { return Myx.get(ind,X,Y,Z); }
+    double getMyy(int ind,int X,int Y,int Z) const { return Myy.get(ind,X,Y,Z); }
+    double getMyz(int ind,int X,int Y,int Z) const { return Myz.get(ind,X,Y,Z); }
+    double getMzx(int ind,int X,int Y,int Z) const { return Mzx.get(ind,X,Y,Z); }
+    double getMzy(int ind,int X,int Y,int Z) const { return Mzy.get(ind,X,Y,Z); }
+    double getMzz(int ind,int X,int Y,int Z) const { return Mzz.get(ind,X,Y,Z); }
 
     //* Energy Flux Density
     arr4_double getEFxs() { return E_flux_xs; }
