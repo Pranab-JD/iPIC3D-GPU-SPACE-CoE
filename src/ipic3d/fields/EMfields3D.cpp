@@ -2834,6 +2834,7 @@ void EMfields3D::MaxwellImageLocal(double *im, double* vector)
  * 
  * @param fieldForPclsOnCenter field buffer for particles, (nxn-1)*(nyn-1)*(nzn)*4*6
  */
+
 void EMfields3D::set_fieldForPclsToCenter(cudaFieldType *fieldForPclsOnCenter)
 {
     #pragma omp parallel for collapse(3)
@@ -2843,33 +2844,33 @@ void EMfields3D::set_fieldForPclsToCenter(cudaFieldType *fieldForPclsOnCenter)
             {
                 const auto cellIndex = (i * (nyn - 1) + j) * nzn + k;
                 // grid point (i, j, k)
-                fieldForPclsOnCenter[cellIndex * 4 * 6 + 0 * 6 + 0] = (cudaFieldType) (Bxn[i][j][k] + Bx_ext[i][j][k]);
-                fieldForPclsOnCenter[cellIndex * 4 * 6 + 0 * 6 + 1] = (cudaFieldType) (Byn[i][j][k] + By_ext[i][j][k]);
-                fieldForPclsOnCenter[cellIndex * 4 * 6 + 0 * 6 + 2] = (cudaFieldType) (Bzn[i][j][k] + Bz_ext[i][j][k]);
+                fieldForPclsOnCenter[cellIndex * 4 * 6 + 0 * 6 + 0] = (cudaFieldType) (Bxn[i][j][k]);
+                fieldForPclsOnCenter[cellIndex * 4 * 6 + 0 * 6 + 1] = (cudaFieldType) (Byn[i][j][k]);
+                fieldForPclsOnCenter[cellIndex * 4 * 6 + 0 * 6 + 2] = (cudaFieldType) (Bzn[i][j][k]);
                 fieldForPclsOnCenter[cellIndex * 4 * 6 + 0 * 6 + 3] = (cudaFieldType) Ex[i][j][k];
                 fieldForPclsOnCenter[cellIndex * 4 * 6 + 0 * 6 + 4] = (cudaFieldType) Ey[i][j][k];
                 fieldForPclsOnCenter[cellIndex * 4 * 6 + 0 * 6 + 5] = (cudaFieldType) Ez[i][j][k];
 
                 // grid point (i+1, j, k)
-                fieldForPclsOnCenter[cellIndex * 4 * 6 + 1 * 6 + 0] = (cudaFieldType) (Bxn[i+1][j][k] + Bx_ext[i+1][j][k]);
-                fieldForPclsOnCenter[cellIndex * 4 * 6 + 1 * 6 + 1] = (cudaFieldType) (Byn[i+1][j][k] + By_ext[i+1][j][k]);
-                fieldForPclsOnCenter[cellIndex * 4 * 6 + 1 * 6 + 2] = (cudaFieldType) (Bzn[i+1][j][k] + Bz_ext[i+1][j][k]);
+                fieldForPclsOnCenter[cellIndex * 4 * 6 + 1 * 6 + 0] = (cudaFieldType) (Bxn[i+1][j][k]);
+                fieldForPclsOnCenter[cellIndex * 4 * 6 + 1 * 6 + 1] = (cudaFieldType) (Byn[i+1][j][k]);
+                fieldForPclsOnCenter[cellIndex * 4 * 6 + 1 * 6 + 2] = (cudaFieldType) (Bzn[i+1][j][k]);
                 fieldForPclsOnCenter[cellIndex * 4 * 6 + 1 * 6 + 3] = (cudaFieldType) Ex[i+1][j][k];
                 fieldForPclsOnCenter[cellIndex * 4 * 6 + 1 * 6 + 4] = (cudaFieldType) Ey[i+1][j][k];
                 fieldForPclsOnCenter[cellIndex * 4 * 6 + 1 * 6 + 5] = (cudaFieldType) Ez[i+1][j][k];
 
                 // grid point (i+1, j+1, k)
-                fieldForPclsOnCenter[cellIndex * 4 * 6 + 2 * 6 + 0] = (cudaFieldType) (Bxn[i+1][j+1][k] + Bx_ext[i+1][j+1][k]);
-                fieldForPclsOnCenter[cellIndex * 4 * 6 + 2 * 6 + 1] = (cudaFieldType) (Byn[i+1][j+1][k] + By_ext[i+1][j+1][k]);
-                fieldForPclsOnCenter[cellIndex * 4 * 6 + 2 * 6 + 2] = (cudaFieldType) (Bzn[i+1][j+1][k] + Bz_ext[i+1][j+1][k]);
+                fieldForPclsOnCenter[cellIndex * 4 * 6 + 2 * 6 + 0] = (cudaFieldType) (Bxn[i+1][j+1][k]);
+                fieldForPclsOnCenter[cellIndex * 4 * 6 + 2 * 6 + 1] = (cudaFieldType) (Byn[i+1][j+1][k]);
+                fieldForPclsOnCenter[cellIndex * 4 * 6 + 2 * 6 + 2] = (cudaFieldType) (Bzn[i+1][j+1][k]);
                 fieldForPclsOnCenter[cellIndex * 4 * 6 + 2 * 6 + 3] = (cudaFieldType) Ex[i+1][j+1][k];
                 fieldForPclsOnCenter[cellIndex * 4 * 6 + 2 * 6 + 4] = (cudaFieldType) Ey[i+1][j+1][k];
                 fieldForPclsOnCenter[cellIndex * 4 * 6 + 2 * 6 + 5] = (cudaFieldType) Ez[i+1][j+1][k];
 
                 // grid point (i, j+1, k)
-                fieldForPclsOnCenter[cellIndex * 4 * 6 + 3 * 6 + 0] = (cudaFieldType) (Bxn[i][j+1][k] + Bx_ext[i][j+1][k]);
-                fieldForPclsOnCenter[cellIndex * 4 * 6 + 3 * 6 + 1] = (cudaFieldType) (Byn[i][j+1][k] + By_ext[i][j+1][k]);
-                fieldForPclsOnCenter[cellIndex * 4 * 6 + 3 * 6 + 2] = (cudaFieldType) (Bzn[i][j+1][k] + Bz_ext[i][j+1][k]);
+                fieldForPclsOnCenter[cellIndex * 4 * 6 + 3 * 6 + 0] = (cudaFieldType) (Bxn[i][j+1][k]);
+                fieldForPclsOnCenter[cellIndex * 4 * 6 + 3 * 6 + 1] = (cudaFieldType) (Byn[i][j+1][k]);
+                fieldForPclsOnCenter[cellIndex * 4 * 6 + 3 * 6 + 2] = (cudaFieldType) (Bzn[i][j+1][k]);
                 fieldForPclsOnCenter[cellIndex * 4 * 6 + 3 * 6 + 3] = (cudaFieldType) Ex[i][j+1][k];
                 fieldForPclsOnCenter[cellIndex * 4 * 6 + 3 * 6 + 4] = (cudaFieldType) Ey[i][j+1][k];
                 fieldForPclsOnCenter[cellIndex * 4 * 6 + 3 * 6 + 5] = (cudaFieldType) Ez[i][j+1][k];
@@ -3700,9 +3701,6 @@ void EMfields3D::setZeroDerivedMoments()
 
     eqValue(0.0, rhoc, nxc, nyc, nzc);
     eqValue(0.0, rhocs, ns, nxc, nyc, nzc);
-
-    //! Remove
-    eqValue(0.0, rhoc, nxc, nyc, nzc);
 }
 
 void EMfields3D::setZeroPrimaryMoments() 
@@ -3748,7 +3746,7 @@ void EMfields3D::sumOverSpecies()
                     Jzh[i][j][k]   += Jzhs[is][i][j][k];
                 }
 
-    (nxn, nyn, nzn, rhon, vct, this);
+    communicateNode_P(nxn, nyn, nzn, rhon, vct, this);
     grid->interpN2C(rhoc, rhon);
     communicateCenterBC(nxc, nyc, nzc, rhoc, 2, 2, 2, 2, 2, 2, vct, this);
 }
