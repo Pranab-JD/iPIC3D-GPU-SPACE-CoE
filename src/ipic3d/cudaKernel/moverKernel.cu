@@ -444,10 +444,8 @@ __global__ void ECSIM_velocity_kernel(moverParameter *moverParam, cudaTypeArray1
     const commonType Omx = qdto2mc * Bxl;
     const commonType Omy = qdto2mc * Byl;
     const commonType Omz = qdto2mc * Bzl;
-
     const commonType omsq  = Omx*Omx + Omy*Omy + Omz*Omz;
     const commonType denom = (commonType)1 / ((commonType)1 + omsq);
-
     const commonType udotOm = u_temp * Omx + v_temp * Omy + w_temp * Omz;
 
     const commonType uavg = (u_temp + (v_temp * Omz - w_temp * Omy + udotOm * Omx)) * denom;
@@ -474,7 +472,7 @@ __global__ void ECSIM_velocity_kernel(moverParameter *moverParam, cudaTypeArray1
 
 */
 
-__global__ void ECSIM_position_kernel(moverParameter *moverParam, grid3DCUDA *grid)
+__global__ void ECSIM_RelSIM_position_kernel(moverParameter *moverParam, grid3DCUDA *grid)
 {
     //* cell-centered R (size = nxc*nyc*nzc)
 
@@ -484,6 +482,9 @@ __global__ void ECSIM_position_kernel(moverParameter *moverParam, grid3DCUDA *gr
     if (pidx >= pclsArray->getNOP()) return;
 
     // If this particle was deleted (e.g., by merging), just finalize departure bookkeeping and exit.
+    //TODO: check this
+    // if (moverParam->departureArray->getArray()[pidx].dest != 0) return;
+
     if (moverParam->departureArray->getArray()[pidx].dest != 0) 
     {
         SpeciesParticle *pcl_del = pclsArray->getpcls() + pidx;
@@ -503,12 +504,12 @@ __global__ void ECSIM_position_kernel(moverParameter *moverParam, grid3DCUDA *gr
     // const commonType xstart  = moverParam->xstart;
     // const commonType ystart  = moverParam->ystart;
     // const commonType zstart  = moverParam->zstart;
-    const bool Relativistic  = moverParam->Relativistic;   // bool flag carried in moverParam
+    // const bool Relativistic  = moverParam->Relativistic;   // bool flag carried in moverParam
 
     // Optional anisotropic correction factors (match CPU defaults = 1)
-    const commonType correct_x = (commonType)1;
-    const commonType correct_y = (commonType)1;
-    const commonType correct_z = (commonType)1;
+    const commonType correct_x = (commonType)1.0;
+    const commonType correct_y = (commonType)1.0;
+    const commonType correct_z = (commonType)1.0;
 
     // Shortcuts for grid sizes (cell-centered)
     const int nxc = grid->nxc;
@@ -527,12 +528,12 @@ __global__ void ECSIM_position_kernel(moverParameter *moverParam, grid3DCUDA *gr
     const commonType w_n = pcl->get_w();
 
     // Relativistic gamma at time n (or 1.0 if non-relativistic)
-    commonType lorentz_factor = (commonType)1;
-    if (Relativistic) 
-    {
-        const commonType v2 = u_n*u_n + v_n*v_n + w_n*w_n;
-        lorentz_factor = sqrt((commonType)1 + v2/(c*c));
-    }
+    commonType lorentz_factor = (commonType)1.0;
+    // if (Relativistic) 
+    // {
+    //     const commonType v2 = u_n*u_n + v_n*v_n + w_n*w_n;
+    //     lorentz_factor = sqrt((commonType)1.0 + v2/(c*c));
+    // }
 
     // Position used for geometric weights (xavg == x_n in CPU code)
     const commonType xavg = x_n;
@@ -669,6 +670,7 @@ __global__ void ECSIM_position_kernel(moverParameter *moverParam, grid3DCUDA *gr
     pcl->set_z(z_new);
 
     // ----- Departure bookkeeping (boundaries / exits) -----
+    //TODO: some issues with this -- check
     prepareDepartureArray(pcl, moverParam, moverParam->departureArray, grid, moverParam->hashedSumArray, pidx);
 }
 
@@ -822,8 +824,8 @@ __global__ void RelSIM_velocity_kernel(moverParameter *moverParam, cudaTypeArray
 //* ============================================================================================================================== *//
 
 //! Boundary Conditions
-__device__ uint32_t deleteAppendOpenBCOutflow(SpeciesParticle* pcl, moverParameter *moverParam, departureArrayType* departureArray, grid3DCUDA* grid, hashedSum* hashedSumArray) {
-
+__device__ uint32_t deleteAppendOpenBCOutflow(SpeciesParticle* pcl, moverParameter *moverParam, departureArrayType* departureArray, grid3DCUDA* grid, hashedSum* hashedSumArray) 
+{
     if (!moverParam->doOpenBC) return 0;
 
     auto& delBdry = moverParam->deleteBoundary;
@@ -913,10 +915,10 @@ __device__ uint32_t deleteAppendOpenBCOutflow(SpeciesParticle* pcl, moverParamet
     }
 
     return 0;
-
 }
 
-__device__ uint32_t deleteRepopulateInjection(SpeciesParticle* pcl, moverParameter *moverParam, grid3DCUDA *grid) {
+__device__ uint32_t deleteRepopulateInjection(SpeciesParticle* pcl, moverParameter *moverParam, grid3DCUDA *grid) 
+{
     if (!moverParam->doRepopulateInjection) return 0;
 
     auto& doRepopulateInjectionSide = moverParam->doRepopulateInjectionSide;
@@ -931,14 +933,15 @@ __device__ uint32_t deleteRepopulateInjection(SpeciesParticle* pcl, moverParamet
         (doRepopulateInjectionSide[5] && pcl->get_z() > repopulateBoundary[5])
     ) { // In the repoopulate layers
         return departureArrayElementType::DELETE;
-    } else {
+    } 
+    else 
+    {
         return 0;
     }
-
 }
 
-__device__ uint32_t deleteInsideSphere(SpeciesParticle* pcl, moverParameter *moverParam, grid3DCUDA *grid) {
-    
+__device__ uint32_t deleteInsideSphere(SpeciesParticle* pcl, moverParameter *moverParam, grid3DCUDA *grid) 
+{    
     if (moverParam->doSphere == 0) return 0;
 
     if(moverParam->doSphere == 1){ // 3D sphere
@@ -965,12 +968,14 @@ __device__ uint32_t deleteInsideSphere(SpeciesParticle* pcl, moverParameter *mov
     }
 
     return 0;
-
 }
 
 //! This function applies all relevant BCs for particles
 __device__ void prepareDepartureArray(SpeciesParticle* pcl, moverParameter *moverParam, departureArrayType* departureArray, grid3DCUDA* grid, hashedSum* hashedSumArray, uint32_t pidx)
 {
+    // Cache the device pointer once
+    departureArrayElementType* darr = departureArray->getArray(); // must be device ptr
+
     if(departureArray->getArray()[pidx].dest != 0) 
     {
         departureArray->getArray()[pidx].hashedId = hashedSumArray[departureArray->getArray()[pidx].dest - 1].add(pidx);

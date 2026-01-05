@@ -479,20 +479,20 @@ void Collective::ReadInput(string inputfile)
     }
 
     // PHI Electrostatic Potential
-    bcPHIfaceXright = config.read < int >("bcPHIfaceXright",1);
-    bcPHIfaceXleft  = config.read < int >("bcPHIfaceXleft",1);
-    bcPHIfaceYright = config.read < int >("bcPHIfaceYright",1);
-    bcPHIfaceYleft  = config.read < int >("bcPHIfaceYleft",1);
-    bcPHIfaceZright = config.read < int >("bcPHIfaceZright",1);
-    bcPHIfaceZleft  = config.read < int >("bcPHIfaceZleft",1);
+    bcPHIfaceXright = config.read < int >("bcPHIfaceXright", 1);
+    bcPHIfaceXleft  = config.read < int >("bcPHIfaceXleft",  1);
+    bcPHIfaceYright = config.read < int >("bcPHIfaceYright", 1);
+    bcPHIfaceYleft  = config.read < int >("bcPHIfaceYleft",  1);
+    bcPHIfaceZright = config.read < int >("bcPHIfaceZright", 1);
+    bcPHIfaceZleft  = config.read < int >("bcPHIfaceZleft",  1);
 
     // EM field boundary condition
-    bcEMfaceXright = config.read < int >("bcEMfaceXright");
-    bcEMfaceXleft  = config.read < int >("bcEMfaceXleft");
-    bcEMfaceYright = config.read < int >("bcEMfaceYright");
-    bcEMfaceYleft  = config.read < int >("bcEMfaceYleft");
-    bcEMfaceZright = config.read < int >("bcEMfaceZright");
-    bcEMfaceZleft  = config.read < int >("bcEMfaceZleft");
+    bcEMfaceXright = config.read < int >("bcEMfaceXright", 1);
+    bcEMfaceXleft  = config.read < int >("bcEMfaceXleft",  1);
+    bcEMfaceYright = config.read < int >("bcEMfaceYright", 1);
+    bcEMfaceYleft  = config.read < int >("bcEMfaceYleft",  1);
+    bcEMfaceZright = config.read < int >("bcEMfaceZright", 1);
+    bcEMfaceZleft  = config.read < int >("bcEMfaceZleft",  1);
 
     /*  ---------------------------------------------------------- */
     /*  Electric and Magnetic field boundary conditions for BCface */

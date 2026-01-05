@@ -357,16 +357,16 @@ void Particles3D::maxwellian_Double_Harris(Field * EMf)
 }
 
 //? Kelvin--Helmholtz Instability (Finite Larmor Radius (FLR); Cerri 2013, https://doi.org/10.1063/1.4828981)
-// void Particles3D::maxwellian_KHI_FLR(Field* EMf)
-// {
-//     //* Custom input parameters
-//     const double velocity_shear         = input_param[0];       //* Initial velocity shear
-//     const double perturbation           = input_param[1];       //* Amplitude of initial perturbation
-//     const double gamma_electrons        = input_param[2];       //* Gamma for isothermal electrons (FLR corrections)
-//     const double gamma_ions_perp        = input_param[3];       //* Gamma (perpendicular) for ions (FLR corrections)
-//     const double gamma_ions_parallel    = input_param[4];       //* Gamma (parallel) for ions (FLR corrections)
-//     const double s3                     = input_param[5];       //* +/-1 (Here -1 : Ux(y) or 1 : Uy(x)) (FLR corrections)
-//     const double delta                  = input_param[6];       //* Thickness of shear layer (FLR corrections)
+void Particles3D::maxwellian_KHI_FLR(Field* EMf)
+{
+    //* Custom input parameters
+    const double velocity_shear         = input_param[0];       //* Initial velocity shear
+    const double perturbation           = input_param[1];       //* Amplitude of initial perturbation
+    const double gamma_electrons        = input_param[2];       //* Gamma for isothermal electrons (FLR corrections)
+    const double gamma_ions_perp        = input_param[3];       //* Gamma (perpendicular) for ions (FLR corrections)
+    const double gamma_ions_parallel    = input_param[4];       //* Gamma (parallel) for ions (FLR corrections)
+    const double s3                     = input_param[5];       //* +/-1 (Here -1 : Ux(y) or 1 : Uy(x)) (FLR corrections)
+    const double delta                  = input_param[6];       //* Thickness of shear layer (FLR corrections)
 
 //     //* Initial incompressible velocity perturbation on the first modes
 //     double TwoPI = 8*atan(1.0);
@@ -484,8 +484,8 @@ void Particles3D::maxwellian_Double_Harris(Field * EMf)
 //                         }
 //             }
 
-//     fixPosition();
-// }
+    fixPosition();
+}
 
 
 /** pitch_angle_energy initialization (Assume B on z only) for test particles */

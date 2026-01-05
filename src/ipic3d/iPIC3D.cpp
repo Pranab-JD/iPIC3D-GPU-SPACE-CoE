@@ -57,12 +57,12 @@ int main(int argc, char **argv)
             // KCode.writeParticleNum(i);
 
             //? Field Solver --> Compute E and B fields (CPU)
-            DA.startAnalysis(i);
+            // DA.startAnalysis(i);
             time_EF.start();
             // KCode.CalculateField(i); // E field, spare GPU cycles
             KCode.Compute_EM_Fields(i); 
             time_EF.stop();
-            DA.waitForAnalysis();
+            // DA.waitForAnalysis();
 
             //? Particle Pusher + Moment Gatherer (GPU)
             time_PM.start();
@@ -71,7 +71,7 @@ int main(int argc, char **argv)
 
             //? Write data to output (CPU) 
             time_WD.start();
-            // KCode.WriteOutput(i);    // some spare CPU cycles
+            KCode.WriteOutput(i);    // some spare CPU cycles
             time_WD.stop();
 
             //? Communicate Particles + Moment Gatherer (GPU)
@@ -96,14 +96,13 @@ int main(int argc, char **argv)
             if(MPIdata::get_rank() == 0)
             {
                 std::cout << std::endl << "Runtime of iPIC3D modules " << std::endl;
-                std::cout << "Field solver (E)   : " << time_EF.total()   << " s" << std::endl;
-                std::cout << "Field solver (B)   : " << time_MF.total()   << " s" << std::endl;
+                std::cout << "Field solver       : " << time_EF.total()   << " s" << std::endl;
                 std::cout << "Particle mover     : " << time_PM.total()   << " s" << std::endl;
                 std::cout << "Moment gatherer    : " << time_MG.total()   << " s" << std::endl;
+                std::cout << "Exchange Particles : " << time_EX.total()   << " s" << std::endl;
 
                 std::cout << std::endl << "Runtime of other core functions " << std::endl;
                 std::cout << "Write data         : " << time_WD.total()   << " s" << std::endl;
-                std::cout << "Exchange Particles : " << time_EX.total()   << " s" << std::endl;
                 std::cout << "Copy data          : " << time_CP.total()   << " s" << std::endl;
             }
         }
